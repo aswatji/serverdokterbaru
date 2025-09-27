@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 2,
+  "dockerfileLines": [
+    "FROM node:18-alpine",
+    "WORKDIR /app",
+    "COPY package*.json ./",
+    "RUN npm ci --only=production",
+    "COPY . .",
+    "RUN npx prisma generate",
+    "EXPOSE 3000",
+    "CMD [\"npm\", \"start\"]"
+  ],
+  "containerHttpPort": 3000,
+  "notExposeAsWebApp": false,
+  "forceSsl": false
+}
