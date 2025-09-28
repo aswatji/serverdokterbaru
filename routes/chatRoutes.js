@@ -2,7 +2,7 @@ const express = require("express");
 const { body } = require("express-validator");
 const chatController = require("../controllers/chatController");
 const validateRequest = require("../middleware/validation");
-const { authMiddleware } = require("../middleware/auth");
+const { authMiddleware } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
@@ -28,21 +28,14 @@ const sendMessageValidation = [
 ];
 
 // Routes
+// 5. POST /chat/send → chatController.sendMessage (auth required)
+router.post("/send", authMiddleware, sendMessageValidation, validateRequest, chatController.sendMessage);
+
+// 6. GET /chat/messages/:consultationId → chatController.getMessages (auth required)
+router.get("/messages/:consultationId", authMiddleware, chatController.getMessages);
+
+// Additional routes
 router.get("/", authMiddleware, chatController.getAllChats);
-
-// Send message to consultation chat
-router.post(
-  "/messages",
-  authMiddleware,
-  sendMessageValidation,
-  validateRequest,
-  chatController.sendMessage
-);
-
-// Get messages for a consultation
-router.get("/consultation/:consultationId/messages", authMiddleware, chatController.getMessages);
-
-// Get consultation status
 router.get("/consultation/:consultationId/status", authMiddleware, chatController.getConsultationStatus);
 
 module.exports = router;

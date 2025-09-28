@@ -2,27 +2,32 @@ const express = require('express');
 const { body } = require('express-validator');
 const paymentController = require('../controllers/paymentController');
 const validateRequest = require('../middleware/validation');
+const { authMiddleware } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
 // Validation rules
 const createPaymentValidation = [
-  body('amount').isFloat({ min: 0 }).withMessage('Amount must be a positive number'),
-  body('status').optional().isIn(['pending', 'success', 'failed']).withMessage('Invalid status')
-];
-
-const updatePaymentValidation = [
-  body('status').isIn(['pending', 'success', 'failed']).withMessage('Invalid status')
+  body('doctorId')
+    .notEmpty()
+    .withMessage('Doctor ID is required'),
+  body('patientId')
+    .notEmpty()
+    .withMessage('Patient ID is required'),
+  body('amount')
+    .isFloat({ min: 0 })
+    .withMessage('Amount must be a positive number')
 ];
 
 // Routes
-router.get('/', paymentController.getAllPayments);
-router.get('/:id', paymentController.getPaymentById);
-router.post('/', createPaymentValidation, validateRequest, paymentController.createPayment);
-router.put('/:id/status', updatePaymentValidation, validateRequest, paymentController.updatePaymentStatus);
-router.delete('/:id', paymentController.deletePayment);
+// 3. POST /payment/create → paymentController.createPayment (auth required)
+router.post('/create', authMiddleware, createPaymentValidation, validateRequest, paymentController.createPayment);
 
-// Webhook route for Midtrans
-router.post('/webhook/midtrans', paymentController.handleMidtransWebhook);
+// 4. POST /payment/callback → paymentController.midtransCallback
+router.post('/callback', paymentController.midtransCallback);
+
+// Additional routes
+router.get('/', authMiddleware, paymentController.getAllPayments);
+router.get('/:id', authMiddleware, paymentController.getPaymentById);
 
 module.exports = router;

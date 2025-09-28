@@ -1,12 +1,15 @@
+// chatController.js
+// Implement chat send & get using Prisma with consultation validation.
+
 const prisma = require('../config/database');
 
 class ChatController {
-  // Send message with consultation and schedule validation
+  // 1. sendMessage(req, res) - Send message with validation
   async sendMessage(req, res, next) {
     try {
       const { consultationId, sender, content } = req.body;
 
-      // Validate required fields
+      // Input validation: consultationId, sender ("user" | "doctor"), content
       if (!consultationId || !sender || !content) {
         return res.status(400).json({
           success: false,
@@ -169,9 +172,10 @@ class ChatController {
     }
   }
 
-  // Get messages for a consultation
+  // 2. getMessages(req, res) - Get messages for consultation
   async getMessages(req, res, next) {
     try {
+      // Input: consultationId (from URL params)
       const { consultationId } = req.params;
 
       if (!consultationId) {
@@ -181,25 +185,10 @@ class ChatController {
         });
       }
 
-      // Find Consultation with chat + messages
+      // Find consultation + messages (order by sentAt asc)
       const consultation = await prisma.consultation.findUnique({
         where: { id: consultationId },
         include: {
-          patient: {
-            select: {
-              id: true,
-              fullname: true,
-              photo: true
-            }
-          },
-          doctor: {
-            select: {
-              id: true,
-              name: true,
-              specialty: true,
-              photo: true
-            }
-          },
           chat: {
             include: {
               messages: {
@@ -220,9 +209,24 @@ class ChatController {
                   }
                 },
                 orderBy: {
-                  sentAt: 'asc'
+                  sentAt: 'asc' // Order by sentAt ascending
                 }
               }
+            }
+          },
+          patient: {
+            select: {
+              id: true,
+              fullname: true,
+              photo: true
+            }
+          },
+          doctor: {
+            select: {
+              id: true,
+              name: true,
+              specialty: true,
+              photo: true
             }
           }
         }
@@ -242,9 +246,12 @@ class ChatController {
         });
       }
 
+      // Return array of messages
       res.json({
         success: true,
         data: {
+          consultationId: consultation.id,
+          messages: consultation.chat.messages,
           consultation: {
             id: consultation.id,
             startedAt: consultation.startedAt,
@@ -252,8 +259,7 @@ class ChatController {
             isActive: consultation.isActive,
             patient: consultation.patient,
             doctor: consultation.doctor
-          },
-          messages: consultation.chat.messages
+          }
         }
       });
     } catch (error) {

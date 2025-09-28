@@ -163,12 +163,23 @@ class DoctorController {
   // Add doctor schedule
   async addSchedule(req, res, next) {
     try {
-      const { id } = req.params;
-      const { dayOfWeek, startTime, endTime } = req.body;
+      const { doctorId, dayOfWeek, startTime, endTime } = req.body;
+
+      // Check if doctor exists
+      const doctor = await prisma.doctor.findUnique({
+        where: { id: doctorId }
+      });
+
+      if (!doctor) {
+        return res.status(404).json({
+          success: false,
+          message: 'Doctor not found'
+        });
+      }
 
       const schedule = await prisma.doctorSchedule.create({
         data: {
-          doctorId: id,
+          doctorId,
           dayOfWeek,
           startTime: new Date(startTime),
           endTime: new Date(endTime)
@@ -188,6 +199,53 @@ class DoctorController {
         success: true,
         message: 'Schedule added successfully',
         data: schedule
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Get schedules for a doctor
+  async getSchedules(req, res, next) {
+    try {
+      const { doctorId } = req.params;
+
+      // Check if doctor exists
+      const doctor = await prisma.doctor.findUnique({
+        where: { id: doctorId }
+      });
+
+      if (!doctor) {
+        return res.status(404).json({
+          success: false,
+          message: 'Doctor not found'
+        });
+      }
+
+      const schedules = await prisma.doctorSchedule.findMany({
+        where: { doctorId },
+        orderBy: { dayOfWeek: 'asc' },
+        include: {
+          doctor: {
+            select: {
+              id: true,
+              name: true,
+              specialty: true
+            }
+          }
+        }
+      });
+
+      res.json({
+        success: true,
+        data: {
+          doctor: {
+            id: doctor.id,
+            name: doctor.name,
+            specialty: doctor.specialty
+          },
+          schedules: schedules
+        }
       });
     } catch (error) {
       next(error);
