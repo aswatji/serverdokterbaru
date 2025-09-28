@@ -36,14 +36,27 @@ app.use("/api", routes);
 app.get("/", (req, res) => {
   res.json({
     success: true,
-    message: "Dokter App Server API",
-    version: "1.0.0",
+    message: "Consultation Chat App API",
+    version: "2.0.0",
+    description: "API for consultation chat app with paid sessions",
     endpoints: {
       health: "/api/health",
       users: "/api/users",
-      chats: "/api/chats",
+      doctors: "/api/doctors",
+      consultations: "/api/consultations", 
       messages: "/api/messages",
+      payments: "/api/payments",
+      news: "/api/news",
+      categories: "/api/categories"
     },
+    features: [
+      "User & Doctor Management",
+      "Paid Consultation Sessions",
+      "Real-time Chat",
+      "Payment Integration (Midtrans)",
+      "Doctor Schedules",
+      "News & Categories"
+    ]
   });
 });
 

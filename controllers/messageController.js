@@ -4,11 +4,12 @@ class MessageController {
   // Get all messages
   async getAllMessages(req, res, next) {
     try {
-      const { chatId, userId } = req.query;
+      const { chatId, userId, doctorId } = req.query;
 
       const where = {};
-      if (chatId) where.chatId = parseInt(chatId);
-      if (userId) where.userId = parseInt(userId);
+      if (chatId) where.chatId = chatId;
+      if (userId) where.userId = userId;
+      if (doctorId) where.doctorId = doctorId;
 
       const messages = await prisma.message.findMany({
         where,
@@ -16,19 +17,42 @@ class MessageController {
           user: {
             select: {
               id: true,
+              fullname: true,
+              photo: true,
+            },
+          },
+          doctor: {
+            select: {
+              id: true,
               name: true,
-              email: true,
+              specialty: true,
+              photo: true,
             },
           },
           chat: {
             select: {
               id: true,
-              title: true,
+              consultation: {
+                select: {
+                  id: true,
+                  patient: {
+                    select: {
+                      fullname: true,
+                    }
+                  },
+                  doctor: {
+                    select: {
+                      name: true,
+                      specialty: true,
+                    }
+                  }
+                }
+              }
             },
           },
         },
         orderBy: {
-          createdAt: "desc",
+          sentAt: "desc",
         },
       });
 
@@ -46,19 +70,42 @@ class MessageController {
     try {
       const { id } = req.params;
       const message = await prisma.message.findUnique({
-        where: { id: parseInt(id) },
+        where: { id: id },
         include: {
           user: {
             select: {
               id: true,
+              fullname: true,
+              photo: true,
+            },
+          },
+          doctor: {
+            select: {
+              id: true,
               name: true,
-              email: true,
+              specialty: true,
+              photo: true,
             },
           },
           chat: {
             select: {
               id: true,
-              title: true,
+              consultation: {
+                select: {
+                  id: true,
+                  patient: {
+                    select: {
+                      fullname: true,
+                    }
+                  },
+                  doctor: {
+                    select: {
+                      name: true,
+                      specialty: true,
+                    }
+                  }
+                }
+              }
             },
           },
         },
@@ -83,26 +130,56 @@ class MessageController {
   // Create new message
   async createMessage(req, res, next) {
     try {
-      const { content, chatId, userId } = req.body;
+      const { content, chatId, sender, userId, doctorId } = req.body;
+
+      // Validate sender and corresponding ID
+      if (sender === 'user' && !userId) {
+        return res.status(400).json({
+          success: false,
+          message: 'userId is required when sender is user'
+        });
+      }
+
+      if (sender === 'doctor' && !doctorId) {
+        return res.status(400).json({
+          success: false,
+          message: 'doctorId is required when sender is doctor'
+        });
+      }
 
       const message = await prisma.message.create({
         data: {
           content,
-          chatId: parseInt(chatId),
-          userId: parseInt(userId),
+          chatId,
+          sender,
+          userId: sender === 'user' ? userId : null,
+          doctorId: sender === 'doctor' ? doctorId : null,
         },
         include: {
           user: {
             select: {
               id: true,
+              fullname: true,
+              photo: true,
+            },
+          },
+          doctor: {
+            select: {
+              id: true,
               name: true,
-              email: true,
+              specialty: true,
+              photo: true,
             },
           },
           chat: {
             select: {
               id: true,
-              title: true,
+              consultation: {
+                select: {
+                  id: true,
+                  isActive: true,
+                }
+              }
             },
           },
         },
@@ -110,7 +187,7 @@ class MessageController {
 
       res.status(201).json({
         success: true,
-        message: "Message created successfully",
+        message: "Message sent successfully",
         data: message,
       });
     } catch (error) {
@@ -125,20 +202,32 @@ class MessageController {
       const { content } = req.body;
 
       const message = await prisma.message.update({
-        where: { id: parseInt(id) },
+        where: { id: id },
         data: { content },
         include: {
           user: {
             select: {
               id: true,
+              fullname: true,
+              photo: true,
+            },
+          },
+          doctor: {
+            select: {
+              id: true,
               name: true,
-              email: true,
+              specialty: true,
+              photo: true,
             },
           },
           chat: {
             select: {
               id: true,
-              title: true,
+              consultation: {
+                select: {
+                  id: true,
+                }
+              }
             },
           },
         },
@@ -160,7 +249,7 @@ class MessageController {
       const { id } = req.params;
 
       await prisma.message.delete({
-        where: { id: parseInt(id) },
+        where: { id: id },
       });
 
       res.json({

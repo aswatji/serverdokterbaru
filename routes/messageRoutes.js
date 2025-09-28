@@ -8,8 +8,10 @@ const router = express.Router();
 // Validation rules
 const createMessageValidation = [
   body("content").notEmpty().withMessage("Content is required"),
-  body("chatId").isInt({ min: 1 }).withMessage("Valid chat ID is required"),
-  body("userId").isInt({ min: 1 }).withMessage("Valid user ID is required"),
+  body("chatId").notEmpty().withMessage("Chat ID is required"),
+  body("sender").isIn(['user', 'doctor']).withMessage("Sender must be 'user' or 'doctor'"),
+  body("userId").optional().isString().withMessage("User ID must be a string"),
+  body("doctorId").optional().isString().withMessage("Doctor ID must be a string")
 ];
 
 const updateMessageValidation = [

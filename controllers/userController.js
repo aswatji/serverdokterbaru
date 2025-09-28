@@ -9,11 +9,16 @@ class UserController {
       const users = await prisma.user.findMany({
         select: {
           id: true,
-          name: true,
+          fullname: true,
           email: true,
+          photo: true,
+          profession: true,
           createdAt: true,
           _count: {
-            select: { messages: true },
+            select: { 
+              messages: true,
+              consultations: true 
+            },
           },
         },
       });
@@ -32,14 +37,53 @@ class UserController {
     try {
       const { id } = req.params;
       const user = await prisma.user.findUnique({
-        where: { id: parseInt(id) },
+        where: { id: id },
         include: {
-          messages: {
+          consultations: {
             include: {
-              chat: true,
+              doctor: {
+                select: {
+                  id: true,
+                  name: true,
+                  specialty: true,
+                }
+              },
+              payment: true,
+              chat: {
+                include: {
+                  messages: {
+                    orderBy: {
+                      sentAt: "desc",
+                    },
+                    take: 5, // Get last 5 messages
+                  }
+                }
+              }
             },
             orderBy: {
-              createdAt: "desc",
+              startedAt: "desc",
+            },
+          },
+          messages: {
+            include: {
+              chat: {
+                include: {
+                  consultation: {
+                    select: {
+                      id: true,
+                      doctor: {
+                        select: {
+                          name: true,
+                          specialty: true,
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+            },
+            orderBy: {
+              sentAt: "desc",
             },
           },
         },
@@ -52,9 +96,12 @@ class UserController {
         });
       }
 
+      // Remove password from response
+      const { password, ...userWithoutPassword } = user;
+
       res.json({
         success: true,
-        data: user,
+        data: userWithoutPassword,
       });
     } catch (error) {
       next(error);
@@ -64,24 +111,25 @@ class UserController {
   // Create new user
   async createUser(req, res, next) {
     try {
-      const { name, email, password } = req.body;
+      const { fullname, email, password, profession, photo } = req.body;
 
-      // Hash password if provided
-      let hashedPassword;
-      if (password) {
-        hashedPassword = await bcrypt.hash(password, 12);
-      }
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 12);
 
       const user = await prisma.user.create({
         data: {
-          name,
+          fullname,
           email,
-          ...(hashedPassword && { password: hashedPassword }),
+          password: hashedPassword,
+          profession: profession || null,
+          photo: photo || null,
         },
         select: {
           id: true,
-          name: true,
+          fullname: true,
           email: true,
+          profession: true,
+          photo: true,
           createdAt: true,
         },
       });
@@ -100,16 +148,25 @@ class UserController {
   async updateUser(req, res, next) {
     try {
       const { id } = req.params;
-      const { name, email } = req.body;
+      const { fullname, email, profession, photo } = req.body;
+
+      const updateData = {};
+      if (fullname) updateData.fullname = fullname;
+      if (email) updateData.email = email;
+      if (profession !== undefined) updateData.profession = profession;
+      if (photo !== undefined) updateData.photo = photo;
 
       const user = await prisma.user.update({
-        where: { id: parseInt(id) },
-        data: { name, email },
+        where: { id: id },
+        data: updateData,
         select: {
           id: true,
-          name: true,
+          fullname: true,
           email: true,
+          profession: true,
+          photo: true,
           createdAt: true,
+          updatedAt: true,
         },
       });
 
@@ -129,7 +186,7 @@ class UserController {
       const { id } = req.params;
 
       await prisma.user.delete({
-        where: { id: parseInt(id) },
+        where: { id: id },
       });
 
       res.json({

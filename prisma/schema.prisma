@@ -1,3 +1,5 @@
+// schema.prisma
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -8,27 +10,91 @@ generator client {
 }
 
 model User {
-  id        Int       @id @default(autoincrement())
-  name      String
-  email     String    @unique
-  password  String 
-  createdAt DateTime  @default(now())
-  messages  Message[]
+  id           String          @id @default(cuid())
+  email        String          @unique
+  password     String
+  fullname     String
+  photo        String?
+  profession   String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  consultations Consultation[] @relation("PatientConsultations")
+  messages     Message[]
+}
+
+model Doctor {
+  id           String           @id @default(cuid())
+  name         String
+  specialty    String
+  bio          String?
+  photo        String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  consultations Consultation[]  @relation("DoctorConsultations")
+  schedules    DoctorSchedule[]
+  messages     Message[]
+}
+
+model DoctorSchedule {
+  id        String   @id @default(cuid())
+  doctor    Doctor   @relation(fields: [doctorId], references: [id])
+  doctorId  String
+  dayOfWeek Int
+  startTime DateTime
+  endTime   DateTime
+}
+
+model Payment {
+  id           String        @id @default(cuid())
+  amount       Float
+  status       String
+  createdAt    DateTime      @default(now())
+  consultation Consultation?
+}
+
+model Consultation {
+  id           String      @id @default(cuid())
+  patient      User        @relation("PatientConsultations", fields: [patientId], references: [id])
+  patientId    String
+  doctor       Doctor      @relation("DoctorConsultations", fields: [doctorId], references: [id])
+  doctorId     String
+  payment      Payment?    @relation(fields: [paymentId], references: [id])
+  paymentId    String?     @unique
+  chat         Chat?
+  startedAt    DateTime    @default(now())
+  expiresAt    DateTime
+  isActive     Boolean     @default(true)
 }
 
 model Chat {
-  id        Int       @id @default(autoincrement())
-  title     String?
-  createdAt DateTime  @default(now())
-  messages  Message[]
+  id              String      @id @default(cuid())
+  consultation    Consultation @relation(fields: [consultationId], references: [id])
+  consultationId  String      @unique
+  messages        Message[]
 }
 
 model Message {
-  id        Int       @id @default(autoincrement())
+  id        String   @id @default(cuid())
+  chat      Chat     @relation(fields: [chatId], references: [id])
+  chatId    String
+  sender    String   // "user" | "doctor"
   content   String
-  createdAt DateTime  @default(now())
-  chat      Chat      @relation(fields: [chatId], references: [id])
-  chatId    Int
-  user      User      @relation(fields: [userId], references: [id])
-  userId    Int
+  sentAt    DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+  userId    String?
+  doctor    Doctor?  @relation(fields: [doctorId], references: [id])
+  doctorId  String?
+}
+
+model News {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  createdAt DateTime @default(now())
+}
+
+model Category {
+  id     String  @id @default(cuid())
+  name   String
+  items  String?
 }
