@@ -3,10 +3,14 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const compression = require("compression");
+const http = require("http");
 const routes = require("./routes");
 const errorHandler = require("./middleware/errorHandler");
+const { initChatSocket, stopDoctorAvailabilityNotification } = require("./chatSocket");
+const ConsultationScheduler = require("./scheduler/consultationScheduler");
 
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 3000;
 
 // Middleware
@@ -74,16 +78,28 @@ app.use("*", (req, res) => {
 // Graceful shutdown
 process.on("SIGINT", async () => {
   console.log("Shutting down gracefully...");
+  consultationScheduler.stop();
+  stopDoctorAvailabilityNotification();
   process.exit(0);
 });
 
 process.on("SIGTERM", async () => {
   console.log("Shutting down gracefully...");
+  consultationScheduler.stop();
+  stopDoctorAvailabilityNotification();
   process.exit(0);
 });
 
-app.listen(PORT, () => {
+// Initialize Chat Socket.IO
+initChatSocket(server);
+
+// Initialize Consultation Scheduler
+const consultationScheduler = new ConsultationScheduler();
+consultationScheduler.start();
+
+server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
   console.log(`Health check: http://localhost:${PORT}/api/health`);
+  console.log(`Chat Socket.IO server initialized for real-time messaging`);
 });

@@ -2,33 +2,47 @@ const express = require("express");
 const { body } = require("express-validator");
 const chatController = require("../controllers/chatController");
 const validateRequest = require("../middleware/validation");
+const { authMiddleware } = require("../middleware/auth");
 
 const router = express.Router();
 
 // Validation rules
-const createChatValidation = [
-  body("title").optional().isString().withMessage("Title must be a string"),
-];
-
-const updateChatValidation = [
-  body("title").optional().isString().withMessage("Title must be a string"),
+const sendMessageValidation = [
+  body("consultationId")
+    .notEmpty()
+    .withMessage("Consultation ID is required")
+    .isString()
+    .withMessage("Consultation ID must be a string"),
+  body("sender")
+    .notEmpty()
+    .withMessage("Sender is required")
+    .isIn(['user', 'doctor'])
+    .withMessage("Sender must be 'user' or 'doctor'"),
+  body("content")
+    .notEmpty()
+    .withMessage("Content is required")
+    .isString()
+    .withMessage("Content must be a string")
+    .isLength({ min: 1, max: 1000 })
+    .withMessage("Content must be between 1 and 1000 characters")
 ];
 
 // Routes
-router.get("/", chatController.getAllChats);
-router.get("/:id", chatController.getChatById);
+router.get("/", authMiddleware, chatController.getAllChats);
+
+// Send message to consultation chat
 router.post(
-  "/",
-  createChatValidation,
+  "/messages",
+  authMiddleware,
+  sendMessageValidation,
   validateRequest,
-  chatController.createChat
+  chatController.sendMessage
 );
-router.put(
-  "/:id",
-  updateChatValidation,
-  validateRequest,
-  chatController.updateChat
-);
-router.delete("/:id", chatController.deleteChat);
+
+// Get messages for a consultation
+router.get("/consultation/:consultationId/messages", authMiddleware, chatController.getMessages);
+
+// Get consultation status
+router.get("/consultation/:consultationId/status", authMiddleware, chatController.getConsultationStatus);
 
 module.exports = router;

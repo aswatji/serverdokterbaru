@@ -22,4 +22,22 @@ const authMiddleware = (req, res, next) => {
   }
 };
 
-module.exports = authMiddleware;
+// Helper function to generate JWT token
+const generateToken = (payload, expiresIn = '7d') => {
+  return jwt.sign(payload, process.env.JWT_SECRET || 'your-secret-key', { expiresIn });
+};
+
+// Helper function to verify JWT token (for Socket.IO)
+const verifyToken = (token) => {
+  try {
+    return jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+  } catch (error) {
+    throw new Error('Invalid token');
+  }
+};
+
+module.exports = { 
+  authMiddleware, 
+  generateToken, 
+  verifyToken 
+};
