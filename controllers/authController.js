@@ -9,13 +9,13 @@ class AuthController {
   // 1. register(req, res) - User registration
   async register(req, res, next) {
     try {
-      const { email, password, fullname } = req.body;
+      const { email, password, fullname, profession } = req.body;
 
       // Validate required fields
-      if (!email || !password || !fullname) {
+      if (!email || !password || !fullname || !profession) {
         return res.status(400).json({
           success: false,
-          message: "Email, password, and fullname are required",
+          message: "Email, password, profession, and fullname are required",
         });
       }
 
@@ -41,6 +41,7 @@ class AuthController {
           email,
           password: hashedPassword,
           fullname,
+          profession,
         },
         select: {
           id: true,
