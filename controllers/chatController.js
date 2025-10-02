@@ -1,7 +1,7 @@
 // chatController.js
 // Implement chat send & get using Prisma with consultation validation.
 
-const prisma = require('../config/database');
+const prisma = require("../config/database");
 
 class ChatController {
   // 1. sendMessage(req, res) - Send message with validation
@@ -13,15 +13,15 @@ class ChatController {
       if (!consultationId || !sender || !content) {
         return res.status(400).json({
           success: false,
-          message: 'consultationId, sender, and content are required'
+          message: "consultationId, sender, and content are required",
         });
       }
 
       // Validate sender type
-      if (!['user', 'doctor'].includes(sender)) {
+      if (!["user", "doctor"].includes(sender)) {
         return res.status(400).json({
           success: false,
-          message: 'sender must be "user" or "doctor"'
+          message: 'sender must be "user" or "doctor"',
         });
       }
 
@@ -31,23 +31,23 @@ class ChatController {
         include: {
           doctor: {
             include: {
-              schedules: true
-            }
+              schedules: true,
+            },
           },
           patient: {
             select: {
               id: true,
-              fullname: true
-            }
+              fullname: true,
+            },
           },
-          chat: true
-        }
+          chat: true,
+        },
       });
 
       if (!consultation) {
         return res.status(404).json({
           success: false,
-          message: 'Consultation not found'
+          message: "Consultation not found",
         });
       }
 
@@ -55,7 +55,7 @@ class ChatController {
       if (!consultation.isActive) {
         return res.status(403).json({
           success: false,
-          error: 'Consultation is not active'
+          error: "Consultation is not active",
         });
       }
 
@@ -65,12 +65,12 @@ class ChatController {
         // Auto-expire the consultation
         await prisma.consultation.update({
           where: { id: consultationId },
-          data: { isActive: false }
+          data: { isActive: false },
         });
 
         return res.status(403).json({
           success: false,
-          error: 'Consultation expired'
+          error: "Consultation expired",
         });
       }
 
@@ -78,27 +78,36 @@ class ChatController {
       const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
       const currentTime = now.getHours() * 60 + now.getMinutes(); // Minutes from midnight
 
-      const isWithinSchedule = consultation.doctor.schedules.some(schedule => {
-        if (schedule.dayOfWeek !== currentDay) return false;
+      const isWithinSchedule = consultation.doctor.schedules.some(
+        (schedule) => {
+          if (schedule.dayOfWeek !== currentDay) return false;
 
-        const startTime = new Date(schedule.startTime);
-        const endTime = new Date(schedule.endTime);
-        
-        const scheduleStartMinutes = startTime.getHours() * 60 + startTime.getMinutes();
-        const scheduleEndMinutes = endTime.getHours() * 60 + endTime.getMinutes();
+          const startTime = new Date(schedule.startTime);
+          const endTime = new Date(schedule.endTime);
 
-        return currentTime >= scheduleStartMinutes && currentTime <= scheduleEndMinutes;
-      });
+          const scheduleStartMinutes =
+            startTime.getHours() * 60 + startTime.getMinutes();
+          const scheduleEndMinutes =
+            endTime.getHours() * 60 + endTime.getMinutes();
+
+          return (
+            currentTime >= scheduleStartMinutes &&
+            currentTime <= scheduleEndMinutes
+          );
+        }
+      );
 
       // If sender is doctor and not within schedule, warn but don't block
-      if (sender === 'doctor' && !isWithinSchedule) {
-        console.warn(`Doctor ${consultation.doctor.name} sending message outside schedule`);
+      if (sender === "doctor" && !isWithinSchedule) {
+        console.warn(
+          `Doctor ${consultation.doctor.name} sending message outside schedule`
+        );
       }
 
       if (!consultation.chat) {
         return res.status(404).json({
           success: false,
-          message: 'Chat not found for this consultation'
+          message: "Chat not found for this consultation",
         });
       }
 
@@ -107,12 +116,12 @@ class ChatController {
         chatId: consultation.chat.id,
         sender,
         content,
-        sentAt: now
+        sentAt: now,
       };
 
-      if (sender === 'user') {
+      if (sender === "user") {
         messageData.userId = consultation.patientId;
-      } else if (sender === 'doctor') {
+      } else if (sender === "doctor") {
         messageData.doctorId = consultation.doctorId;
       }
 
@@ -124,23 +133,23 @@ class ChatController {
             select: {
               id: true,
               fullname: true,
-              photo: true
-            }
+              photo: true,
+            },
           },
           doctor: {
             select: {
               id: true,
               name: true,
-              photo: true
-            }
+              photo: true,
+            },
           },
           chat: {
             select: {
               id: true,
-              consultationId: true
-            }
-          }
-        }
+              consultationId: true,
+            },
+          },
+        },
       });
 
       // Broadcast message via Socket.IO
@@ -151,21 +160,21 @@ class ChatController {
             id: consultation.id,
             isActive: consultation.isActive,
             expiresAt: consultation.expiresAt,
-            doctorAvailable: isWithinSchedule
-          }
+            doctorAvailable: isWithinSchedule,
+          },
         });
       }
 
       res.status(201).json({
         success: true,
-        message: 'Message sent successfully',
+        message: "Message sent successfully",
         data: message,
         consultation: {
           id: consultation.id,
           isActive: consultation.isActive,
           expiresAt: consultation.expiresAt,
-          doctorAvailable: isWithinSchedule
-        }
+          doctorAvailable: isWithinSchedule,
+        },
       });
     } catch (error) {
       next(error);
@@ -181,7 +190,7 @@ class ChatController {
       if (!consultationId) {
         return res.status(400).json({
           success: false,
-          message: 'consultationId is required'
+          message: "consultationId is required",
         });
       }
 
@@ -197,52 +206,52 @@ class ChatController {
                     select: {
                       id: true,
                       fullname: true,
-                      photo: true
-                    }
+                      photo: true,
+                    },
                   },
                   doctor: {
                     select: {
                       id: true,
                       name: true,
-                      photo: true
-                    }
-                  }
+                      photo: true,
+                    },
+                  },
                 },
                 orderBy: {
-                  sentAt: 'asc' // Order by sentAt ascending
-                }
-              }
-            }
+                  sentAt: "asc", // Order by sentAt ascending
+                },
+              },
+            },
           },
           patient: {
             select: {
               id: true,
               fullname: true,
-              photo: true
-            }
+              photo: true,
+            },
           },
           doctor: {
             select: {
               id: true,
               name: true,
               specialty: true,
-              photo: true
-            }
-          }
-        }
+              photo: true,
+            },
+          },
+        },
       });
 
       if (!consultation) {
         return res.status(404).json({
           success: false,
-          message: 'Consultation not found'
+          message: "Consultation not found",
         });
       }
 
       if (!consultation.chat) {
         return res.status(404).json({
           success: false,
-          message: 'Chat not found for this consultation'
+          message: "Chat not found for this consultation",
         });
       }
 
@@ -258,9 +267,9 @@ class ChatController {
             expiresAt: consultation.expiresAt,
             isActive: consultation.isActive,
             patient: consultation.patient,
-            doctor: consultation.doctor
-          }
-        }
+            doctor: consultation.doctor,
+          },
+        },
       });
     } catch (error) {
       next(error);
@@ -277,22 +286,22 @@ class ChatController {
         include: {
           doctor: {
             include: {
-              schedules: true
+              schedules: true,
             },
             select: {
               id: true,
               name: true,
               specialty: true,
-              schedules: true
-            }
-          }
-        }
+              schedules: true,
+            },
+          },
+        },
       });
 
       if (!consultation) {
         return res.status(404).json({
           success: false,
-          message: 'Consultation not found'
+          message: "Consultation not found",
         });
       }
 
@@ -304,23 +313,30 @@ class ChatController {
       const currentDay = now.getDay();
       const currentTime = now.getHours() * 60 + now.getMinutes();
 
-      const isWithinSchedule = consultation.doctor.schedules.some(schedule => {
-        if (schedule.dayOfWeek !== currentDay) return false;
+      const isWithinSchedule = consultation.doctor.schedules.some(
+        (schedule) => {
+          if (schedule.dayOfWeek !== currentDay) return false;
 
-        const startTime = new Date(schedule.startTime);
-        const endTime = new Date(schedule.endTime);
-        
-        const scheduleStartMinutes = startTime.getHours() * 60 + startTime.getMinutes();
-        const scheduleEndMinutes = endTime.getHours() * 60 + endTime.getMinutes();
+          const startTime = new Date(schedule.startTime);
+          const endTime = new Date(schedule.endTime);
 
-        return currentTime >= scheduleStartMinutes && currentTime <= scheduleEndMinutes;
-      });
+          const scheduleStartMinutes =
+            startTime.getHours() * 60 + startTime.getMinutes();
+          const scheduleEndMinutes =
+            endTime.getHours() * 60 + endTime.getMinutes();
+
+          return (
+            currentTime >= scheduleStartMinutes &&
+            currentTime <= scheduleEndMinutes
+          );
+        }
+      );
 
       // Auto-expire if needed
       if (isExpired && consultation.isActive) {
         await prisma.consultation.update({
           where: { id: consultationId },
-          data: { isActive: false }
+          data: { isActive: false },
         });
       }
 
@@ -333,8 +349,8 @@ class ChatController {
           timeRemainingMs: Math.max(0, timeRemaining),
           timeRemainingMinutes: Math.max(0, Math.floor(timeRemaining / 60000)),
           doctorAvailable: isWithinSchedule,
-          doctor: consultation.doctor
-        }
+          doctor: consultation.doctor,
+        },
       });
     } catch (error) {
       next(error);
@@ -354,18 +370,18 @@ class ChatController {
               patient: {
                 select: {
                   id: true,
-                  fullname: true
-                }
+                  fullname: true,
+                },
               },
               doctor: {
                 select: {
                   id: true,
                   name: true,
-                  specialty: true
-                }
-              }
-            }
-          }
+                  specialty: true,
+                },
+              },
+            },
+          },
         },
         orderBy: {
           createdAt: "desc",

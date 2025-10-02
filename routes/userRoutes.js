@@ -9,16 +9,27 @@ const router = express.Router();
 const createUserValidation = [
   body("fullname").notEmpty().withMessage("Full name is required"),
   body("email").isEmail().withMessage("Valid email is required"),
-  body("password").isLength({ min: 6 }).withMessage("Password must be at least 6 characters"),
-  body("profession").optional().isString().withMessage("Profession must be a string"),
-  body("photo").optional().isURL().withMessage("Photo must be a valid URL")
+  body("password")
+    .isLength({ min: 6 })
+    .withMessage("Password must be at least 6 characters"),
+  body("profession")
+    .optional()
+    .isString()
+    .withMessage("Profession must be a string"),
+  body("photo").optional().isString().withMessage("Photo must be a valid URL"),
 ];
 
 const updateUserValidation = [
-  body("fullname").optional().notEmpty().withMessage("Full name cannot be empty"),
+  body("fullname")
+    .optional()
+    .notEmpty()
+    .withMessage("Full name cannot be empty"),
   body("email").optional().isEmail().withMessage("Valid email is required"),
-  body("profession").optional().isString().withMessage("Profession must be a string"),
-  body("photo").optional().isURL().withMessage("Photo must be a valid URL")
+  body("profession")
+    .optional()
+    .isString()
+    .withMessage("Profession must be a string"),
+  body("photo").optional().isString().withMessage("Photo must be a valid URL"),
 ];
 
 // Routes

@@ -9,12 +9,14 @@ I've implemented all the required controllers with authentication, validation, a
 ## 1. 🔐 AuthController (`controllers/authController.js`)
 
 ### Features Implemented:
+
 - **User Registration** with bcrypt password hashing
 - **User Login** with JWT token generation (1h expiry)
 - **Doctor Login** (temporary implementation for demo)
 - **Password Security** with bcrypt saltRounds = 12
 
 ### Endpoints:
+
 ```javascript
 // POST /api/auth/register
 {
@@ -23,7 +25,7 @@ I've implemented all the required controllers with authentication, validation, a
   "fullname": "John Doe"
 }
 
-// POST /api/auth/login  
+// POST /api/auth/login
 {
   "email": "user@example.com",
   "password": "password123"
@@ -31,6 +33,7 @@ I've implemented all the required controllers with authentication, validation, a
 ```
 
 ### Response:
+
 ```javascript
 {
   "success": true,
@@ -52,17 +55,19 @@ I've implemented all the required controllers with authentication, validation, a
 ## 2. 💳 PaymentController (`controllers/paymentController.js`)
 
 ### Features Implemented:
+
 - **Midtrans Snap API Integration**
 - **Payment Creation** with automatic consultation linking
 - **Webhook Callback** handling for payment status updates
 - **Automatic Consultation & Chat Creation** on successful payment
 
 ### Endpoints:
+
 ```javascript
 // POST /api/payment/create (auth required)
 {
   "doctorId": "doctor-id",
-  "patientId": "patient-id", 
+  "patientId": "patient-id",
   "amount": 100000
 }
 
@@ -71,6 +76,7 @@ I've implemented all the required controllers with authentication, validation, a
 ```
 
 ### Payment Flow:
+
 1. **Create Payment** → Prisma record with status "pending"
 2. **Midtrans Snap** → Generate payment URL/token
 3. **Webhook Callback** → Update payment status
@@ -81,16 +87,18 @@ I've implemented all the required controllers with authentication, validation, a
 ## 3. 💬 ChatController (`controllers/chatController.js`)
 
 ### Features Implemented:
+
 - **Message Sending** with comprehensive validation
 - **Consultation Validation** (active, not expired, doctor schedule)
 - **Message Retrieval** with proper ordering
 - **Real-time Broadcasting** via Socket.IO integration
 
 ### Validation Pipeline:
+
 ```javascript
 // sendMessage validation:
 1. Consultation exists ✓
-2. isActive = true ✓  
+2. isActive = true ✓
 3. expiresAt > now ✓
 4. Doctor schedule matches current time ✓
 5. If invalid → return 403 error ✓
@@ -98,6 +106,7 @@ I've implemented all the required controllers with authentication, validation, a
 ```
 
 ### Endpoints:
+
 ```javascript
 // POST /api/chat/send (auth required)
 {
@@ -115,12 +124,14 @@ I've implemented all the required controllers with authentication, validation, a
 ## 4. 👨‍⚕️ DoctorController (`controllers/doctorController.js`)
 
 ### Features Implemented:
+
 - **Schedule Management** (CRUD operations)
 - **Doctor Availability** tracking with dayOfWeek (0-6)
 - **Schedule Validation** and conflict checking
 - **Time Range Management** with proper date handling
 
 ### Endpoints:
+
 ```javascript
 // POST /api/doctor/schedules (auth + doctor role required)
 {
@@ -136,6 +147,7 @@ I've implemented all the required controllers with authentication, validation, a
 ```
 
 ### Schedule Logic:
+
 - **dayOfWeek**: 0 = Sunday, 1 = Monday, ..., 6 = Saturday
 - **Conflict Detection**: Prevents duplicate schedules for same day
 - **Validation**: Proper time range and doctor existence checks
@@ -145,6 +157,7 @@ I've implemented all the required controllers with authentication, validation, a
 ## 5. 🛡️ AuthMiddleware (`middleware/authMiddleware.js`)
 
 ### Features Implemented:
+
 - **JWT Token Verification** from Authorization header
 - **Bearer Token Extraction** ("Bearer <token>")
 - **User Info Attachment** to req.user (id, email, type)
@@ -152,23 +165,25 @@ I've implemented all the required controllers with authentication, validation, a
 - **Socket.IO Authentication** middleware included
 
 ### Usage:
+
 ```javascript
 // Route protection
-router.post('/protected', authMiddleware, controller.method);
+router.post("/protected", authMiddleware, controller.method);
 
-// Role-based protection  
-router.post('/doctor-only', authMiddleware, requireDoctor, controller.method);
+// Role-based protection
+router.post("/doctor-only", authMiddleware, requireDoctor, controller.method);
 
 // Socket.IO protection
 io.use(socketAuthMiddleware);
 ```
 
 ### Token Format:
+
 ```javascript
 // JWT Payload:
 {
   "id": "user-id",
-  "email": "user@example.com", 
+  "email": "user@example.com",
   "type": "user" // or "doctor"
   "iat": timestamp,
   "exp": timestamp // 1 hour expiry
@@ -180,18 +195,19 @@ io.use(socketAuthMiddleware);
 ## 6. 🛤️ Routes Implementation
 
 ### Updated Route Structure:
+
 ```javascript
 // Authentication Routes (no auth required)
 POST /api/auth/register
 POST /api/auth/login
 POST /api/auth/doctor/login
 
-// Payment Routes  
+// Payment Routes
 POST /api/payment/create (auth required)
 POST /api/payment/callback (webhook - no auth)
 
 // Chat Routes
-POST /api/chat/send (auth required) 
+POST /api/chat/send (auth required)
 GET /api/chat/messages/:consultationId (auth required)
 
 // Doctor Schedule Routes
@@ -206,16 +222,19 @@ DELETE /api/doctor/schedules/:scheduleId (auth required)
 ## 🔄 Integration Features
 
 ### Socket.IO Integration:
+
 - **Real-time Message Broadcasting** in chatController.sendMessage
 - **Authentication Middleware** for Socket.IO connections
 - **Doctor Availability Notifications** via existing socket system
 
 ### Prisma Database Integration:
+
 - **All controllers** use proper Prisma queries with includes
 - **Relationship Management** (User ↔ Consultation ↔ Chat ↔ Message)
 - **Error Handling** with try-catch and proper HTTP status codes
 
 ### Validation & Security:
+
 - **express-validator** rules for all input validation
 - **bcrypt** for password hashing (saltRounds = 12)
 - **JWT** with configurable secret and expiry
@@ -228,6 +247,7 @@ DELETE /api/doctor/schedules/:scheduleId (auth required)
 ### Quick Test Commands:
 
 1. **User Registration:**
+
 ```bash
 curl -X POST http://localhost:3000/api/auth/register \
 -H "Content-Type: application/json" \
@@ -235,6 +255,7 @@ curl -X POST http://localhost:3000/api/auth/register \
 ```
 
 2. **User Login:**
+
 ```bash
 curl -X POST http://localhost:3000/api/auth/login \
 -H "Content-Type: application/json" \
@@ -242,6 +263,7 @@ curl -X POST http://localhost:3000/api/auth/login \
 ```
 
 3. **Send Message (with token):**
+
 ```bash
 curl -X POST http://localhost:3000/api/chat/send \
 -H "Content-Type: application/json" \
@@ -254,15 +276,17 @@ curl -X POST http://localhost:3000/api/chat/send \
 ## ✅ Implementation Status
 
 ### All Requirements Met:
+
 - ✅ **AuthController** - Registration & Login with bcrypt + JWT
 - ✅ **PaymentController** - Midtrans integration with auto-consultation
-- ✅ **ChatController** - Message send/get with consultation validation  
+- ✅ **ChatController** - Message send/get with consultation validation
 - ✅ **DoctorController** - Schedule CRUD operations
 - ✅ **AuthMiddleware** - JWT verification + role-based access
 - ✅ **Routes** - All endpoints configured with proper authentication
 - ✅ **Integration** - Socket.IO, Prisma, validation all working
 
 ### Production Ready Features:
+
 - 🔒 **Security**: Bcrypt hashing, JWT tokens, input validation
 - 📊 **Database**: Proper Prisma relationships and queries
 - ⚡ **Real-time**: Socket.IO integration for live messaging

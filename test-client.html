@@ -1,319 +1,374 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Chat Test Client</title>
     <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .chat-container {
-            border: 1px solid #ccc;
-            height: 400px;
-            overflow-y: auto;
-            padding: 10px;
-            margin-bottom: 20px;
-            background: #f9f9f9;
-        }
-        .message {
-            margin-bottom: 10px;
-            padding: 8px;
-            border-radius: 5px;
-        }
-        .message.user {
-            background: #007bff;
-            color: white;
-            text-align: right;
-        }
-        .message.doctor {
-            background: #28a745;
-            color: white;
-        }
-        .controls {
-            margin-bottom: 10px;
-        }
-        input, button, select {
-            padding: 8px;
-            margin: 5px;
-        }
-        .status {
-            background: #f8f9fa;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 10px;
-        }
-        .online {
-            color: green;
-        }
-        .offline {
-            color: red;
-        }
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .chat-container {
+        border: 1px solid #ccc;
+        height: 400px;
+        overflow-y: auto;
+        padding: 10px;
+        margin-bottom: 20px;
+        background: #f9f9f9;
+      }
+      .message {
+        margin-bottom: 10px;
+        padding: 8px;
+        border-radius: 5px;
+      }
+      .message.user {
+        background: #007bff;
+        color: white;
+        text-align: right;
+      }
+      .message.doctor {
+        background: #28a745;
+        color: white;
+      }
+      .controls {
+        margin-bottom: 10px;
+      }
+      input,
+      button,
+      select {
+        padding: 8px;
+        margin: 5px;
+      }
+      .status {
+        background: #f8f9fa;
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 10px;
+      }
+      .online {
+        color: green;
+      }
+      .offline {
+        color: red;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <h1>Consultation Chat Test Client</h1>
-    
+
     <div class="controls">
-        <label>JWT Token:</label>
-        <input type="text" id="tokenInput" placeholder="Enter JWT token" style="width: 300px;">
-        <button onclick="connect()">Connect</button>
-        <button onclick="disconnect()">Disconnect</button>
+      <label>JWT Token:</label>
+      <input
+        type="text"
+        id="tokenInput"
+        placeholder="Enter JWT token"
+        style="width: 300px"
+      />
+      <button onclick="connect()">Connect</button>
+      <button onclick="disconnect()">Disconnect</button>
     </div>
-    
+
     <div class="controls">
-        <label>Consultation ID:</label>
-        <input type="text" id="consultationInput" placeholder="Enter consultation ID">
-        <button onclick="joinConsultation()">Join</button>
-        <button onclick="leaveConsultation()">Leave</button>
+      <label>Consultation ID:</label>
+      <input
+        type="text"
+        id="consultationInput"
+        placeholder="Enter consultation ID"
+      />
+      <button onclick="joinConsultation()">Join</button>
+      <button onclick="leaveConsultation()">Leave</button>
     </div>
-    
+
     <div class="status" id="status">
-        Status: <span class="offline">Disconnected</span>
+      Status: <span class="offline">Disconnected</span>
     </div>
-    
+
     <div class="chat-container" id="chatContainer"></div>
-    
+
     <div class="controls">
-        <select id="senderType">
-            <option value="user">User</option>
-            <option value="doctor">Doctor</option>
-        </select>
-        <input type="text" id="messageInput" placeholder="Type a message..." style="width: 400px;">
-        <button onclick="sendMessage()">Send</button>
+      <select id="senderType">
+        <option value="user">User</option>
+        <option value="doctor">Doctor</option>
+      </select>
+      <input
+        type="text"
+        id="messageInput"
+        placeholder="Type a message..."
+        style="width: 400px"
+      />
+      <button onclick="sendMessage()">Send</button>
     </div>
-    
+
     <div class="controls">
-        <button onclick="getMessages()">Load Messages</button>
-        <button onclick="getConsultationStatus()">Check Status</button>
-        <button onclick="clearChat()">Clear Chat</button>
+      <button onclick="getMessages()">Load Messages</button>
+      <button onclick="getConsultationStatus()">Check Status</button>
+      <button onclick="clearChat()">Clear Chat</button>
     </div>
 
     <script>
-        let socket = null;
-        let currentConsultationId = null;
-        
-        function connect() {
-            const token = document.getElementById('tokenInput').value;
-            if (!token) {
-                alert('Please enter JWT token');
-                return;
+      let socket = null;
+      let currentConsultationId = null;
+
+      function connect() {
+        const token = document.getElementById("tokenInput").value;
+        if (!token) {
+          alert("Please enter JWT token");
+          return;
+        }
+
+        socket = io("http://localhost:3000", {
+          auth: { token: token },
+        });
+
+        socket.on("connect", () => {
+          console.log("Connected to server");
+          updateStatus("Connected", true);
+          addMessage("system", "Connected to server");
+        });
+
+        socket.on("disconnect", () => {
+          console.log("Disconnected from server");
+          updateStatus("Disconnected", false);
+          addMessage("system", "Disconnected from server");
+        });
+
+        socket.on("connect_error", (error) => {
+          console.error("Connection error:", error);
+          addMessage("system", "Connection error: " + error.message);
+          updateStatus("Connection Error", false);
+        });
+
+        socket.on("new_message", (message) => {
+          console.log("New message:", message);
+          addMessage(message.sender, message.content, message);
+        });
+
+        socket.on("user_joined", (data) => {
+          addMessage(
+            "system",
+            `${data.userType} ${data.userId} joined consultation`
+          );
+        });
+
+        socket.on("user_left", (data) => {
+          addMessage(
+            "system",
+            `${data.userType} ${data.userId} left consultation`
+          );
+        });
+
+        socket.on("user_typing", (data) => {
+          if (data.isTyping) {
+            addMessage("system", `${data.userType} is typing...`);
+          }
+        });
+
+        socket.on("consultation_status_update", (data) => {
+          addMessage(
+            "system",
+            `Consultation status updated: ${JSON.stringify(data)}`
+          );
+        });
+
+        socket.on("new_consultation", (consultation) => {
+          addMessage("system", `New consultation created: ${consultation.id}`);
+        });
+
+        socket.on("consultation_expiring", (data) => {
+          addMessage("system", `Warning: ${data.message}`);
+        });
+      }
+
+      function disconnect() {
+        if (socket) {
+          socket.disconnect();
+          socket = null;
+        }
+      }
+
+      function joinConsultation() {
+        const consultationId =
+          document.getElementById("consultationInput").value;
+        if (!consultationId || !socket) return;
+
+        currentConsultationId = consultationId;
+        socket.emit("join_consultation", consultationId);
+        addMessage("system", `Joining consultation: ${consultationId}`);
+      }
+
+      function leaveConsultation() {
+        if (!currentConsultationId || !socket) return;
+
+        socket.emit("leave_consultation", currentConsultationId);
+        addMessage("system", `Left consultation: ${currentConsultationId}`);
+        currentConsultationId = null;
+      }
+
+      async function sendMessage() {
+        const consultationId =
+          document.getElementById("consultationInput").value;
+        const sender = document.getElementById("senderType").value;
+        const content = document.getElementById("messageInput").value;
+        const token = document.getElementById("tokenInput").value;
+
+        if (!consultationId || !content) return;
+
+        try {
+          const response = await fetch(
+            "http://localhost:3000/api/chats/messages",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                consultationId,
+                sender,
+                content,
+              }),
             }
-            
-            socket = io('http://localhost:3000', {
-                auth: { token: token }
-            });
-            
-            socket.on('connect', () => {
-                console.log('Connected to server');
-                updateStatus('Connected', true);
-                addMessage('system', 'Connected to server');
-            });
-            
-            socket.on('disconnect', () => {
-                console.log('Disconnected from server');
-                updateStatus('Disconnected', false);
-                addMessage('system', 'Disconnected from server');
-            });
-            
-            socket.on('connect_error', (error) => {
-                console.error('Connection error:', error);
-                addMessage('system', 'Connection error: ' + error.message);
-                updateStatus('Connection Error', false);
-            });
-            
-            socket.on('new_message', (message) => {
-                console.log('New message:', message);
-                addMessage(message.sender, message.content, message);
-            });
-            
-            socket.on('user_joined', (data) => {
-                addMessage('system', `${data.userType} ${data.userId} joined consultation`);
-            });
-            
-            socket.on('user_left', (data) => {
-                addMessage('system', `${data.userType} ${data.userId} left consultation`);
-            });
-            
-            socket.on('user_typing', (data) => {
-                if (data.isTyping) {
-                    addMessage('system', `${data.userType} is typing...`);
-                }
-            });
-            
-            socket.on('consultation_status_update', (data) => {
-                addMessage('system', `Consultation status updated: ${JSON.stringify(data)}`);
-            });
-            
-            socket.on('new_consultation', (consultation) => {
-                addMessage('system', `New consultation created: ${consultation.id}`);
-            });
-            
-            socket.on('consultation_expiring', (data) => {
-                addMessage('system', `Warning: ${data.message}`);
-            });
+          );
+
+          const data = await response.json();
+          if (data.success) {
+            document.getElementById("messageInput").value = "";
+            addMessage(sender, content);
+          } else {
+            addMessage("system", "Error: " + data.message);
+          }
+        } catch (error) {
+          addMessage("system", "Error sending message: " + error.message);
         }
-        
-        function disconnect() {
-            if (socket) {
-                socket.disconnect();
-                socket = null;
+      }
+
+      async function getMessages() {
+        const consultationId =
+          document.getElementById("consultationInput").value;
+        const token = document.getElementById("tokenInput").value;
+
+        if (!consultationId) return;
+
+        try {
+          const response = await fetch(
+            `http://localhost:3000/api/chats/consultation/${consultationId}/messages`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
             }
+          );
+
+          const data = await response.json();
+          if (data.success) {
+            clearChat();
+            data.data.messages.forEach((msg) => {
+              const sender = msg.sender;
+              const senderName =
+                msg.user?.fullname || msg.doctor?.name || sender;
+              addMessage(sender, msg.content, msg, senderName);
+            });
+          } else {
+            addMessage("system", "Error: " + data.message);
+          }
+        } catch (error) {
+          addMessage("system", "Error loading messages: " + error.message);
         }
-        
-        function joinConsultation() {
-            const consultationId = document.getElementById('consultationInput').value;
-            if (!consultationId || !socket) return;
-            
-            currentConsultationId = consultationId;
-            socket.emit('join_consultation', consultationId);
-            addMessage('system', `Joining consultation: ${consultationId}`);
-        }
-        
-        function leaveConsultation() {
-            if (!currentConsultationId || !socket) return;
-            
-            socket.emit('leave_consultation', currentConsultationId);
-            addMessage('system', `Left consultation: ${currentConsultationId}`);
-            currentConsultationId = null;
-        }
-        
-        async function sendMessage() {
-            const consultationId = document.getElementById('consultationInput').value;
-            const sender = document.getElementById('senderType').value;
-            const content = document.getElementById('messageInput').value;
-            const token = document.getElementById('tokenInput').value;
-            
-            if (!consultationId || !content) return;
-            
-            try {
-                const response = await fetch('http://localhost:3000/api/chats/messages', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        consultationId,
-                        sender,
-                        content
-                    })
-                });
-                
-                const data = await response.json();
-                if (data.success) {
-                    document.getElementById('messageInput').value = '';
-                    addMessage(sender, content);
-                } else {
-                    addMessage('system', 'Error: ' + data.message);
-                }
-            } catch (error) {
-                addMessage('system', 'Error sending message: ' + error.message);
+      }
+
+      async function getConsultationStatus() {
+        const consultationId =
+          document.getElementById("consultationInput").value;
+        const token = document.getElementById("tokenInput").value;
+
+        if (!consultationId) return;
+
+        try {
+          const response = await fetch(
+            `http://localhost:3000/api/chats/consultation/${consultationId}/status`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
             }
+          );
+
+          const data = await response.json();
+          if (data.success) {
+            const status = data.data;
+            addMessage(
+              "system",
+              `Status - Active: ${status.isActive}, Time Remaining: ${status.timeRemainingMinutes} min, Doctor Available: ${status.doctorAvailable}`
+            );
+          } else {
+            addMessage("system", "Error: " + data.message);
+          }
+        } catch (error) {
+          addMessage("system", "Error checking status: " + error.message);
         }
-        
-        async function getMessages() {
-            const consultationId = document.getElementById('consultationInput').value;
-            const token = document.getElementById('tokenInput').value;
-            
-            if (!consultationId) return;
-            
-            try {
-                const response = await fetch(`http://localhost:3000/api/chats/consultation/${consultationId}/messages`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                
-                const data = await response.json();
-                if (data.success) {
-                    clearChat();
-                    data.data.messages.forEach(msg => {
-                        const sender = msg.sender;
-                        const senderName = msg.user?.fullname || msg.doctor?.name || sender;
-                        addMessage(sender, msg.content, msg, senderName);
-                    });
-                } else {
-                    addMessage('system', 'Error: ' + data.message);
-                }
-            } catch (error) {
-                addMessage('system', 'Error loading messages: ' + error.message);
-            }
-        }
-        
-        async function getConsultationStatus() {
-            const consultationId = document.getElementById('consultationInput').value;
-            const token = document.getElementById('tokenInput').value;
-            
-            if (!consultationId) return;
-            
-            try {
-                const response = await fetch(`http://localhost:3000/api/chats/consultation/${consultationId}/status`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                
-                const data = await response.json();
-                if (data.success) {
-                    const status = data.data;
-                    addMessage('system', `Status - Active: ${status.isActive}, Time Remaining: ${status.timeRemainingMinutes} min, Doctor Available: ${status.doctorAvailable}`);
-                } else {
-                    addMessage('system', 'Error: ' + data.message);
-                }
-            } catch (error) {
-                addMessage('system', 'Error checking status: ' + error.message);
-            }
-        }
-        
-        function addMessage(sender, content, fullMessage = null, senderName = null) {
-            const chatContainer = document.getElementById('chatContainer');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${sender}`;
-            
-            const displayName = senderName || sender;
-            const timestamp = fullMessage?.sentAt ? new Date(fullMessage.sentAt).toLocaleTimeString() : new Date().toLocaleTimeString();
-            
-            messageDiv.innerHTML = `
+      }
+
+      function addMessage(
+        sender,
+        content,
+        fullMessage = null,
+        senderName = null
+      ) {
+        const chatContainer = document.getElementById("chatContainer");
+        const messageDiv = document.createElement("div");
+        messageDiv.className = `message ${sender}`;
+
+        const displayName = senderName || sender;
+        const timestamp = fullMessage?.sentAt
+          ? new Date(fullMessage.sentAt).toLocaleTimeString()
+          : new Date().toLocaleTimeString();
+
+        messageDiv.innerHTML = `
                 <strong>${displayName}</strong> <small>(${timestamp})</small><br>
                 ${content}
             `;
-            
-            chatContainer.appendChild(messageDiv);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
-        
-        function clearChat() {
-            document.getElementById('chatContainer').innerHTML = '';
-        }
-        
-        function updateStatus(status, isConnected) {
-            const statusElement = document.getElementById('status');
-            statusElement.innerHTML = `Status: <span class="${isConnected ? 'online' : 'offline'}">${status}</span>`;
-        }
-        
-        // Auto-focus on message input
-        document.getElementById('messageInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
+
+        chatContainer.appendChild(messageDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      }
+
+      function clearChat() {
+        document.getElementById("chatContainer").innerHTML = "";
+      }
+
+      function updateStatus(status, isConnected) {
+        const statusElement = document.getElementById("status");
+        statusElement.innerHTML = `Status: <span class="${
+          isConnected ? "online" : "offline"
+        }">${status}</span>`;
+      }
+
+      // Auto-focus on message input
+      document
+        .getElementById("messageInput")
+        .addEventListener("keypress", function (e) {
+          if (e.key === "Enter") {
+            sendMessage();
+          }
         });
-        
-        // Typing indicators
-        let typingTimer;
-        document.getElementById('messageInput').addEventListener('input', function() {
-            if (socket && currentConsultationId) {
-                socket.emit('typing_start', currentConsultationId);
-                clearTimeout(typingTimer);
-                typingTimer = setTimeout(() => {
-                    socket.emit('typing_stop', currentConsultationId);
-                }, 1000);
-            }
+
+      // Typing indicators
+      let typingTimer;
+      document
+        .getElementById("messageInput")
+        .addEventListener("input", function () {
+          if (socket && currentConsultationId) {
+            socket.emit("typing_start", currentConsultationId);
+            clearTimeout(typingTimer);
+            typingTimer = setTimeout(() => {
+              socket.emit("typing_stop", currentConsultationId);
+            }, 1000);
+          }
         });
     </script>
-</body>
+  </body>
 </html>

@@ -1,9 +1,9 @@
 // authController.js
 // Implement user registration and login with Prisma, bcrypt, and JWT.
 
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const prisma = require('../config/database');
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const prisma = require("../config/database");
 
 class AuthController {
   // 1. register(req, res) - User registration
@@ -15,19 +15,19 @@ class AuthController {
       if (!email || !password || !fullname) {
         return res.status(400).json({
           success: false,
-          message: 'Email, password, and fullname are required'
+          message: "Email, password, and fullname are required",
         });
       }
 
       // Check if user already exists
       const existingUser = await prisma.user.findUnique({
-        where: { email }
+        where: { email },
       });
 
       if (existingUser) {
         return res.status(409).json({
           success: false,
-          message: 'User with this email already exists'
+          message: "User with this email already exists",
         });
       }
 
@@ -40,7 +40,7 @@ class AuthController {
         data: {
           email,
           password: hashedPassword,
-          fullname
+          fullname,
         },
         select: {
           id: true,
@@ -49,19 +49,18 @@ class AuthController {
           photo: true,
           profession: true,
           createdAt: true,
-          updatedAt: true
-        }
+          updatedAt: true,
+        },
       });
 
       // Return created user without password
       res.status(201).json({
         success: true,
-        message: 'User registered successfully',
-        data: user
+        message: "User registered successfully",
+        data: user,
       });
-
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error("Registration error:", error);
       next(error);
     }
   }
@@ -75,19 +74,19 @@ class AuthController {
       if (!email || !password) {
         return res.status(400).json({
           success: false,
-          message: 'Email and password are required'
+          message: "Email and password are required",
         });
       }
 
       // Find user by email
       const user = await prisma.user.findUnique({
-        where: { email }
+        where: { email },
       });
 
       if (!user) {
         return res.status(401).json({
           success: false,
-          message: 'Invalid email or password'
+          message: "Invalid email or password",
         });
       }
 
@@ -97,19 +96,19 @@ class AuthController {
       if (!isPasswordValid) {
         return res.status(401).json({
           success: false,
-          message: 'Invalid email or password'
+          message: "Invalid email or password",
         });
       }
 
       // If valid, issue JWT (id, email) with 1h expiry
       const token = jwt.sign(
-        { 
-          id: user.id, 
+        {
+          id: user.id,
           email: user.email,
-          type: 'user'
+          type: "user",
         },
-        process.env.JWT_SECRET || 'your-secret-key',
-        { expiresIn: '1h' }
+        process.env.JWT_SECRET || "your-secret-key",
+        { expiresIn: "1h" }
       );
 
       // Return { token, user } without password
@@ -120,20 +119,19 @@ class AuthController {
         photo: user.photo,
         profession: user.profession,
         createdAt: user.createdAt,
-        updatedAt: user.updatedAt
+        updatedAt: user.updatedAt,
       };
 
       res.json({
         success: true,
-        message: 'Login successful',
+        message: "Login successful",
         data: {
           token,
-          user: userResponse
-        }
+          user: userResponse,
+        },
       });
-
     } catch (error) {
-      console.error('Login error:', error);
+      console.error("Login error:", error);
       next(error);
     }
   }
@@ -147,41 +145,41 @@ class AuthController {
       if (!email || !password) {
         return res.status(400).json({
           success: false,
-          message: 'Email and password are required'
+          message: "Email and password are required",
         });
       }
 
       // For now, we'll use a simple check - in production, doctors should have separate auth
       // This is a placeholder implementation
       const doctor = await prisma.doctor.findFirst({
-        where: { 
+        where: {
           // Assuming doctors might have email field in future or use name as identifier
-          name: email // Temporary implementation
-        }
+          name: email, // Temporary implementation
+        },
       });
 
       if (!doctor) {
         return res.status(401).json({
           success: false,
-          message: 'Doctor not found'
+          message: "Doctor not found",
         });
       }
 
       // For demo purposes, allow any password for doctors
       // In production, doctors should have proper password authentication
       const token = jwt.sign(
-        { 
-          id: doctor.id, 
+        {
+          id: doctor.id,
           email: doctor.name, // Using name as email for now
-          type: 'doctor'
+          type: "doctor",
         },
-        process.env.JWT_SECRET || 'your-secret-key',
-        { expiresIn: '1h' }
+        process.env.JWT_SECRET || "your-secret-key",
+        { expiresIn: "1h" }
       );
 
       res.json({
         success: true,
-        message: 'Doctor login successful',
+        message: "Doctor login successful",
         data: {
           token,
           doctor: {
@@ -189,13 +187,12 @@ class AuthController {
             name: doctor.name,
             specialty: doctor.specialty,
             bio: doctor.bio,
-            photo: doctor.photo
-          }
-        }
+            photo: doctor.photo,
+          },
+        },
       });
-
     } catch (error) {
-      console.error('Doctor login error:', error);
+      console.error("Doctor login error:", error);
       next(error);
     }
   }

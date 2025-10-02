@@ -15,9 +15,9 @@ class UserController {
           profession: true,
           createdAt: true,
           _count: {
-            select: { 
+            select: {
               messages: true,
-              consultations: true 
+              consultations: true,
             },
           },
         },
@@ -46,7 +46,7 @@ class UserController {
                   id: true,
                   name: true,
                   specialty: true,
-                }
+                },
               },
               payment: true,
               chat: {
@@ -56,9 +56,9 @@ class UserController {
                       sentAt: "desc",
                     },
                     take: 5, // Get last 5 messages
-                  }
-                }
-              }
+                  },
+                },
+              },
             },
             orderBy: {
               startedAt: "desc",
@@ -75,11 +75,11 @@ class UserController {
                         select: {
                           name: true,
                           specialty: true,
-                        }
-                      }
-                    }
-                  }
-                }
+                        },
+                      },
+                    },
+                  },
+                },
               },
             },
             orderBy: {

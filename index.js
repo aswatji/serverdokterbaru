@@ -6,7 +6,10 @@ const compression = require("compression");
 const http = require("http");
 const routes = require("./routes");
 const errorHandler = require("./middleware/errorHandler");
-const { initChatSocket, stopDoctorAvailabilityNotification } = require("./chatSocket");
+const {
+  initChatSocket,
+  stopDoctorAvailabilityNotification,
+} = require("./chatSocket");
 const ConsultationScheduler = require("./scheduler/consultationScheduler");
 
 const app = express();
@@ -47,11 +50,11 @@ app.get("/", (req, res) => {
       health: "/api/health",
       users: "/api/users",
       doctors: "/api/doctors",
-      consultations: "/api/consultations", 
+      consultations: "/api/consultations",
       messages: "/api/messages",
       payments: "/api/payments",
       news: "/api/news",
-      categories: "/api/categories"
+      categories: "/api/categories",
     },
     features: [
       "User & Doctor Management",
@@ -59,8 +62,8 @@ app.get("/", (req, res) => {
       "Real-time Chat",
       "Payment Integration (Midtrans)",
       "Doctor Schedules",
-      "News & Categories"
-    ]
+      "News & Categories",
+    ],
   });
 });
 

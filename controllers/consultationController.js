@@ -1,15 +1,15 @@
-const prisma = require('../config/database');
+const prisma = require("../config/database");
 
 class ConsultationController {
   // Get all consultations
   async getAllConsultations(req, res, next) {
     try {
       const { patientId, doctorId, isActive } = req.query;
-      
+
       const where = {};
       if (patientId) where.patientId = patientId;
       if (doctorId) where.doctorId = doctorId;
-      if (isActive !== undefined) where.isActive = isActive === 'true';
+      if (isActive !== undefined) where.isActive = isActive === "true";
 
       const consultations = await prisma.consultation.findMany({
         where,
@@ -19,34 +19,34 @@ class ConsultationController {
               id: true,
               fullname: true,
               email: true,
-              photo: true
-            }
+              photo: true,
+            },
           },
           doctor: {
             select: {
               id: true,
               name: true,
               specialty: true,
-              photo: true
-            }
+              photo: true,
+            },
           },
           payment: true,
           chat: {
             include: {
               _count: {
-                select: { messages: true }
-              }
-            }
-          }
+                select: { messages: true },
+              },
+            },
+          },
         },
         orderBy: {
-          startedAt: 'desc'
-        }
+          startedAt: "desc",
+        },
       });
 
       res.json({
         success: true,
-        data: consultations
+        data: consultations,
       });
     } catch (error) {
       next(error);
@@ -66,8 +66,8 @@ class ConsultationController {
               fullname: true,
               email: true,
               photo: true,
-              profession: true
-            }
+              profession: true,
+            },
           },
           doctor: {
             select: {
@@ -75,8 +75,8 @@ class ConsultationController {
               name: true,
               specialty: true,
               bio: true,
-              photo: true
-            }
+              photo: true,
+            },
           },
           payment: true,
           chat: {
@@ -87,36 +87,36 @@ class ConsultationController {
                     select: {
                       id: true,
                       fullname: true,
-                      photo: true
-                    }
+                      photo: true,
+                    },
                   },
                   doctor: {
                     select: {
                       id: true,
                       name: true,
-                      photo: true
-                    }
-                  }
+                      photo: true,
+                    },
+                  },
                 },
                 orderBy: {
-                  sentAt: 'asc'
-                }
-              }
-            }
-          }
-        }
+                  sentAt: "asc",
+                },
+              },
+            },
+          },
+        },
       });
 
       if (!consultation) {
         return res.status(404).json({
           success: false,
-          message: 'Consultation not found'
+          message: "Consultation not found",
         });
       }
 
       res.json({
         success: true,
-        data: consultation
+        data: consultation,
       });
     } catch (error) {
       next(error);
@@ -136,7 +136,7 @@ class ConsultationController {
           patientId,
           doctorId,
           paymentId: paymentId || null,
-          expiresAt
+          expiresAt,
         },
         include: {
           patient: {
@@ -144,35 +144,35 @@ class ConsultationController {
               id: true,
               fullname: true,
               email: true,
-              photo: true
-            }
+              photo: true,
+            },
           },
           doctor: {
             select: {
               id: true,
               name: true,
               specialty: true,
-              photo: true
-            }
+              photo: true,
+            },
           },
-          payment: true
-        }
+          payment: true,
+        },
       });
 
       // Create chat for the consultation
       const chat = await prisma.chat.create({
         data: {
-          consultationId: consultation.id
-        }
+          consultationId: consultation.id,
+        },
       });
 
       res.status(201).json({
         success: true,
-        message: 'Consultation created successfully',
+        message: "Consultation created successfully",
         data: {
           ...consultation,
-          chat
-        }
+          chat,
+        },
       });
     } catch (error) {
       next(error);
@@ -199,32 +199,32 @@ class ConsultationController {
               id: true,
               fullname: true,
               email: true,
-              photo: true
-            }
+              photo: true,
+            },
           },
           doctor: {
             select: {
               id: true,
               name: true,
               specialty: true,
-              photo: true
-            }
+              photo: true,
+            },
           },
           payment: true,
           chat: {
             include: {
               _count: {
-                select: { messages: true }
-              }
-            }
-          }
-        }
+                select: { messages: true },
+              },
+            },
+          },
+        },
       });
 
       res.json({
         success: true,
-        message: 'Consultation updated successfully',
-        data: consultation
+        message: "Consultation updated successfully",
+        data: consultation,
       });
     } catch (error) {
       next(error);
@@ -238,32 +238,32 @@ class ConsultationController {
 
       const consultation = await prisma.consultation.update({
         where: { id: id },
-        data: { 
+        data: {
           isActive: false,
-          expiresAt: new Date() // Set to current time
+          expiresAt: new Date(), // Set to current time
         },
         include: {
           patient: {
             select: {
               id: true,
               fullname: true,
-              email: true
-            }
+              email: true,
+            },
           },
           doctor: {
             select: {
               id: true,
               name: true,
-              specialty: true
-            }
-          }
-        }
+              specialty: true,
+            },
+          },
+        },
       });
 
       res.json({
         success: true,
-        message: 'Consultation ended successfully',
-        data: consultation
+        message: "Consultation ended successfully",
+        data: consultation,
       });
     } catch (error) {
       next(error);
@@ -276,12 +276,12 @@ class ConsultationController {
       const { id } = req.params;
 
       await prisma.consultation.delete({
-        where: { id: id }
+        where: { id: id },
       });
 
       res.json({
         success: true,
-        message: 'Consultation deleted successfully'
+        message: "Consultation deleted successfully",
       });
     } catch (error) {
       next(error);

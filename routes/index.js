@@ -11,7 +11,10 @@ const chatRoutes = require("./chatRoutes");
 const paymentRoutes = require("./paymentRoutes");
 const newsRoutes = require("./newsRoutes");
 const categoryRoutes = require("./categoryRoutes");
-const { authMiddleware, requireDoctor } = require("../middleware/authMiddleware");
+const {
+  authMiddleware,
+  requireDoctor,
+} = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
@@ -21,7 +24,7 @@ router.get("/health", (req, res) => {
     success: true,
     message: "Consultation App Server is running",
     timestamp: new Date().toISOString(),
-    version: "2.0.0"
+    version: "2.0.0",
   });
 });
 

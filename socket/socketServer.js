@@ -1,13 +1,13 @@
-const { Server } = require('socket.io');
-const jwt = require('jsonwebtoken');
+const { Server } = require("socket.io");
+const jwt = require("jsonwebtoken");
 
 class SocketServer {
   constructor(server) {
     this.io = new Server(server, {
       cors: {
         origin: process.env.FRONTEND_URL || "*",
-        methods: ["GET", "POST"]
-      }
+        methods: ["GET", "POST"],
+      },
     });
 
     this.connectedUsers = new Map(); // userId -> socketId
@@ -23,96 +23,103 @@ class SocketServer {
     this.io.use((socket, next) => {
       try {
         const token = socket.handshake.auth.token;
-        
+
         if (!token) {
-          return next(new Error('Authentication token required'));
+          return next(new Error("Authentication token required"));
         }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+        const decoded = jwt.verify(
+          token,
+          process.env.JWT_SECRET || "your-secret-key"
+        );
         socket.userId = decoded.id;
-        socket.userType = decoded.type || 'user'; // 'user' or 'doctor'
-        
+        socket.userType = decoded.type || "user"; // 'user' or 'doctor'
+
         next();
       } catch (error) {
-        next(new Error('Invalid authentication token'));
+        next(new Error("Invalid authentication token"));
       }
     });
   }
 
   setupEventHandlers() {
-    this.io.on('connection', (socket) => {
+    this.io.on("connection", (socket) => {
       console.log(`${socket.userType} connected: ${socket.userId}`);
-      
+
       // Store socket connection
-      if (socket.userType === 'doctor') {
+      if (socket.userType === "doctor") {
         this.connectedDoctors.set(socket.userId, socket.id);
       } else {
         this.connectedUsers.set(socket.userId, socket.id);
       }
 
       // Join consultation room
-      socket.on('join_consultation', (consultationId) => {
+      socket.on("join_consultation", (consultationId) => {
         socket.join(`consultation_${consultationId}`);
-        
+
         if (!this.consultationRooms.has(consultationId)) {
           this.consultationRooms.set(consultationId, new Set());
         }
         this.consultationRooms.get(consultationId).add(socket.id);
-        
-        console.log(`${socket.userType} ${socket.userId} joined consultation ${consultationId}`);
-        
+
+        console.log(
+          `${socket.userType} ${socket.userId} joined consultation ${consultationId}`
+        );
+
         // Notify others in the room about new participant
-        socket.to(`consultation_${consultationId}`).emit('user_joined', {
+        socket.to(`consultation_${consultationId}`).emit("user_joined", {
           userId: socket.userId,
           userType: socket.userType,
-          consultationId
+          consultationId,
         });
       });
 
       // Leave consultation room
-      socket.on('leave_consultation', (consultationId) => {
+      socket.on("leave_consultation", (consultationId) => {
         socket.leave(`consultation_${consultationId}`);
-        
+
         if (this.consultationRooms.has(consultationId)) {
           this.consultationRooms.get(consultationId).delete(socket.id);
           if (this.consultationRooms.get(consultationId).size === 0) {
             this.consultationRooms.delete(consultationId);
           }
         }
-        
-        console.log(`${socket.userType} ${socket.userId} left consultation ${consultationId}`);
-        
+
+        console.log(
+          `${socket.userType} ${socket.userId} left consultation ${consultationId}`
+        );
+
         // Notify others in the room about user leaving
-        socket.to(`consultation_${consultationId}`).emit('user_left', {
+        socket.to(`consultation_${consultationId}`).emit("user_left", {
           userId: socket.userId,
           userType: socket.userType,
-          consultationId
+          consultationId,
         });
       });
 
       // Handle typing indicator
-      socket.on('typing_start', (consultationId) => {
-        socket.to(`consultation_${consultationId}`).emit('user_typing', {
+      socket.on("typing_start", (consultationId) => {
+        socket.to(`consultation_${consultationId}`).emit("user_typing", {
           userId: socket.userId,
           userType: socket.userType,
-          isTyping: true
+          isTyping: true,
         });
       });
 
-      socket.on('typing_stop', (consultationId) => {
-        socket.to(`consultation_${consultationId}`).emit('user_typing', {
+      socket.on("typing_stop", (consultationId) => {
+        socket.to(`consultation_${consultationId}`).emit("user_typing", {
           userId: socket.userId,
           userType: socket.userType,
-          isTyping: false
+          isTyping: false,
         });
       });
 
       // Handle disconnect
-      socket.on('disconnect', () => {
+      socket.on("disconnect", () => {
         console.log(`${socket.userType} disconnected: ${socket.userId}`);
-        
+
         // Remove from connected users/doctors
-        if (socket.userType === 'doctor') {
+        if (socket.userType === "doctor") {
           this.connectedDoctors.delete(socket.userId);
         } else {
           this.connectedUsers.delete(socket.userId);
@@ -125,12 +132,12 @@ class SocketServer {
             if (socketsInRoom.size === 0) {
               this.consultationRooms.delete(consultationId);
             }
-            
+
             // Notify others in consultation about disconnection
-            socket.to(`consultation_${consultationId}`).emit('user_left', {
+            socket.to(`consultation_${consultationId}`).emit("user_left", {
               userId: socket.userId,
               userType: socket.userType,
-              consultationId
+              consultationId,
             });
           }
         });
@@ -140,37 +147,39 @@ class SocketServer {
 
   // Broadcast new message to consultation room
   broadcastMessage(consultationId, message) {
-    this.io.to(`consultation_${consultationId}`).emit('new_message', message);
+    this.io.to(`consultation_${consultationId}`).emit("new_message", message);
   }
 
   // Send consultation status update
   broadcastConsultationStatus(consultationId, status) {
-    this.io.to(`consultation_${consultationId}`).emit('consultation_status_update', {
-      consultationId,
-      ...status
-    });
+    this.io
+      .to(`consultation_${consultationId}`)
+      .emit("consultation_status_update", {
+        consultationId,
+        ...status,
+      });
   }
 
   // Notify doctor about new consultation
   notifyDoctorNewConsultation(doctorId, consultation) {
     const doctorSocketId = this.connectedDoctors.get(doctorId);
     if (doctorSocketId) {
-      this.io.to(doctorSocketId).emit('new_consultation', consultation);
+      this.io.to(doctorSocketId).emit("new_consultation", consultation);
     }
   }
 
   // Notify user about consultation expiring soon
   notifyConsultationExpiringSoon(consultationId, minutesRemaining) {
-    this.io.to(`consultation_${consultationId}`).emit('consultation_expiring', {
+    this.io.to(`consultation_${consultationId}`).emit("consultation_expiring", {
       consultationId,
       minutesRemaining,
-      message: `Your consultation will expire in ${minutesRemaining} minutes`
+      message: `Your consultation will expire in ${minutesRemaining} minutes`,
     });
   }
 
   // Get online status
-  isUserOnline(userId, userType = 'user') {
-    if (userType === 'doctor') {
+  isUserOnline(userId, userType = "user") {
+    if (userType === "doctor") {
       return this.connectedDoctors.has(userId);
     }
     return this.connectedUsers.has(userId);

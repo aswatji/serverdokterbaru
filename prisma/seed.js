@@ -108,13 +108,15 @@ async function main() {
       {
         chatId: chat1.id,
         sender: "doctor",
-        content: "Halo, bisa ceritakan lebih detail tentang nyeri yang Anda rasakan?",
+        content:
+          "Halo, bisa ceritakan lebih detail tentang nyeri yang Anda rasakan?",
         doctorId: doctor1.id,
       },
       {
         chatId: chat1.id,
         sender: "user",
-        content: "Nyerinya seperti ditusuk-tusuk dan sering terjadi saat beraktivitas",
+        content:
+          "Nyerinya seperti ditusuk-tusuk dan sering terjadi saat beraktivitas",
         userId: patient1.id,
       },
     ],
@@ -125,11 +127,13 @@ async function main() {
     data: [
       {
         title: "Tips Menjaga Kesehatan Jantung",
-        content: "Berikut adalah beberapa tips untuk menjaga kesehatan jantung Anda...",
+        content:
+          "Berikut adalah beberapa tips untuk menjaga kesehatan jantung Anda...",
       },
       {
         title: "Pentingnya Olahraga Rutin",
-        content: "Olahraga rutin sangat penting untuk menjaga kesehatan tubuh...",
+        content:
+          "Olahraga rutin sangat penting untuk menjaga kesehatan tubuh...",
       },
     ],
   });

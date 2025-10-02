@@ -1,4 +1,4 @@
-const prisma = require('../config/database');
+const prisma = require("../config/database");
 
 class CategoryController {
   // Get all categories
@@ -6,13 +6,13 @@ class CategoryController {
     try {
       const categories = await prisma.category.findMany({
         orderBy: {
-          name: 'asc'
-        }
+          name: "asc",
+        },
       });
 
       res.json({
         success: true,
-        data: categories
+        data: categories,
       });
     } catch (error) {
       next(error);
@@ -24,19 +24,19 @@ class CategoryController {
     try {
       const { id } = req.params;
       const category = await prisma.category.findUnique({
-        where: { id: id }
+        where: { id: id },
       });
 
       if (!category) {
         return res.status(404).json({
           success: false,
-          message: 'Category not found'
+          message: "Category not found",
         });
       }
 
       res.json({
         success: true,
-        data: category
+        data: category,
       });
     } catch (error) {
       next(error);
@@ -51,14 +51,14 @@ class CategoryController {
       const category = await prisma.category.create({
         data: {
           name,
-          items: items || null
-        }
+          items: items || null,
+        },
       });
 
       res.status(201).json({
         success: true,
-        message: 'Category created successfully',
-        data: category
+        message: "Category created successfully",
+        data: category,
       });
     } catch (error) {
       next(error);
@@ -77,13 +77,13 @@ class CategoryController {
 
       const category = await prisma.category.update({
         where: { id: id },
-        data: updateData
+        data: updateData,
       });
 
       res.json({
         success: true,
-        message: 'Category updated successfully',
-        data: category
+        message: "Category updated successfully",
+        data: category,
       });
     } catch (error) {
       next(error);
@@ -96,12 +96,12 @@ class CategoryController {
       const { id } = req.params;
 
       await prisma.category.delete({
-        where: { id: id }
+        where: { id: id },
       });
 
       res.json({
         success: true,
-        message: 'Category deleted successfully'
+        message: "Category deleted successfully",
       });
     } catch (error) {
       next(error);

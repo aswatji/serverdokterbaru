@@ -16,7 +16,7 @@ const sendMessageValidation = [
   body("sender")
     .notEmpty()
     .withMessage("Sender is required")
-    .isIn(['user', 'doctor'])
+    .isIn(["user", "doctor"])
     .withMessage("Sender must be 'user' or 'doctor'"),
   body("content")
     .notEmpty()
@@ -24,18 +24,32 @@ const sendMessageValidation = [
     .isString()
     .withMessage("Content must be a string")
     .isLength({ min: 1, max: 1000 })
-    .withMessage("Content must be between 1 and 1000 characters")
+    .withMessage("Content must be between 1 and 1000 characters"),
 ];
 
 // Routes
 // 5. POST /chat/send → chatController.sendMessage (auth required)
-router.post("/send", authMiddleware, sendMessageValidation, validateRequest, chatController.sendMessage);
+router.post(
+  "/send",
+  authMiddleware,
+  sendMessageValidation,
+  validateRequest,
+  chatController.sendMessage
+);
 
 // 6. GET /chat/messages/:consultationId → chatController.getMessages (auth required)
-router.get("/messages/:consultationId", authMiddleware, chatController.getMessages);
+router.get(
+  "/messages/:consultationId",
+  authMiddleware,
+  chatController.getMessages
+);
 
 // Additional routes
 router.get("/", authMiddleware, chatController.getAllChats);
-router.get("/consultation/:consultationId/status", authMiddleware, chatController.getConsultationStatus);
+router.get(
+  "/consultation/:consultationId/status",
+  authMiddleware,
+  chatController.getConsultationStatus
+);
 
 module.exports = router;

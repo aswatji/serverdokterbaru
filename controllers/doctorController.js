@@ -1,4 +1,4 @@
-const prisma = require('../config/database');
+const prisma = require("../config/database");
 
 class DoctorController {
   // Get all doctors
@@ -8,19 +8,19 @@ class DoctorController {
         include: {
           schedules: true,
           _count: {
-            select: { 
-              consultations: true 
+            select: {
+              consultations: true,
             },
           },
         },
         orderBy: {
-          createdAt: 'desc'
-        }
+          createdAt: "desc",
+        },
       });
 
       res.json({
         success: true,
-        data: doctors
+        data: doctors,
       });
     } catch (error) {
       next(error);
@@ -36,8 +36,8 @@ class DoctorController {
         include: {
           schedules: {
             orderBy: {
-              dayOfWeek: 'asc'
-            }
+              dayOfWeek: "asc",
+            },
           },
           consultations: {
             include: {
@@ -45,35 +45,35 @@ class DoctorController {
                 select: {
                   id: true,
                   fullname: true,
-                  email: true
-                }
+                  email: true,
+                },
               },
-              payment: true
+              payment: true,
             },
             orderBy: {
-              startedAt: 'desc'
+              startedAt: "desc",
             },
-            take: 10 // Get last 10 consultations
+            take: 10, // Get last 10 consultations
           },
           _count: {
             select: {
               consultations: true,
-              messages: true
-            }
-          }
-        }
+              messages: true,
+            },
+          },
+        },
       });
 
       if (!doctor) {
         return res.status(404).json({
           success: false,
-          message: 'Doctor not found'
+          message: "Doctor not found",
         });
       }
 
       res.json({
         success: true,
-        data: doctor
+        data: doctor,
       });
     } catch (error) {
       next(error);
@@ -90,19 +90,19 @@ class DoctorController {
           name,
           specialty,
           bio: bio || null,
-          photo: photo || null
+          photo: photo || null,
         },
         include: {
           _count: {
-            select: { consultations: true }
-          }
-        }
+            select: { consultations: true },
+          },
+        },
       });
 
       res.status(201).json({
         success: true,
-        message: 'Doctor created successfully',
-        data: doctor
+        message: "Doctor created successfully",
+        data: doctor,
       });
     } catch (error) {
       next(error);
@@ -127,15 +127,15 @@ class DoctorController {
         include: {
           schedules: true,
           _count: {
-            select: { consultations: true }
-          }
-        }
+            select: { consultations: true },
+          },
+        },
       });
 
       res.json({
         success: true,
-        message: 'Doctor updated successfully',
-        data: doctor
+        message: "Doctor updated successfully",
+        data: doctor,
       });
     } catch (error) {
       next(error);
@@ -148,12 +148,12 @@ class DoctorController {
       const { id } = req.params;
 
       await prisma.doctor.delete({
-        where: { id: id }
+        where: { id: id },
       });
 
       res.json({
         success: true,
-        message: 'Doctor deleted successfully'
+        message: "Doctor deleted successfully",
       });
     } catch (error) {
       next(error);
@@ -167,13 +167,13 @@ class DoctorController {
 
       // Check if doctor exists
       const doctor = await prisma.doctor.findUnique({
-        where: { id: doctorId }
+        where: { id: doctorId },
       });
 
       if (!doctor) {
         return res.status(404).json({
           success: false,
-          message: 'Doctor not found'
+          message: "Doctor not found",
         });
       }
 
@@ -182,23 +182,23 @@ class DoctorController {
           doctorId,
           dayOfWeek,
           startTime: new Date(startTime),
-          endTime: new Date(endTime)
+          endTime: new Date(endTime),
         },
         include: {
           doctor: {
             select: {
               id: true,
               name: true,
-              specialty: true
-            }
-          }
-        }
+              specialty: true,
+            },
+          },
+        },
       });
 
       res.status(201).json({
         success: true,
-        message: 'Schedule added successfully',
-        data: schedule
+        message: "Schedule added successfully",
+        data: schedule,
       });
     } catch (error) {
       next(error);
@@ -212,28 +212,28 @@ class DoctorController {
 
       // Check if doctor exists
       const doctor = await prisma.doctor.findUnique({
-        where: { id: doctorId }
+        where: { id: doctorId },
       });
 
       if (!doctor) {
         return res.status(404).json({
           success: false,
-          message: 'Doctor not found'
+          message: "Doctor not found",
         });
       }
 
       const schedules = await prisma.doctorSchedule.findMany({
         where: { doctorId },
-        orderBy: { dayOfWeek: 'asc' },
+        orderBy: { dayOfWeek: "asc" },
         include: {
           doctor: {
             select: {
               id: true,
               name: true,
-              specialty: true
-            }
-          }
-        }
+              specialty: true,
+            },
+          },
+        },
       });
 
       res.json({
@@ -242,10 +242,10 @@ class DoctorController {
           doctor: {
             id: doctor.id,
             name: doctor.name,
-            specialty: doctor.specialty
+            specialty: doctor.specialty,
           },
-          schedules: schedules
-        }
+          schedules: schedules,
+        },
       });
     } catch (error) {
       next(error);
@@ -271,16 +271,16 @@ class DoctorController {
             select: {
               id: true,
               name: true,
-              specialty: true
-            }
-          }
-        }
+              specialty: true,
+            },
+          },
+        },
       });
 
       res.json({
         success: true,
-        message: 'Schedule updated successfully',
-        data: schedule
+        message: "Schedule updated successfully",
+        data: schedule,
       });
     } catch (error) {
       next(error);
@@ -293,12 +293,12 @@ class DoctorController {
       const { scheduleId } = req.params;
 
       await prisma.doctorSchedule.delete({
-        where: { id: scheduleId }
+        where: { id: scheduleId },
       });
 
       res.json({
         success: true,
-        message: 'Schedule deleted successfully'
+        message: "Schedule deleted successfully",
       });
     } catch (error) {
       next(error);

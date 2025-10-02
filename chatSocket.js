@@ -1,5 +1,5 @@
-const { Server } = require('socket.io');
-const prisma = require('./config/database');
+const { Server } = require("socket.io");
+const prisma = require("./config/database");
 
 let io;
 let doctorAvailabilityInterval;
@@ -13,47 +13,47 @@ function initChatSocket(server) {
   io = new Server(server, {
     cors: {
       origin: process.env.FRONTEND_URL || "*",
-      methods: ["GET", "POST"]
-    }
+      methods: ["GET", "POST"],
+    },
   });
 
-  console.log('Socket.IO server initialized for real-time chat');
+  console.log("Socket.IO server initialized for real-time chat");
 
   // Handle client connections
-  io.on('connection', (socket) => {
+  io.on("connection", (socket) => {
     console.log(`Client connected: ${socket.id}`);
 
     // Handle joining consultation room
-    socket.on('join_consultation', (consultationId) => {
+    socket.on("join_consultation", (consultationId) => {
       const roomName = `consultation:${consultationId}`;
       socket.join(roomName);
       console.log(`Socket ${socket.id} joined room: ${roomName}`);
-      
+
       // Notify other users in the room
-      socket.to(roomName).emit('user_joined', {
+      socket.to(roomName).emit("user_joined", {
         socketId: socket.id,
         consultationId: consultationId,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
     });
 
     // Handle sending messages
-    socket.on('send_message', async (payload) => {
+    socket.on("send_message", async (payload) => {
       try {
         const { consultationId, sender, content } = payload;
 
         // Validate payload
         if (!consultationId || !sender || !content) {
-          socket.emit('error', {
-            message: 'Missing required fields: consultationId, sender, content'
+          socket.emit("error", {
+            message: "Missing required fields: consultationId, sender, content",
           });
           return;
         }
 
         // Validate sender type
-        if (!['user', 'doctor'].includes(sender)) {
-          socket.emit('error', {
-            message: 'Sender must be "user" or "doctor"'
+        if (!["user", "doctor"].includes(sender)) {
+          socket.emit("error", {
+            message: 'Sender must be "user" or "doctor"',
           });
           return;
         }
@@ -64,30 +64,30 @@ function initChatSocket(server) {
           include: {
             doctor: {
               include: {
-                schedules: true
-              }
+                schedules: true,
+              },
             },
             patient: {
               select: {
                 id: true,
-                fullname: true
-              }
+                fullname: true,
+              },
             },
-            chat: true
-          }
+            chat: true,
+          },
         });
 
         if (!consultation) {
-          socket.emit('error', {
-            message: 'Consultation not found'
+          socket.emit("error", {
+            message: "Consultation not found",
           });
           return;
         }
 
         // Validate consultation is active
         if (!consultation.isActive) {
-          socket.emit('error', {
-            message: 'Consultation is not active'
+          socket.emit("error", {
+            message: "Consultation is not active",
           });
           return;
         }
@@ -95,8 +95,8 @@ function initChatSocket(server) {
         // Validate consultation has not expired
         const now = new Date();
         if (now > consultation.expiresAt) {
-          socket.emit('error', {
-            message: 'Consultation has expired'
+          socket.emit("error", {
+            message: "Consultation has expired",
           });
           return;
         }
@@ -105,29 +105,36 @@ function initChatSocket(server) {
         const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
         const currentTime = now.getHours() * 60 + now.getMinutes(); // Minutes from midnight
 
-        const isDoctorAvailable = consultation.doctor.schedules.some(schedule => {
-          if (schedule.dayOfWeek !== currentDay) return false;
+        const isDoctorAvailable = consultation.doctor.schedules.some(
+          (schedule) => {
+            if (schedule.dayOfWeek !== currentDay) return false;
 
-          const startTime = new Date(schedule.startTime);
-          const endTime = new Date(schedule.endTime);
-          
-          const scheduleStartMinutes = startTime.getHours() * 60 + startTime.getMinutes();
-          const scheduleEndMinutes = endTime.getHours() * 60 + endTime.getMinutes();
+            const startTime = new Date(schedule.startTime);
+            const endTime = new Date(schedule.endTime);
 
-          return currentTime >= scheduleStartMinutes && currentTime <= scheduleEndMinutes;
-        });
+            const scheduleStartMinutes =
+              startTime.getHours() * 60 + startTime.getMinutes();
+            const scheduleEndMinutes =
+              endTime.getHours() * 60 + endTime.getMinutes();
 
-        if (!isDoctorAvailable && sender === 'doctor') {
-          socket.emit('error', {
-            message: 'Doctor is not available according to schedule'
+            return (
+              currentTime >= scheduleStartMinutes &&
+              currentTime <= scheduleEndMinutes
+            );
+          }
+        );
+
+        if (!isDoctorAvailable && sender === "doctor") {
+          socket.emit("error", {
+            message: "Doctor is not available according to schedule",
           });
           return;
         }
 
         // Ensure chat exists
         if (!consultation.chat) {
-          socket.emit('error', {
-            message: 'Chat not found for this consultation'
+          socket.emit("error", {
+            message: "Chat not found for this consultation",
           });
           return;
         }
@@ -137,13 +144,13 @@ function initChatSocket(server) {
           chatId: consultation.chat.id,
           sender,
           content,
-          sentAt: now
+          sentAt: now,
         };
 
         // Set userId or doctorId based on sender
-        if (sender === 'user') {
+        if (sender === "user") {
           messageData.userId = consultation.patientId;
-        } else if (sender === 'doctor') {
+        } else if (sender === "doctor") {
           messageData.doctorId = consultation.doctorId;
         }
 
@@ -155,30 +162,32 @@ function initChatSocket(server) {
               select: {
                 id: true,
                 fullname: true,
-                photo: true
-              }
+                photo: true,
+              },
             },
             doctor: {
               select: {
                 id: true,
                 name: true,
-                photo: true
-              }
+                photo: true,
+              },
             },
             chat: {
               select: {
                 id: true,
-                consultationId: true
-              }
-            }
-          }
+                consultationId: true,
+              },
+            },
+          },
         });
 
-        console.log(`Message saved: ${savedMessage.id} in consultation: ${consultationId}`);
+        console.log(
+          `Message saved: ${savedMessage.id} in consultation: ${consultationId}`
+        );
 
         // Broadcast message to all clients in the consultation room
         const roomName = `consultation:${consultationId}`;
-        io.to(roomName).emit('new_message', {
+        io.to(roomName).emit("new_message", {
           messageId: savedMessage.id,
           consultationId: consultationId,
           sender: savedMessage.sender,
@@ -186,33 +195,32 @@ function initChatSocket(server) {
           sentAt: savedMessage.sentAt,
           user: savedMessage.user,
           doctor: savedMessage.doctor,
-          timestamp: new Date()
+          timestamp: new Date(),
         });
-
       } catch (error) {
-        console.error('Error handling send_message:', error);
-        socket.emit('error', {
-          message: 'Internal server error while sending message'
+        console.error("Error handling send_message:", error);
+        socket.emit("error", {
+          message: "Internal server error while sending message",
         });
       }
     });
 
     // Handle leaving consultation room
-    socket.on('leave_consultation', (consultationId) => {
+    socket.on("leave_consultation", (consultationId) => {
       const roomName = `consultation:${consultationId}`;
       socket.leave(roomName);
       console.log(`Socket ${socket.id} left room: ${roomName}`);
-      
+
       // Notify other users in the room
-      socket.to(roomName).emit('user_left', {
+      socket.to(roomName).emit("user_left", {
         socketId: socket.id,
         consultationId: consultationId,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
     });
 
     // Handle disconnection
-    socket.on('disconnect', () => {
+    socket.on("disconnect", () => {
       console.log(`Client disconnected: ${socket.id}`);
     });
   });
@@ -242,53 +250,62 @@ function startDoctorAvailabilityNotification() {
         where: {
           isActive: true,
           expiresAt: {
-            gt: now
-          }
+            gt: now,
+          },
         },
         include: {
           doctor: {
             include: {
-              schedules: true
-            }
-          }
-        }
+              schedules: true,
+            },
+          },
+        },
       });
 
       for (const consultation of activeConsultations) {
         // Check if doctor is available according to current schedule
-        const isDoctorAvailable = consultation.doctor.schedules.some(schedule => {
-          if (schedule.dayOfWeek !== currentDay) return false;
+        const isDoctorAvailable = consultation.doctor.schedules.some(
+          (schedule) => {
+            if (schedule.dayOfWeek !== currentDay) return false;
 
-          const startTime = new Date(schedule.startTime);
-          const endTime = new Date(schedule.endTime);
-          
-          const scheduleStartMinutes = startTime.getHours() * 60 + startTime.getMinutes();
-          const scheduleEndMinutes = endTime.getHours() * 60 + endTime.getMinutes();
+            const startTime = new Date(schedule.startTime);
+            const endTime = new Date(schedule.endTime);
 
-          return currentTime >= scheduleStartMinutes && currentTime <= scheduleEndMinutes;
-        });
+            const scheduleStartMinutes =
+              startTime.getHours() * 60 + startTime.getMinutes();
+            const scheduleEndMinutes =
+              endTime.getHours() * 60 + endTime.getMinutes();
+
+            return (
+              currentTime >= scheduleStartMinutes &&
+              currentTime <= scheduleEndMinutes
+            );
+          }
+        );
 
         if (isDoctorAvailable) {
           const roomName = `consultation:${consultation.id}`;
-          
+
           // Emit doctor_ready event to consultation room
-          io.to(roomName).emit('doctor_ready', {
+          io.to(roomName).emit("doctor_ready", {
             consultationId: consultation.id,
             doctorId: consultation.doctorId,
             message: "Doctor is now available",
             doctorName: consultation.doctor.name,
-            timestamp: new Date()
+            timestamp: new Date(),
           });
 
-          console.log(`Doctor availability notification sent for consultation: ${consultation.id}`);
+          console.log(
+            `Doctor availability notification sent for consultation: ${consultation.id}`
+          );
         }
       }
     } catch (error) {
-      console.error('Error in doctor availability notification:', error);
+      console.error("Error in doctor availability notification:", error);
     }
   }, 60000); // Every 60 seconds
 
-  console.log('Doctor availability notification interval started (60 seconds)');
+  console.log("Doctor availability notification interval started (60 seconds)");
 }
 
 /**
@@ -298,7 +315,7 @@ function stopDoctorAvailabilityNotification() {
   if (doctorAvailabilityInterval) {
     clearInterval(doctorAvailabilityInterval);
     doctorAvailabilityInterval = null;
-    console.log('Doctor availability notification interval stopped');
+    console.log("Doctor availability notification interval stopped");
   }
 }
 
@@ -307,17 +324,17 @@ function stopDoctorAvailabilityNotification() {
  */
 function getIO() {
   if (!io) {
-    throw new Error('Socket.IO not initialized. Call initChatSocket() first.');
+    throw new Error("Socket.IO not initialized. Call initChatSocket() first.");
   }
   return io;
 }
 
 // Graceful shutdown
-process.on('SIGINT', stopDoctorAvailabilityNotification);
-process.on('SIGTERM', stopDoctorAvailabilityNotification);
+process.on("SIGINT", stopDoctorAvailabilityNotification);
+process.on("SIGTERM", stopDoctorAvailabilityNotification);
 
 module.exports = {
   initChatSocket,
   stopDoctorAvailabilityNotification,
-  getIO
+  getIO,
 };

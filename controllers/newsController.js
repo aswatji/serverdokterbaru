@@ -1,29 +1,29 @@
-const prisma = require('../config/database');
+const prisma = require("../config/database");
 
 class NewsController {
   // Get all news
   async getAllNews(req, res, next) {
     try {
       const { search } = req.query;
-      
+
       const where = {};
       if (search) {
         where.OR = [
-          { title: { contains: search, mode: 'insensitive' } },
-          { content: { contains: search, mode: 'insensitive' } }
+          { title: { contains: search, mode: "insensitive" } },
+          { content: { contains: search, mode: "insensitive" } },
         ];
       }
 
       const news = await prisma.news.findMany({
         where,
         orderBy: {
-          createdAt: 'desc'
-        }
+          createdAt: "desc",
+        },
       });
 
       res.json({
         success: true,
-        data: news
+        data: news,
       });
     } catch (error) {
       next(error);
@@ -35,19 +35,19 @@ class NewsController {
     try {
       const { id } = req.params;
       const news = await prisma.news.findUnique({
-        where: { id: id }
+        where: { id: id },
       });
 
       if (!news) {
         return res.status(404).json({
           success: false,
-          message: 'News not found'
+          message: "News not found",
         });
       }
 
       res.json({
         success: true,
-        data: news
+        data: news,
       });
     } catch (error) {
       next(error);
@@ -62,14 +62,14 @@ class NewsController {
       const news = await prisma.news.create({
         data: {
           title,
-          content
-        }
+          content,
+        },
       });
 
       res.status(201).json({
         success: true,
-        message: 'News created successfully',
-        data: news
+        message: "News created successfully",
+        data: news,
       });
     } catch (error) {
       next(error);
@@ -88,13 +88,13 @@ class NewsController {
 
       const news = await prisma.news.update({
         where: { id: id },
-        data: updateData
+        data: updateData,
       });
 
       res.json({
         success: true,
-        message: 'News updated successfully',
-        data: news
+        message: "News updated successfully",
+        data: news,
       });
     } catch (error) {
       next(error);
@@ -107,12 +107,12 @@ class NewsController {
       const { id } = req.params;
 
       await prisma.news.delete({
-        where: { id: id }
+        where: { id: id },
       });
 
       res.json({
         success: true,
-        message: 'News deleted successfully'
+        message: "News deleted successfully",
       });
     } catch (error) {
       next(error);

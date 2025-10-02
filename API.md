@@ -46,23 +46,26 @@ Response:
 ### Users (Patients)
 
 #### Get all users
+
 ```bash
 GET /api/users
 ```
 
 #### Get user by ID
+
 ```bash
 GET /api/users/:id
 ```
 
 #### Create user (Register)
+
 ```bash
 POST /api/users
 Content-Type: application/json
 
 {
   "fullname": "John Doe",
-  "email": "john@example.com", 
+  "email": "john@example.com",
   "password": "password123",
   "profession": "Software Engineer",
   "photo": "https://example.com/photo.jpg"
@@ -70,6 +73,7 @@ Content-Type: application/json
 ```
 
 #### Update user
+
 ```bash
 PUT /api/users/:id
 Content-Type: application/json
@@ -83,6 +87,7 @@ Content-Type: application/json
 ```
 
 #### Delete user
+
 ```bash
 DELETE /api/users/:id
 ```
@@ -90,16 +95,19 @@ DELETE /api/users/:id
 ### Doctors
 
 #### Get all doctors
+
 ```bash
 GET /api/doctors
 ```
 
 #### Get doctor by ID
+
 ```bash
 GET /api/doctors/:id
 ```
 
 #### Create doctor
+
 ```bash
 POST /api/doctors
 Content-Type: application/json
@@ -113,6 +121,7 @@ Content-Type: application/json
 ```
 
 #### Update doctor
+
 ```bash
 PUT /api/doctors/:id
 Content-Type: application/json
@@ -126,6 +135,7 @@ Content-Type: application/json
 ```
 
 #### Add doctor schedule
+
 ```bash
 POST /api/doctors/:id/schedules
 Content-Type: application/json
@@ -138,6 +148,7 @@ Content-Type: application/json
 ```
 
 #### Update doctor schedule
+
 ```bash
 PUT /api/doctors/schedules/:scheduleId
 Content-Type: application/json
@@ -152,6 +163,7 @@ Content-Type: application/json
 ### Consultations
 
 #### Get all consultations
+
 ```bash
 GET /api/consultations
 GET /api/consultations?patientId=user123
@@ -160,24 +172,27 @@ GET /api/consultations?isActive=true
 ```
 
 #### Get consultation by ID
+
 ```bash
 GET /api/consultations/:id
 ```
 
 #### Create consultation
+
 ```bash
 POST /api/consultations
 Content-Type: application/json
 
 {
   "patientId": "user123",
-  "doctorId": "doctor123", 
+  "doctorId": "doctor123",
   "paymentId": "payment123",
   "duration": 60
 }
 ```
 
 #### Update consultation
+
 ```bash
 PUT /api/consultations/:id
 Content-Type: application/json
@@ -190,6 +205,7 @@ Content-Type: application/json
 ```
 
 #### End consultation
+
 ```bash
 PUT /api/consultations/:id/end
 ```
@@ -197,17 +213,20 @@ PUT /api/consultations/:id/end
 ### Payments
 
 #### Get all payments
+
 ```bash
 GET /api/payments
 GET /api/payments?status=success
 ```
 
 #### Get payment by ID
+
 ```bash
 GET /api/payments/:id
 ```
 
 #### Create payment
+
 ```bash
 POST /api/payments
 Content-Type: application/json
@@ -219,6 +238,7 @@ Content-Type: application/json
 ```
 
 #### Update payment status
+
 ```bash
 PUT /api/payments/:id/status
 Content-Type: application/json
@@ -229,6 +249,7 @@ Content-Type: application/json
 ```
 
 #### Midtrans webhook
+
 ```bash
 POST /api/payments/webhook/midtrans
 Content-Type: application/json
@@ -243,6 +264,7 @@ Content-Type: application/json
 ### Messages
 
 #### Get all messages
+
 ```bash
 GET /api/messages
 GET /api/messages?chatId=chat123
@@ -251,11 +273,13 @@ GET /api/messages?doctorId=doctor123
 ```
 
 #### Get message by ID
+
 ```bash
 GET /api/messages/:id
 ```
 
 #### Create message (Send message)
+
 ```bash
 POST /api/messages
 Content-Type: application/json
@@ -271,13 +295,14 @@ Content-Type: application/json
 # Doctor replying
 {
   "content": "Hello, how can I help you?",
-  "chatId": "chat123", 
+  "chatId": "chat123",
   "sender": "doctor",
   "doctorId": "doctor123"
 }
 ```
 
 #### Update message
+
 ```bash
 PUT /api/messages/:id
 Content-Type: application/json
@@ -288,6 +313,7 @@ Content-Type: application/json
 ```
 
 #### Delete message
+
 ```bash
 DELETE /api/messages/:id
 ```
@@ -295,17 +321,20 @@ DELETE /api/messages/:id
 ### News
 
 #### Get all news
+
 ```bash
 GET /api/news
 GET /api/news?search=kesehatan
 ```
 
 #### Get news by ID
+
 ```bash
 GET /api/news/:id
 ```
 
 #### Create news
+
 ```bash
 POST /api/news
 Content-Type: application/json
@@ -317,6 +346,7 @@ Content-Type: application/json
 ```
 
 #### Update news
+
 ```bash
 PUT /api/news/:id
 Content-Type: application/json
@@ -330,11 +360,13 @@ Content-Type: application/json
 ### Categories
 
 #### Get all categories
+
 ```bash
 GET /api/categories
 ```
 
 #### Create category
+
 ```bash
 POST /api/categories
 Content-Type: application/json

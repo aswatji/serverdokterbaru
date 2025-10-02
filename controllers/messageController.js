@@ -38,16 +38,16 @@ class MessageController {
                   patient: {
                     select: {
                       fullname: true,
-                    }
+                    },
                   },
                   doctor: {
                     select: {
                       name: true,
                       specialty: true,
-                    }
-                  }
-                }
-              }
+                    },
+                  },
+                },
+              },
             },
           },
         },
@@ -96,16 +96,16 @@ class MessageController {
                   patient: {
                     select: {
                       fullname: true,
-                    }
+                    },
                   },
                   doctor: {
                     select: {
                       name: true,
                       specialty: true,
-                    }
-                  }
-                }
-              }
+                    },
+                  },
+                },
+              },
             },
           },
         },
@@ -133,17 +133,17 @@ class MessageController {
       const { content, chatId, sender, userId, doctorId } = req.body;
 
       // Validate sender and corresponding ID
-      if (sender === 'user' && !userId) {
+      if (sender === "user" && !userId) {
         return res.status(400).json({
           success: false,
-          message: 'userId is required when sender is user'
+          message: "userId is required when sender is user",
         });
       }
 
-      if (sender === 'doctor' && !doctorId) {
+      if (sender === "doctor" && !doctorId) {
         return res.status(400).json({
           success: false,
-          message: 'doctorId is required when sender is doctor'
+          message: "doctorId is required when sender is doctor",
         });
       }
 
@@ -152,8 +152,8 @@ class MessageController {
           content,
           chatId,
           sender,
-          userId: sender === 'user' ? userId : null,
-          doctorId: sender === 'doctor' ? doctorId : null,
+          userId: sender === "user" ? userId : null,
+          doctorId: sender === "doctor" ? doctorId : null,
         },
         include: {
           user: {
@@ -178,8 +178,8 @@ class MessageController {
                 select: {
                   id: true,
                   isActive: true,
-                }
-              }
+                },
+              },
             },
           },
         },
@@ -226,8 +226,8 @@ class MessageController {
               consultation: {
                 select: {
                   id: true,
-                }
-              }
+                },
+              },
             },
           },
         },

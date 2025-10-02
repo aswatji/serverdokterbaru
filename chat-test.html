@@ -1,313 +1,343 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Real-time Chat Test</title>
     <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .connection-status {
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            text-align: center;
-            font-weight: bold;
-        }
-        .connected { background: #d4edda; color: #155724; }
-        .disconnected { background: #f8d7da; color: #721c24; }
-        .chat-container {
-            border: 2px solid #ddd;
-            height: 400px;
-            overflow-y: auto;
-            padding: 15px;
-            margin-bottom: 20px;
-            background: #fafafa;
-            border-radius: 5px;
-        }
-        .message {
-            margin-bottom: 15px;
-            padding: 10px;
-            border-radius: 8px;
-            max-width: 70%;
-        }
-        .message.user {
-            background: #007bff;
-            color: white;
-            margin-left: auto;
-            text-align: right;
-        }
-        .message.doctor {
-            background: #28a745;
-            color: white;
-        }
-        .message.system {
-            background: #6c757d;
-            color: white;
-            text-align: center;
-            max-width: 90%;
-            margin: 10px auto;
-            font-style: italic;
-        }
-        .message.error {
-            background: #dc3545;
-            color: white;
-            text-align: center;
-            max-width: 90%;
-            margin: 10px auto;
-        }
-        .controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-        }
-        input, select, button {
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 14px;
-        }
-        input[type="text"] {
-            flex: 1;
-            min-width: 200px;
-        }
-        button {
-            background: #007bff;
-            color: white;
-            border: none;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-        button:hover {
-            background: #0056b3;
-        }
-        button:disabled {
-            background: #6c757d;
-            cursor: not-allowed;
-        }
-        .form-group {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        .form-group label {
-            min-width: 120px;
-            font-weight: bold;
-        }
-        .timestamp {
-            font-size: 11px;
-            opacity: 0.7;
-            margin-top: 5px;
-        }
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      .container {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      .connection-status {
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+        text-align: center;
+        font-weight: bold;
+      }
+      .connected {
+        background: #d4edda;
+        color: #155724;
+      }
+      .disconnected {
+        background: #f8d7da;
+        color: #721c24;
+      }
+      .chat-container {
+        border: 2px solid #ddd;
+        height: 400px;
+        overflow-y: auto;
+        padding: 15px;
+        margin-bottom: 20px;
+        background: #fafafa;
+        border-radius: 5px;
+      }
+      .message {
+        margin-bottom: 15px;
+        padding: 10px;
+        border-radius: 8px;
+        max-width: 70%;
+      }
+      .message.user {
+        background: #007bff;
+        color: white;
+        margin-left: auto;
+        text-align: right;
+      }
+      .message.doctor {
+        background: #28a745;
+        color: white;
+      }
+      .message.system {
+        background: #6c757d;
+        color: white;
+        text-align: center;
+        max-width: 90%;
+        margin: 10px auto;
+        font-style: italic;
+      }
+      .message.error {
+        background: #dc3545;
+        color: white;
+        text-align: center;
+        max-width: 90%;
+        margin: 10px auto;
+      }
+      .controls {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+        flex-wrap: wrap;
+      }
+      input,
+      select,
+      button {
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 14px;
+      }
+      input[type="text"] {
+        flex: 1;
+        min-width: 200px;
+      }
+      button {
+        background: #007bff;
+        color: white;
+        border: none;
+        cursor: pointer;
+        transition: background 0.3s;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      button:disabled {
+        background: #6c757d;
+        cursor: not-allowed;
+      }
+      .form-group {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+      .form-group label {
+        min-width: 120px;
+        font-weight: bold;
+      }
+      .timestamp {
+        font-size: 11px;
+        opacity: 0.7;
+        margin-top: 5px;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
-        <h1>Real-time Consultation Chat Test</h1>
-        
-        <div id="connectionStatus" class="connection-status disconnected">
-            Disconnected
-        </div>
-        
-        <div class="form-group">
-            <label>Consultation ID:</label>
-            <input type="text" id="consultationInput" placeholder="Enter consultation ID" value="consultation-1">
-            <button onclick="joinConsultation()">Join Room</button>
-            <button onclick="leaveConsultation()">Leave Room</button>
-        </div>
-        
-        <div class="chat-container" id="chatContainer">
-            <div class="message system">
-                Welcome! Connect to start chatting.
-            </div>
-        </div>
-        
-        <div class="controls">
-            <select id="senderType">
-                <option value="user">Patient</option>
-                <option value="doctor">Doctor</option>
-            </select>
-            <input type="text" id="messageInput" placeholder="Type your message..." onkeypress="handleKeyPress(event)">
-            <button onclick="sendMessage()" id="sendBtn" disabled>Send Message</button>
-        </div>
-        
-        <div class="controls">
-            <button onclick="connectSocket()">Connect</button>
-            <button onclick="disconnectSocket()">Disconnect</button>
-            <button onclick="clearChat()">Clear Chat</button>
-        </div>
+      <h1>Real-time Consultation Chat Test</h1>
+
+      <div id="connectionStatus" class="connection-status disconnected">
+        Disconnected
+      </div>
+
+      <div class="form-group">
+        <label>Consultation ID:</label>
+        <input
+          type="text"
+          id="consultationInput"
+          placeholder="Enter consultation ID"
+          value="consultation-1"
+        />
+        <button onclick="joinConsultation()">Join Room</button>
+        <button onclick="leaveConsultation()">Leave Room</button>
+      </div>
+
+      <div class="chat-container" id="chatContainer">
+        <div class="message system">Welcome! Connect to start chatting.</div>
+      </div>
+
+      <div class="controls">
+        <select id="senderType">
+          <option value="user">Patient</option>
+          <option value="doctor">Doctor</option>
+        </select>
+        <input
+          type="text"
+          id="messageInput"
+          placeholder="Type your message..."
+          onkeypress="handleKeyPress(event)"
+        />
+        <button onclick="sendMessage()" id="sendBtn" disabled>
+          Send Message
+        </button>
+      </div>
+
+      <div class="controls">
+        <button onclick="connectSocket()">Connect</button>
+        <button onclick="disconnectSocket()">Disconnect</button>
+        <button onclick="clearChat()">Clear Chat</button>
+      </div>
     </div>
 
     <script>
-        let socket = null;
-        let currentConsultationId = null;
-        
-        function connectSocket() {
-            if (socket) {
-                socket.disconnect();
-            }
-            
-            socket = io('http://localhost:3000');
-            
-            socket.on('connect', () => {
-                console.log('Connected to server');
-                updateConnectionStatus(true);
-                addMessage('system', 'Connected to chat server');
-                document.getElementById('sendBtn').disabled = false;
-            });
-            
-            socket.on('disconnect', () => {
-                console.log('Disconnected from server');
-                updateConnectionStatus(false);
-                addMessage('system', 'Disconnected from chat server');
-                document.getElementById('sendBtn').disabled = true;
-            });
-            
-            socket.on('connect_error', (error) => {
-                console.error('Connection error:', error);
-                addMessage('error', 'Connection error: ' + error.message);
-                updateConnectionStatus(false);
-            });
-            
-            // Chat events
-            socket.on('new_message', (data) => {
-                console.log('New message received:', data);
-                const senderName = data.user?.fullname || data.doctor?.name || data.sender;
-                addMessage(data.sender, data.content, `${senderName} - ${formatTime(data.sentAt)}`);
-            });
-            
-            socket.on('user_joined', (data) => {
-                addMessage('system', `User joined consultation ${data.consultationId}`);
-            });
-            
-            socket.on('user_left', (data) => {
-                addMessage('system', `User left consultation ${data.consultationId}`);
-            });
-            
-            socket.on('doctor_ready', (data) => {
-                addMessage('system', `🩺 ${data.message} - Dr. ${data.doctorName}`);
-            });
-            
-            socket.on('error', (data) => {
-                console.error('Socket error:', data);
-                addMessage('error', 'Error: ' + data.message);
-            });
+      let socket = null;
+      let currentConsultationId = null;
+
+      function connectSocket() {
+        if (socket) {
+          socket.disconnect();
         }
-        
-        function disconnectSocket() {
-            if (socket) {
-                socket.disconnect();
-                socket = null;
-            }
+
+        socket = io("http://localhost:3000");
+
+        socket.on("connect", () => {
+          console.log("Connected to server");
+          updateConnectionStatus(true);
+          addMessage("system", "Connected to chat server");
+          document.getElementById("sendBtn").disabled = false;
+        });
+
+        socket.on("disconnect", () => {
+          console.log("Disconnected from server");
+          updateConnectionStatus(false);
+          addMessage("system", "Disconnected from chat server");
+          document.getElementById("sendBtn").disabled = true;
+        });
+
+        socket.on("connect_error", (error) => {
+          console.error("Connection error:", error);
+          addMessage("error", "Connection error: " + error.message);
+          updateConnectionStatus(false);
+        });
+
+        // Chat events
+        socket.on("new_message", (data) => {
+          console.log("New message received:", data);
+          const senderName =
+            data.user?.fullname || data.doctor?.name || data.sender;
+          addMessage(
+            data.sender,
+            data.content,
+            `${senderName} - ${formatTime(data.sentAt)}`
+          );
+        });
+
+        socket.on("user_joined", (data) => {
+          addMessage(
+            "system",
+            `User joined consultation ${data.consultationId}`
+          );
+        });
+
+        socket.on("user_left", (data) => {
+          addMessage("system", `User left consultation ${data.consultationId}`);
+        });
+
+        socket.on("doctor_ready", (data) => {
+          addMessage("system", `🩺 ${data.message} - Dr. ${data.doctorName}`);
+        });
+
+        socket.on("error", (data) => {
+          console.error("Socket error:", data);
+          addMessage("error", "Error: " + data.message);
+        });
+      }
+
+      function disconnectSocket() {
+        if (socket) {
+          socket.disconnect();
+          socket = null;
         }
-        
-        function joinConsultation() {
-            const consultationId = document.getElementById('consultationInput').value.trim();
-            if (!consultationId || !socket) {
-                alert('Please enter consultation ID and connect first');
-                return;
-            }
-            
-            if (currentConsultationId) {
-                leaveConsultation();
-            }
-            
-            currentConsultationId = consultationId;
-            socket.emit('join_consultation', consultationId);
-            addMessage('system', `Joining consultation: ${consultationId}`);
+      }
+
+      function joinConsultation() {
+        const consultationId = document
+          .getElementById("consultationInput")
+          .value.trim();
+        if (!consultationId || !socket) {
+          alert("Please enter consultation ID and connect first");
+          return;
         }
-        
-        function leaveConsultation() {
-            if (!currentConsultationId || !socket) return;
-            
-            socket.emit('leave_consultation', currentConsultationId);
-            addMessage('system', `Left consultation: ${currentConsultationId}`);
-            currentConsultationId = null;
+
+        if (currentConsultationId) {
+          leaveConsultation();
         }
-        
-        function sendMessage() {
-            const consultationId = document.getElementById('consultationInput').value.trim();
-            const sender = document.getElementById('senderType').value;
-            const content = document.getElementById('messageInput').value.trim();
-            
-            if (!consultationId || !content || !socket) {
-                alert('Please fill all fields and connect first');
-                return;
-            }
-            
-            // Send message via socket
-            socket.emit('send_message', {
-                consultationId: consultationId,
-                sender: sender,
-                content: content
-            });
-            
-            // Clear input
-            document.getElementById('messageInput').value = '';
+
+        currentConsultationId = consultationId;
+        socket.emit("join_consultation", consultationId);
+        addMessage("system", `Joining consultation: ${consultationId}`);
+      }
+
+      function leaveConsultation() {
+        if (!currentConsultationId || !socket) return;
+
+        socket.emit("leave_consultation", currentConsultationId);
+        addMessage("system", `Left consultation: ${currentConsultationId}`);
+        currentConsultationId = null;
+      }
+
+      function sendMessage() {
+        const consultationId = document
+          .getElementById("consultationInput")
+          .value.trim();
+        const sender = document.getElementById("senderType").value;
+        const content = document.getElementById("messageInput").value.trim();
+
+        if (!consultationId || !content || !socket) {
+          alert("Please fill all fields and connect first");
+          return;
         }
-        
-        function addMessage(sender, content, timestamp = null) {
-            const chatContainer = document.getElementById('chatContainer');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${sender}`;
-            
-            const timeStr = timestamp || formatTime(new Date());
-            
-            messageDiv.innerHTML = `
+
+        // Send message via socket
+        socket.emit("send_message", {
+          consultationId: consultationId,
+          sender: sender,
+          content: content,
+        });
+
+        // Clear input
+        document.getElementById("messageInput").value = "";
+      }
+
+      function addMessage(sender, content, timestamp = null) {
+        const chatContainer = document.getElementById("chatContainer");
+        const messageDiv = document.createElement("div");
+        messageDiv.className = `message ${sender}`;
+
+        const timeStr = timestamp || formatTime(new Date());
+
+        messageDiv.innerHTML = `
                 <div>${content}</div>
                 <div class="timestamp">${timeStr}</div>
             `;
-            
-            chatContainer.appendChild(messageDiv);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
-        
-        function clearChat() {
-            document.getElementById('chatContainer').innerHTML = `
+
+        chatContainer.appendChild(messageDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      }
+
+      function clearChat() {
+        document.getElementById("chatContainer").innerHTML = `
                 <div class="message system">Chat cleared.</div>
             `;
+      }
+
+      function updateConnectionStatus(connected) {
+        const statusElement = document.getElementById("connectionStatus");
+        if (connected) {
+          statusElement.textContent = "Connected";
+          statusElement.className = "connection-status connected";
+        } else {
+          statusElement.textContent = "Disconnected";
+          statusElement.className = "connection-status disconnected";
         }
-        
-        function updateConnectionStatus(connected) {
-            const statusElement = document.getElementById('connectionStatus');
-            if (connected) {
-                statusElement.textContent = 'Connected';
-                statusElement.className = 'connection-status connected';
-            } else {
-                statusElement.textContent = 'Disconnected';
-                statusElement.className = 'connection-status disconnected';
-            }
+      }
+
+      function formatTime(dateStr) {
+        const date = new Date(dateStr);
+        return date.toLocaleTimeString();
+      }
+
+      function handleKeyPress(event) {
+        if (event.key === "Enter") {
+          sendMessage();
         }
-        
-        function formatTime(dateStr) {
-            const date = new Date(dateStr);
-            return date.toLocaleTimeString();
-        }
-        
-        function handleKeyPress(event) {
-            if (event.key === 'Enter') {
-                sendMessage();
-            }
-        }
-        
-        // Auto-connect on page load
-        window.addEventListener('load', () => {
-            setTimeout(connectSocket, 500);
-        });
+      }
+
+      // Auto-connect on page load
+      window.addEventListener("load", () => {
+        setTimeout(connectSocket, 500);
+      });
     </script>
-</body>
+  </body>
 </html>
