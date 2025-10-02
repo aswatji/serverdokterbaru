@@ -82,6 +82,16 @@ class AuthController {
       // Find user by email
       const user = await prisma.user.findUnique({
         where: { email },
+        select: {
+          id: true,
+          email: true,
+          password: true,
+          fullname: true,
+          photo: true,
+          profession: true,
+          createdAt: true,
+          updatedAt: true,
+        },
       });
 
       if (!user) {
