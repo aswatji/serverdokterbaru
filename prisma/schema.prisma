@@ -120,3 +120,9 @@ model Category {
   name   String
   items  String?
 }
+// 10. Model category (optional) - Categories for dokter
+model CategoryDoctor {
+  id        Int      @id @default(autoincrement())
+  category  String
+
+}
