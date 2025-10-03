@@ -11,14 +11,13 @@ const chatRoutes = require("./chatRoutes");
 const paymentRoutes = require("./paymentRoutes");
 const newsRoutes = require("./newsRoutes");
 const categoryRoutes = require("./categoryRoutes");
-const categoryDoctorRoutes = require("./routes/categoryDoctorRoutes");
+const categoryDoctorRoutes = require("./categoryDoctorRoutes");
 const {
   authMiddleware,
   requireDoctor,
 } = require("../middleware/authMiddleware");
 
 const router = express.Router();
-
 
 // Health check endpoint
 router.get("/health", (req, res) => {
@@ -57,5 +56,5 @@ router.use("/messages", messageRoutes);
 router.use("/news", newsRoutes);
 router.use("/categories", categoryRoutes);
 router.use("/category-doctors", categoryDoctorRoutes);
-module.exports = router;
 
+module.exports = router;
