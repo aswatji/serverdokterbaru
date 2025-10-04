@@ -39,8 +39,13 @@ model User {
 ```prisma
 model Doctor {
   id           String           @id @default(cuid())
-  name         String
-  specialty    String
+  fullname     String
+  category     String
+  university   String
+  strNumber    String           @unique
+  gender       String
+  email        String           @unique
+  password     String
   bio          String?
   photo        String?
   createdAt    DateTime         @default(now())
@@ -54,7 +59,7 @@ model Doctor {
 ```
 
 **Purpose**: Medical professionals providing consultations
-**Key Features**: Specialty tracking, bio, availability schedules
+**Key Features**: Full profile (education, STR, gender), secure credentials, availability schedules
 
 ### 3. 📅 DoctorSchedule Model (Availability)
 

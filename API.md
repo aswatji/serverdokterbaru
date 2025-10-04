@@ -113,8 +113,13 @@ POST /api/doctors
 Content-Type: application/json
 
 {
-  "name": "Dr. Ahmad Sutanto",
-  "specialty": "Kardiologi",
+  "fullname": "Dr. Ahmad Sutanto",
+  "category": "Kardiologi",
+  "university": "Universitas Indonesia",
+  "strNumber": "STR-0001",
+  "gender": "male",
+  "email": "doctor1@example.com",
+  "password": "password123",
   "bio": "Spesialis jantung dengan pengalaman 15 tahun",
   "photo": "https://example.com/doctor.jpg"
 }
@@ -127,8 +132,12 @@ PUT /api/doctors/:id
 Content-Type: application/json
 
 {
-  "name": "Dr. Ahmad Sutanto, Sp.JP",
-  "specialty": "Kardiologi",
+  "fullname": "Dr. Ahmad Sutanto, Sp.JP",
+  "category": "Kardiologi",
+  "university": "Universitas Indonesia",
+  "strNumber": "STR-0001",
+  "gender": "male",
+  "email": "doctor1@example.com",
   "bio": "Updated bio...",
   "photo": "https://example.com/updated-photo.jpg"
 }

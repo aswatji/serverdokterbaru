@@ -23,8 +23,22 @@ class PaymentController {
 
       // Validate doctor and patient exist
       const [doctor, patient] = await Promise.all([
-        prisma.doctor.findUnique({ where: { id: doctorId } }),
-        prisma.user.findUnique({ where: { id: patientId } }),
+        prisma.doctor.findUnique({
+          where: { id: doctorId },
+          select: {
+            id: true,
+            fullname: true,
+            category: true,
+          },
+        }),
+        prisma.user.findUnique({
+          where: { id: patientId },
+          select: {
+            id: true,
+            fullname: true,
+            email: true,
+          },
+        }),
       ]);
 
       if (!doctor) {
@@ -58,14 +72,14 @@ class PaymentController {
         customer_details: {
           first_name: patient.fullname,
           email: patient.email,
-          phone: patient.phone || "08123456789",
+          phone: "08123456789",
         },
         item_details: [
           {
             id: `consultation_${doctorId}`,
             price: amount,
             quantity: 1,
-            name: `Konsultasi dengan ${doctor.name} - ${doctor.specialty}`,
+            name: `Konsultasi dengan ${doctor.fullname} - ${doctor.category}`,
           },
         ],
         custom_field1: doctorId,
@@ -161,8 +175,8 @@ class PaymentController {
             doctor: {
               select: {
                 id: true,
-                name: true,
-                specialty: true,
+                fullname: true,
+                category: true,
                 photo: true,
               },
             },
@@ -239,8 +253,8 @@ class PaymentController {
               doctor: {
                 select: {
                   id: true,
-                  name: true,
-                  specialty: true,
+                  fullname: true,
+                  category: true,
                 },
               },
             },
@@ -280,8 +294,8 @@ class PaymentController {
               doctor: {
                 select: {
                   id: true,
-                  name: true,
-                  specialty: true,
+                  fullname: true,
+                  category: true,
                   photo: true,
                 },
               },
@@ -350,8 +364,8 @@ class PaymentController {
               doctor: {
                 select: {
                   id: true,
-                  name: true,
-                  specialty: true,
+                  fullname: true,
+                  category: true,
                 },
               },
             },

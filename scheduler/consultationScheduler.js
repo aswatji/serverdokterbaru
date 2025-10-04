@@ -55,7 +55,7 @@ class ConsultationScheduler {
           doctor: {
             select: {
               id: true,
-              name: true,
+              fullname: true,
             },
           },
         },
@@ -123,7 +123,7 @@ class ConsultationScheduler {
           doctor: {
             select: {
               id: true,
-              name: true,
+              fullname: true,
             },
           },
         },

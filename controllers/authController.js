@@ -160,12 +160,9 @@ class AuthController {
         });
       }
 
-      // For now, we'll use a simple check - in production, doctors should have separate auth
-      // This is a placeholder implementation
-      const doctor = await prisma.doctor.findFirst({
+      const doctor = await prisma.doctor.findUnique({
         where: {
-          // Assuming doctors might have email field in future or use name as identifier
-          name: email, // Temporary implementation
+          email,
         },
       });
 
@@ -176,12 +173,19 @@ class AuthController {
         });
       }
 
-      // For demo purposes, allow any password for doctors
-      // In production, doctors should have proper password authentication
+      const isPasswordValid = await bcrypt.compare(password, doctor.password);
+
+      if (!isPasswordValid) {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid email or password",
+        });
+      }
+
       const token = jwt.sign(
         {
           id: doctor.id,
-          email: doctor.name, // Using name as email for now
+          email: doctor.email,
           type: "doctor",
         },
         process.env.JWT_SECRET || "your-secret-key",
@@ -195,8 +199,12 @@ class AuthController {
           token,
           doctor: {
             id: doctor.id,
-            name: doctor.name,
-            specialty: doctor.specialty,
+            fullname: doctor.fullname,
+            category: doctor.category,
+            university: doctor.university,
+            strNumber: doctor.strNumber,
+            gender: doctor.gender,
+            email: doctor.email,
             bio: doctor.bio,
             photo: doctor.photo,
           },

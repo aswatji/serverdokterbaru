@@ -255,7 +255,9 @@ function startDoctorAvailabilityNotification() {
         },
         include: {
           doctor: {
-            include: {
+            select: {
+              id: true,
+              fullname: true,
               schedules: true,
             },
           },
@@ -291,7 +293,7 @@ function startDoctorAvailabilityNotification() {
             consultationId: consultation.id,
             doctorId: consultation.doctorId,
             message: "Doctor is now available",
-            doctorName: consultation.doctor.name,
+            doctorName: consultation.doctor.fullname,
             timestamp: new Date(),
           });
 

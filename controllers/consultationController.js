@@ -25,8 +25,8 @@ class ConsultationController {
           doctor: {
             select: {
               id: true,
-              name: true,
-              specialty: true,
+              fullname: true,
+              category: true,
               photo: true,
             },
           },
@@ -72,8 +72,8 @@ class ConsultationController {
           doctor: {
             select: {
               id: true,
-              name: true,
-              specialty: true,
+              fullname: true,
+              category: true,
               bio: true,
               photo: true,
             },
@@ -93,7 +93,7 @@ class ConsultationController {
                   doctor: {
                     select: {
                       id: true,
-                      name: true,
+                      fullname: true,
                       photo: true,
                     },
                   },
@@ -150,8 +150,8 @@ class ConsultationController {
           doctor: {
             select: {
               id: true,
-              name: true,
-              specialty: true,
+              fullname: true,
+              category: true,
               photo: true,
             },
           },
@@ -205,8 +205,8 @@ class ConsultationController {
           doctor: {
             select: {
               id: true,
-              name: true,
-              specialty: true,
+              fullname: true,
+              category: true,
               photo: true,
             },
           },
@@ -253,8 +253,8 @@ class ConsultationController {
           doctor: {
             select: {
               id: true,
-              name: true,
-              specialty: true,
+              fullname: true,
+              category: true,
             },
           },
         },

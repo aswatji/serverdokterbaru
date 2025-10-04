@@ -1,3 +1,4 @@
+const bcrypt = require("bcryptjs");
 const prisma = require("../config/database");
 
 class DoctorController {
@@ -5,7 +6,18 @@ class DoctorController {
   async getAllDoctors(req, res, next) {
     try {
       const doctors = await prisma.doctor.findMany({
-        include: {
+        select: {
+          id: true,
+          fullname: true,
+          category: true,
+          university: true,
+          strNumber: true,
+          gender: true,
+          email: true,
+          bio: true,
+          photo: true,
+          createdAt: true,
+          updatedAt: true,
           schedules: true,
           _count: {
             select: {
@@ -33,7 +45,18 @@ class DoctorController {
       const { id } = req.params;
       const doctor = await prisma.doctor.findUnique({
         where: { id: id },
-        include: {
+        select: {
+          id: true,
+          fullname: true,
+          category: true,
+          university: true,
+          strNumber: true,
+          gender: true,
+          email: true,
+          bio: true,
+          photo: true,
+          createdAt: true,
+          updatedAt: true,
           schedules: {
             orderBy: {
               dayOfWeek: "asc",
@@ -53,7 +76,7 @@ class DoctorController {
             orderBy: {
               startedAt: "desc",
             },
-            take: 10, // Get last 10 consultations
+            take: 10,
           },
           _count: {
             select: {
@@ -83,16 +106,52 @@ class DoctorController {
   // Create new doctor
   async createDoctor(req, res, next) {
     try {
-      const { name, specialty, bio, photo } = req.body;
+      const {
+        fullname,
+        category,
+        university,
+        strNumber,
+        gender,
+        email,
+        password,
+        bio,
+        photo,
+      } = req.body;
+
+      if (!fullname || !category || !university || !strNumber || !gender || !email || !password) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "fullname, category, university, strNumber, gender, email, and password are required",
+        });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 12);
 
       const doctor = await prisma.doctor.create({
         data: {
-          name,
-          specialty,
+          fullname,
+          category,
+          university,
+          strNumber,
+          gender,
+          email,
+          password: hashedPassword,
           bio: bio || null,
           photo: photo || null,
         },
-        include: {
+        select: {
+          id: true,
+          fullname: true,
+          category: true,
+          university: true,
+          strNumber: true,
+          gender: true,
+          email: true,
+          bio: true,
+          photo: true,
+          createdAt: true,
+          updatedAt: true,
           _count: {
             select: { consultations: true },
           },
@@ -113,18 +172,44 @@ class DoctorController {
   async updateDoctor(req, res, next) {
     try {
       const { id } = req.params;
-      const { name, specialty, bio, photo } = req.body;
+      const {
+        fullname,
+        category,
+        university,
+        strNumber,
+        gender,
+        email,
+        password,
+        bio,
+        photo,
+      } = req.body;
 
       const updateData = {};
-      if (name) updateData.name = name;
-      if (specialty) updateData.specialty = specialty;
+      if (fullname) updateData.fullname = fullname;
+      if (category) updateData.category = category;
+      if (university) updateData.university = university;
+      if (strNumber) updateData.strNumber = strNumber;
+      if (gender) updateData.gender = gender;
+      if (email) updateData.email = email;
+      if (password) updateData.password = await bcrypt.hash(password, 12);
       if (bio !== undefined) updateData.bio = bio;
       if (photo !== undefined) updateData.photo = photo;
 
       const doctor = await prisma.doctor.update({
         where: { id: id },
         data: updateData,
-        include: {
+        select: {
+          id: true,
+          fullname: true,
+          category: true,
+          university: true,
+          strNumber: true,
+          gender: true,
+          email: true,
+          bio: true,
+          photo: true,
+          createdAt: true,
+          updatedAt: true,
           schedules: true,
           _count: {
             select: { consultations: true },
@@ -168,6 +253,11 @@ class DoctorController {
       // Check if doctor exists
       const doctor = await prisma.doctor.findUnique({
         where: { id: doctorId },
+        select: {
+          id: true,
+          fullname: true,
+          category: true,
+        },
       });
 
       if (!doctor) {
@@ -188,8 +278,8 @@ class DoctorController {
           doctor: {
             select: {
               id: true,
-              name: true,
-              specialty: true,
+              fullname: true,
+              category: true,
             },
           },
         },
@@ -213,6 +303,11 @@ class DoctorController {
       // Check if doctor exists
       const doctor = await prisma.doctor.findUnique({
         where: { id: doctorId },
+        select: {
+          id: true,
+          fullname: true,
+          category: true,
+        },
       });
 
       if (!doctor) {
@@ -229,8 +324,8 @@ class DoctorController {
           doctor: {
             select: {
               id: true,
-              name: true,
-              specialty: true,
+              fullname: true,
+              category: true,
             },
           },
         },
@@ -241,8 +336,8 @@ class DoctorController {
         data: {
           doctor: {
             id: doctor.id,
-            name: doctor.name,
-            specialty: doctor.specialty,
+            fullname: doctor.fullname,
+            category: doctor.category,
           },
           schedules: schedules,
         },
@@ -270,8 +365,8 @@ class DoctorController {
           doctor: {
             select: {
               id: true,
-              name: true,
-              specialty: true,
+              fullname: true,
+              category: true,
             },
           },
         },

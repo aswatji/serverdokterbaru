@@ -30,7 +30,10 @@ class ChatController {
         where: { id: consultationId },
         include: {
           doctor: {
-            include: {
+            select: {
+              id: true,
+              fullname: true,
+              category: true,
               schedules: true,
             },
           },
@@ -100,7 +103,7 @@ class ChatController {
       // If sender is doctor and not within schedule, warn but don't block
       if (sender === "doctor" && !isWithinSchedule) {
         console.warn(
-          `Doctor ${consultation.doctor.name} sending message outside schedule`
+          `Doctor ${consultation.doctor.fullname} sending message outside schedule`
         );
       }
 
@@ -139,7 +142,7 @@ class ChatController {
           doctor: {
             select: {
               id: true,
-              name: true,
+              fullname: true,
               photo: true,
             },
           },
@@ -212,7 +215,7 @@ class ChatController {
                   doctor: {
                     select: {
                       id: true,
-                      name: true,
+                      fullname: true,
                       photo: true,
                     },
                   },
@@ -233,8 +236,8 @@ class ChatController {
           doctor: {
             select: {
               id: true,
-              name: true,
-              specialty: true,
+              fullname: true,
+              category: true,
               photo: true,
             },
           },
@@ -290,8 +293,8 @@ class ChatController {
             },
             select: {
               id: true,
-              name: true,
-              specialty: true,
+              fullname: true,
+              category: true,
               schedules: true,
             },
           },
@@ -376,8 +379,8 @@ class ChatController {
               doctor: {
                 select: {
                   id: true,
-                  name: true,
-                  specialty: true,
+                  fullname: true,
+                  category: true,
                 },
               },
             },

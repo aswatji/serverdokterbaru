@@ -29,8 +29,13 @@ model User {
 // 2. Doctor model - Medical professionals providing consultations
 model Doctor {
   id           String           @id @default(cuid())
-  name         String
-  specialty    String
+  fullname     String
+  category     String
+  university   String
+  strNumber    String           @unique
+  gender       String
+  email        String           @unique
+  password     String
   bio          String?
   photo        String?
   createdAt    DateTime         @default(now())

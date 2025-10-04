@@ -44,8 +44,8 @@ class UserController {
               doctor: {
                 select: {
                   id: true,
-                  name: true,
-                  specialty: true,
+                  fullname: true,
+                  category: true,
                 },
               },
               payment: true,
@@ -73,8 +73,8 @@ class UserController {
                       id: true,
                       doctor: {
                         select: {
-                          name: true,
-                          specialty: true,
+                          fullname: true,
+                          category: true,
                         },
                       },
                     },

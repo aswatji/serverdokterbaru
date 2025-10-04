@@ -24,8 +24,8 @@ class MessageController {
           doctor: {
             select: {
               id: true,
-              name: true,
-              specialty: true,
+              fullname: true,
+              category: true,
               photo: true,
             },
           },
@@ -42,8 +42,8 @@ class MessageController {
                   },
                   doctor: {
                     select: {
-                      name: true,
-                      specialty: true,
+                      fullname: true,
+                      category: true,
                     },
                   },
                 },
@@ -82,8 +82,8 @@ class MessageController {
           doctor: {
             select: {
               id: true,
-              name: true,
-              specialty: true,
+              fullname: true,
+              category: true,
               photo: true,
             },
           },
@@ -100,8 +100,8 @@ class MessageController {
                   },
                   doctor: {
                     select: {
-                      name: true,
-                      specialty: true,
+                      fullname: true,
+                      category: true,
                     },
                   },
                 },
@@ -166,8 +166,8 @@ class MessageController {
           doctor: {
             select: {
               id: true,
-              name: true,
-              specialty: true,
+              fullname: true,
+              category: true,
               photo: true,
             },
           },
@@ -215,8 +215,8 @@ class MessageController {
           doctor: {
             select: {
               id: true,
-              name: true,
-              specialty: true,
+              fullname: true,
+              category: true,
               photo: true,
             },
           },

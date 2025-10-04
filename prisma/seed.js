@@ -7,6 +7,14 @@ async function main() {
   // Seed data untuk development
   console.log("Seeding data...");
 
+  // Hapus data terkait terlebih dahulu untuk menghindari konflik foreign key
+  await prisma.message.deleteMany({});
+  await prisma.chat.deleteMany({});
+  await prisma.consultation.deleteMany({});
+  await prisma.doctorSchedule.deleteMany({});
+  await prisma.payment.deleteMany({});
+  await prisma.doctor.deleteMany({});
+
   // Create sample patients
   const patient1 = await prisma.user.upsert({
     where: { email: "patient1@example.com" },
@@ -33,16 +41,26 @@ async function main() {
   // Create sample doctors
   const doctor1 = await prisma.doctor.create({
     data: {
-      name: "Dr. Ahmad Sutanto",
-      specialty: "Kardiologi",
+      fullname: "Dr. Ahmad Sutanto",
+      category: "Kardiologi",
+      university: "Universitas Indonesia",
+      strNumber: "STR-0001",
+      gender: "male",
+      email: "doctor1@example.com",
+      password: await bcrypt.hash("password123", 12),
       bio: "Spesialis jantung dengan pengalaman 15 tahun",
     },
   });
 
   const doctor2 = await prisma.doctor.create({
     data: {
-      name: "Dr. Sarah Wijaya",
-      specialty: "Dermatologi",
+      fullname: "Dr. Sarah Wijaya",
+      category: "Dermatologi",
+      university: "Universitas Gadjah Mada",
+      strNumber: "STR-0002",
+      gender: "female",
+      email: "doctor2@example.com",
+      password: await bcrypt.hash("password123", 12),
       bio: "Spesialis kulit dan kelamin berpengalaman",
     },
   });
