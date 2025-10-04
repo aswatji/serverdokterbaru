@@ -238,7 +238,7 @@ function startDoctorAvailabilityNotification() {
     clearInterval(doctorAvailabilityInterval);
   }
 
-  // Check every 60 seconds
+  // Check every 120 seconds (optimized for production)
   doctorAvailabilityInterval = setInterval(async () => {
     try {
       const now = new Date();
@@ -302,12 +302,15 @@ function startDoctorAvailabilityNotification() {
           );
         }
       }
+
+      // Add periodic log for monitoring
+      console.log(`Checking doctor availability for ${activeConsultations.length} active consultations`);
     } catch (error) {
       console.error("Error in doctor availability notification:", error);
     }
-  }, 60000); // Every 60 seconds
+  }, 120000); // Every 120 seconds (optimized)
 
-  console.log("Doctor availability notification interval started (60 seconds)");
+  console.log("Doctor availability notification interval started (120 seconds)");
 }
 
 /**

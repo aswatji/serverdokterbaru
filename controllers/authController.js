@@ -147,6 +147,85 @@ class AuthController {
     }
   }
 
+  // 3. doctorRegister(req, res) - Doctor registration  
+  async doctorRegister(req, res, next) {
+    try {
+      const { email, password, fullname, category, university, strNumber, gender } = req.body;
+
+      // Validate required fields
+      if (!email || !password || !fullname || !category || !university || !strNumber || !gender) {
+        return res.status(400).json({
+          success: false,
+          message: "All fields are required: email, password, fullname, category, university, strNumber, gender",
+        });
+      }
+
+      // Check if doctor already exists by email
+      const existingDoctorByEmail = await prisma.doctor.findUnique({
+        where: { email },
+      });
+
+      if (existingDoctorByEmail) {
+        return res.status(409).json({
+          success: false,
+          message: "Doctor with this email already exists",
+        });
+      }
+
+      // Check if doctor already exists by STR number
+      const existingDoctorByStr = await prisma.doctor.findUnique({
+        where: { strNumber },
+      });
+
+      if (existingDoctorByStr) {
+        return res.status(409).json({
+          success: false,
+          message: "Doctor with this STR number already exists",
+        });
+      }
+
+      // Hash password with bcrypt
+      const saltRounds = 10;
+      const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+      // Create doctor in Prisma
+      const doctor = await prisma.doctor.create({
+        data: {
+          email,
+          password: hashedPassword,
+          fullname,
+          category,
+          university,
+          strNumber,
+          gender,
+        },
+        select: {
+          id: true,
+          email: true,
+          fullname: true,
+          category: true,
+          university: true,
+          strNumber: true,
+          gender: true,
+          bio: true,
+          photo: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      // Return created doctor without password
+      res.status(201).json({
+        success: true,
+        message: "Doctor registered successfully",
+        data: doctor,
+      });
+    } catch (error) {
+      console.error("Doctor registration error:", error);
+      next(error);
+    }
+  }
+
   // Additional method for doctor login (if needed)
   async doctorLogin(req, res, next) {
     try {
