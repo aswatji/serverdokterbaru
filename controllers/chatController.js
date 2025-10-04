@@ -156,11 +156,11 @@ class ChatController {
       });
 
       // Broadcast message via Socket.IO
-      const { getIO } = require('../chatSocket');
+      const { getIO } = require("../chatSocket");
       try {
         const io = getIO();
         const roomName = `consultation:${consultationId}`;
-        io.to(roomName).emit('new_message', {
+        io.to(roomName).emit("new_message", {
           ...message,
           consultation: {
             id: consultation.id,
@@ -170,7 +170,7 @@ class ChatController {
           },
         });
       } catch (socketError) {
-        console.error('Socket.IO broadcast error:', socketError.message);
+        console.error("Socket.IO broadcast error:", socketError.message);
       }
 
       res.status(201).json({

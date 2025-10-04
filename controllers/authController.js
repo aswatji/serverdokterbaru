@@ -147,16 +147,33 @@ class AuthController {
     }
   }
 
-  // 3. doctorRegister(req, res) - Doctor registration  
+  // 3. doctorRegister(req, res) - Doctor registration
   async doctorRegister(req, res, next) {
     try {
-      const { email, password, fullname, category, university, strNumber, gender } = req.body;
+      const {
+        email,
+        password,
+        fullname,
+        category,
+        university,
+        strNumber,
+        gender,
+      } = req.body;
 
       // Validate required fields
-      if (!email || !password || !fullname || !category || !university || !strNumber || !gender) {
+      if (
+        !email ||
+        !password ||
+        !fullname ||
+        !category ||
+        !university ||
+        !strNumber ||
+        !gender
+      ) {
         return res.status(400).json({
           success: false,
-          message: "All fields are required: email, password, fullname, category, university, strNumber, gender",
+          message:
+            "All fields are required: email, password, fullname, category, university, strNumber, gender",
         });
       }
 

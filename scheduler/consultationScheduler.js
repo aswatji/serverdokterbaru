@@ -80,19 +80,19 @@ class ConsultationScheduler {
         });
 
         // Notify via Socket.IO
-        const { getIO } = require('../chatSocket');
+        const { getIO } = require("../chatSocket");
         try {
           const io = getIO();
           expiredConsultations.forEach((consultation) => {
             const roomName = `consultation:${consultation.id}`;
-            io.to(roomName).emit('consultation_status', {
+            io.to(roomName).emit("consultation_status", {
               isActive: false,
               expired: true,
               message: "Consultation has expired",
             });
           });
         } catch (socketError) {
-          console.error('Socket.IO broadcast error:', socketError.message);
+          console.error("Socket.IO broadcast error:", socketError.message);
         }
 
         console.log(
@@ -140,7 +140,7 @@ class ConsultationScheduler {
         );
 
         // Notify via Socket.IO
-        const { getIO } = require('../chatSocket');
+        const { getIO } = require("../chatSocket");
         try {
           const io = getIO();
           expiringSoonConsultations.forEach((consultation) => {
@@ -148,8 +148,8 @@ class ConsultationScheduler {
               (consultation.expiresAt.getTime() - now.getTime()) / 60000
             );
             const roomName = `consultation:${consultation.id}`;
-            
-            io.to(roomName).emit('consultation_expiring_soon', {
+
+            io.to(roomName).emit("consultation_expiring_soon", {
               consultationId: consultation.id,
               message: `Consultation will expire in ${timeRemaining} minutes`,
               timeRemaining,
@@ -157,7 +157,7 @@ class ConsultationScheduler {
             });
           });
         } catch (socketError) {
-          console.error('Socket.IO notification error:', socketError.message);
+          console.error("Socket.IO notification error:", socketError.message);
         }
       }
     } catch (error) {

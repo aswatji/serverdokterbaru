@@ -29,13 +29,20 @@ async function testDatabaseConnection(retries = 5) {
       console.log("✅ Database connection successful");
       return true;
     } catch (error) {
-      console.error(`❌ Database connection failed (attempt ${i}/${retries}):`, error.message);
+      console.error(
+        `❌ Database connection failed (attempt ${i}/${retries}):`,
+        error.message
+      );
       if (i === retries) {
-        console.error("💥 Failed to connect to database after", retries, "attempts");
+        console.error(
+          "💥 Failed to connect to database after",
+          retries,
+          "attempts"
+        );
         process.exit(1);
       }
       // Wait before retry
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
     }
   }
 }
@@ -45,11 +52,11 @@ async function startServer() {
   try {
     // Test database connection first
     await testDatabaseConnection();
-    
+
     // Production environment stabilization delay
     if (process.env.NODE_ENV === "production") {
       console.log("⏳ Production startup delay (3 seconds)...");
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise((resolve) => setTimeout(resolve, 3000));
     }
 
     // Middleware
@@ -131,7 +138,13 @@ async function startServer() {
       console.log("📊 Memory monitoring started");
       setInterval(() => {
         const memUsage = process.memoryUsage();
-        console.log(`Memory usage: RSS: ${Math.round(memUsage.rss / 1024 / 1024)}MB, Heap Used: ${Math.round(memUsage.heapUsed / 1024 / 1024)}MB, Heap Total: ${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`);
+        console.log(
+          `Memory usage: RSS: ${Math.round(
+            memUsage.rss / 1024 / 1024
+          )}MB, Heap Used: ${Math.round(
+            memUsage.heapUsed / 1024 / 1024
+          )}MB, Heap Total: ${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`
+        );
       }, 60000); // Every 60 seconds
     }
 
@@ -146,7 +159,6 @@ async function startServer() {
         console.error("❌ Failed to start consultation scheduler:", error);
       }
     }, 5000); // Wait 5 seconds before starting scheduler
-
   } catch (error) {
     console.error("💥 Server startup failed:", error);
     process.exit(1);
@@ -156,29 +168,28 @@ async function startServer() {
 // Enhanced graceful shutdown
 async function gracefulShutdown(signal) {
   console.log(`Received ${signal}, shutting down gracefully...`);
-  
+
   try {
     if (global.consultationScheduler) {
       console.log("Stopping consultation scheduler...");
       global.consultationScheduler.stop();
     }
-    
+
     stopDoctorAvailabilityNotification();
-    
+
     await prisma.$disconnect();
     console.log("Database disconnected");
-    
+
     server.close(() => {
       console.log("Server closed");
       process.exit(0);
     });
-    
+
     // Force exit after 10 seconds
     setTimeout(() => {
       console.log("Force exit after timeout");
       process.exit(1);
     }, 10000);
-    
   } catch (error) {
     console.error("Error during shutdown:", error);
     process.exit(1);

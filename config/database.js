@@ -6,12 +6,15 @@ const prisma = new PrismaClient({
       url: process.env.DATABASE_URL,
     },
   },
-  log: process.env.NODE_ENV === "development" ? ["query", "info", "warn", "error"] : ["error"],
+  log:
+    process.env.NODE_ENV === "development"
+      ? ["query", "info", "warn", "error"]
+      : ["error"],
 });
 
 // Optimize connection pool for better performance
-process.on('beforeExit', async () => {
-  console.log('Disconnecting Prisma...');
+process.on("beforeExit", async () => {
+  console.log("Disconnecting Prisma...");
   await prisma.$disconnect();
 });
 

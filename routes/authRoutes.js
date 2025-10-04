@@ -57,7 +57,7 @@ router.post(
 // 2. POST /auth/login → authController.login
 router.post("/login", loginValidation, validateRequest, authController.login);
 
-// 3. POST /auth/doctor/register → authController.doctorRegister  
+// 3. POST /auth/doctor/register → authController.doctorRegister
 router.post(
   "/doctor/register",
   doctorRegisterValidation,

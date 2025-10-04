@@ -304,13 +304,17 @@ function startDoctorAvailabilityNotification() {
       }
 
       // Add periodic log for monitoring
-      console.log(`Checking doctor availability for ${activeConsultations.length} active consultations`);
+      console.log(
+        `Checking doctor availability for ${activeConsultations.length} active consultations`
+      );
     } catch (error) {
       console.error("Error in doctor availability notification:", error);
     }
   }, 120000); // Every 120 seconds (optimized)
 
-  console.log("Doctor availability notification interval started (120 seconds)");
+  console.log(
+    "Doctor availability notification interval started (120 seconds)"
+  );
 }
 
 /**
