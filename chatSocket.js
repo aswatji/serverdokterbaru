@@ -168,7 +168,7 @@ function initChatSocket(server) {
             doctor: {
               select: {
                 id: true,
-                name: true,
+                fullname: true,
                 photo: true,
               },
             },

@@ -118,7 +118,15 @@ class DoctorController {
         photo,
       } = req.body;
 
-      if (!fullname || !category || !university || !strNumber || !gender || !email || !password) {
+      if (
+        !fullname ||
+        !category ||
+        !university ||
+        !strNumber ||
+        !gender ||
+        !email ||
+        !password
+      ) {
         return res.status(400).json({
           success: false,
           message:
