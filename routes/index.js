@@ -19,14 +19,41 @@ const {
 
 const router = express.Router();
 
-// Health check endpoint
-router.get("/health", (req, res) => {
-  res.json({
-    success: true,
-    message: "Consultation App Server is running",
-    timestamp: new Date().toISOString(),
-    version: "2.0.0",
-  });
+// Health check endpoint with database check
+router.get("/health", async (req, res) => {
+  try {
+    const healthStatus = {
+      success: true,
+      message: "Consultation App Server is running",
+      timestamp: new Date().toISOString(),
+      version: "2.0.0",
+      uptime: process.uptime(),
+      memory: {
+        used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+        total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+        rss: Math.round(process.memoryUsage().rss / 1024 / 1024),
+      },
+    };
+
+    // Quick database check
+    try {
+      const prisma = require("../config/database");
+      await prisma.$queryRaw`SELECT 1`;
+      healthStatus.database = "connected";
+    } catch (dbError) {
+      healthStatus.database = "disconnected";
+      healthStatus.dbError = dbError.message;
+    }
+
+    res.json(healthStatus);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Health check failed",
+      error: error.message,
+      timestamp: new Date().toISOString(),
+    });
+  }
 });
 
 // API routes with authentication requirements

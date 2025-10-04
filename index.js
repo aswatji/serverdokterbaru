@@ -80,18 +80,61 @@ app.use("*", (req, res) => {
 
 // Graceful shutdown
 process.on("SIGINT", async () => {
-  console.log("Shutting down gracefully...");
+  console.log("Received SIGINT, shutting down gracefully...");
+  stopMemoryMonitoring();
   consultationScheduler.stop();
   stopDoctorAvailabilityNotification();
   process.exit(0);
 });
 
 process.on("SIGTERM", async () => {
-  console.log("Shutting down gracefully...");
+  console.log("Received SIGTERM, shutting down gracefully...");
+  stopMemoryMonitoring();
   consultationScheduler.stop();
   stopDoctorAvailabilityNotification();
   process.exit(0);
 });
+
+// Handle uncaught exceptions
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught Exception:", error);
+  console.error("Stack:", error.stack);
+  process.exit(1);
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason);
+  process.exit(1);
+});
+
+// Memory monitoring
+let memoryCheckInterval;
+const startMemoryMonitoring = () => {
+  memoryCheckInterval = setInterval(() => {
+    const used = process.memoryUsage();
+    const memoryInfo = {
+      rss: Math.round(used.rss / 1024 / 1024),
+      heapTotal: Math.round(used.heapTotal / 1024 / 1024),
+      heapUsed: Math.round(used.heapUsed / 1024 / 1024),
+      external: Math.round(used.external / 1024 / 1024),
+    };
+    
+    console.log(`Memory usage: RSS: ${memoryInfo.rss}MB, Heap Used: ${memoryInfo.heapUsed}MB, Heap Total: ${memoryInfo.heapTotal}MB`);
+    
+    // Alert if memory usage is high (over 200MB RSS)
+    if (memoryInfo.rss > 200) {
+      console.warn(`⚠️ High memory usage detected: ${memoryInfo.rss}MB RSS`);
+    }
+  }, 60000); // Check every minute
+};
+
+// Stop memory monitoring on shutdown
+const stopMemoryMonitoring = () => {
+  if (memoryCheckInterval) {
+    clearInterval(memoryCheckInterval);
+    memoryCheckInterval = null;
+  }
+};
 
 // Initialize Chat Socket.IO
 initChatSocket(server);
@@ -105,4 +148,8 @@ server.listen(PORT, () => {
   console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
   console.log(`Health check: http://localhost:${PORT}/api/health`);
   console.log(`Chat Socket.IO server initialized for real-time messaging`);
+  
+  // Start memory monitoring
+  startMemoryMonitoring();
+  console.log(`Memory monitoring started`);
 });

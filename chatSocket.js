@@ -238,14 +238,31 @@ function startDoctorAvailabilityNotification() {
     clearInterval(doctorAvailabilityInterval);
   }
 
-  // Check every 60 seconds
+  // Check every 120 seconds (reduced frequency)
   doctorAvailabilityInterval = setInterval(async () => {
     try {
       const now = new Date();
       const currentDay = now.getDay();
       const currentTime = now.getHours() * 60 + now.getMinutes();
 
-      // Get all active consultations with doctor schedules
+      // Get only active consultations count first to avoid unnecessary processing
+      const activeCount = await prisma.consultation.count({
+        where: {
+          isActive: true,
+          expiresAt: {
+            gt: now,
+          },
+        },
+      });
+
+      // Skip if no active consultations
+      if (activeCount === 0) {
+        return;
+      }
+
+      console.log(`Checking doctor availability for ${activeCount} active consultations`);
+
+      // Get active consultations with minimal data
       const activeConsultations = await prisma.consultation.findMany({
         where: {
           isActive: true,
@@ -253,15 +270,24 @@ function startDoctorAvailabilityNotification() {
             gt: now,
           },
         },
-        include: {
+        select: {
+          id: true,
+          doctorId: true,
           doctor: {
             select: {
               id: true,
               fullname: true,
-              schedules: true,
+              schedules: {
+                select: {
+                  dayOfWeek: true,
+                  startTime: true,
+                  endTime: true,
+                },
+              },
             },
           },
         },
+        take: 50, // Limit to prevent memory issues
       });
 
       for (const consultation of activeConsultations) {
@@ -304,10 +330,11 @@ function startDoctorAvailabilityNotification() {
       }
     } catch (error) {
       console.error("Error in doctor availability notification:", error);
+      // Don't exit on error, just log and continue
     }
-  }, 60000); // Every 60 seconds
+  }, 120000); // Every 120 seconds (reduced frequency)
 
-  console.log("Doctor availability notification interval started (60 seconds)");
+  console.log("Doctor availability notification interval started (120 seconds)");
 }
 
 /**
