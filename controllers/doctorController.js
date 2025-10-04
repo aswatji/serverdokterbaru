@@ -14,6 +14,7 @@ class DoctorController {
           strNumber: true,
           gender: true,
           email: true,
+          alamatRumahSakit: true,
           bio: true,
           photo: true,
           createdAt: true,
@@ -53,6 +54,7 @@ class DoctorController {
           strNumber: true,
           gender: true,
           email: true,
+          alamatRumahSakit: true,
           bio: true,
           photo: true,
           createdAt: true,
@@ -114,6 +116,7 @@ class DoctorController {
         gender,
         email,
         password,
+        alamatRumahSakit,
         bio,
         photo,
       } = req.body;
@@ -145,6 +148,7 @@ class DoctorController {
           gender,
           email,
           password: hashedPassword,
+          alamatRumahSakit: alamatRumahSakit || null,
           bio: bio || null,
           photo: photo || null,
         },
@@ -188,6 +192,7 @@ class DoctorController {
         gender,
         email,
         password,
+        alamatRumahSakit,
         bio,
         photo,
       } = req.body;
@@ -200,6 +205,7 @@ class DoctorController {
       if (gender) updateData.gender = gender;
       if (email) updateData.email = email;
       if (password) updateData.password = await bcrypt.hash(password, 12);
+      if (alamatRumahSakit !== undefined) updateData.alamatRumahSakit = alamatRumahSakit;
       if (bio !== undefined) updateData.bio = bio;
       if (photo !== undefined) updateData.photo = photo;
 
@@ -214,6 +220,7 @@ class DoctorController {
           strNumber: true,
           gender: true,
           email: true,
+          alamatRumahSakit: true,
           bio: true,
           photo: true,
           createdAt: true,

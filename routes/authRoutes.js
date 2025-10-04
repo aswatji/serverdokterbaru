@@ -43,6 +43,7 @@ const doctorRegisterValidation = [
   body("gender")
     .isIn(["MALE", "FEMALE"])
     .withMessage("Gender must be MALE or FEMALE"),
+  body("alamatRumahSakit").optional().trim(),
 ];
 
 // Routes

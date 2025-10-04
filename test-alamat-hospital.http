@@ -1,0 +1,32 @@
+### Doctor Registration Test with alamatRumahSakit
+POST http://localhost:3000/api/auth/doctor/register
+Content-Type: application/json
+
+{
+  "email": "dr.hospital@gmail.com",
+  "password": "securepass123",
+  "fullname": "Dr. Rumah Sakit Test",
+  "category": "Spesialis Jantung",
+  "university": "Universitas Indonesia",
+  "strNumber": "STR202310003",
+  "gender": "FEMALE",
+  "alamatRumahSakit": "RS Cipto Mangunkusumo, Jl. Diponegoro No.71, Jakarta Pusat"
+}
+
+###
+
+### Doctor Registration Test without alamatRumahSakit (should still work)
+POST http://localhost:3000/api/auth/doctor/register
+Content-Type: application/json
+
+{
+  "email": "dr.no-hospital@gmail.com",
+  "password": "securepass123",
+  "fullname": "Dr. No Hospital Address",
+  "category": "Dokter Umum",
+  "university": "Universitas Gadjah Mada",
+  "strNumber": "STR202310004",
+  "gender": "MALE"
+}
+
+###
