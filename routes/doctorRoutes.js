@@ -37,6 +37,8 @@ const updateScheduleValidation = [
 // Doctor routes
 router.get("/", doctorController.getAllDoctors);
 router.get("/:doctorId", doctorController.getDoctorById);
+router.post("/", doctorController.createDoctor);
+
 
 // Schedule routes
 // 7. POST /doctor/schedules → doctorController.addSchedule (auth + role doctor)

@@ -8,21 +8,21 @@ class ConsultationScheduler {
   start() {
     console.log("Starting consultation scheduler...");
 
-    // Check for expiring consultations every 2 minutes (reduced frequency)
+    // Check for expiring consultations every minute
     this.intervals.set(
       "expiry-check",
       setInterval(() => {
         this.checkExpiringConsultations();
-      }, 120000)
-    ); // 120 seconds
+      }, 60000)
+    ); // 60 seconds
 
-    // Check for consultations expiring in 5 minutes (warning) every minute
+    // Check for consultations expiring in 5 minutes (warning)
     this.intervals.set(
       "expiry-warning",
       setInterval(() => {
         this.checkConsultationsExpiringSoon();
-      }, 60000)
-    ); // 60 seconds
+      }, 30000)
+    ); // 30 seconds
   }
 
   stop() {
