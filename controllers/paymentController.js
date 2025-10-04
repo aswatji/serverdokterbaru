@@ -193,11 +193,15 @@ class PaymentController {
         console.log("Consultation and chat created:", consultation.id);
 
         // Notify doctor via Socket.IO about new consultation
-        if (global.socketServer) {
-          global.socketServer.notifyDoctorNewConsultation(
-            consultation.doctorId,
-            consultation
-          );
+        const { getIO } = require('../chatSocket');
+        try {
+          const io = getIO();
+          io.emit('new_consultation', {
+            consultation,
+            doctorId: consultation.doctorId
+          });
+        } catch (socketError) {
+          console.error('Socket.IO notification error:', socketError.message);
         }
       } else if (
         transaction_status === "expire" ||

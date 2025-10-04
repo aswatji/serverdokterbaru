@@ -156,8 +156,11 @@ class ChatController {
       });
 
       // Broadcast message via Socket.IO
-      if (global.socketServer) {
-        global.socketServer.broadcastMessage(consultationId, {
+      const { getIO } = require('../chatSocket');
+      try {
+        const io = getIO();
+        const roomName = `consultation:${consultationId}`;
+        io.to(roomName).emit('new_message', {
           ...message,
           consultation: {
             id: consultation.id,
@@ -166,6 +169,8 @@ class ChatController {
             doctorAvailable: isWithinSchedule,
           },
         });
+      } catch (socketError) {
+        console.error('Socket.IO broadcast error:', socketError.message);
       }
 
       res.status(201).json({
