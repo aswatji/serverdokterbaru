@@ -204,7 +204,7 @@ class AuthController {
       }
 
       // Hash password with bcrypt
-      const saltRounds = 10;
+      const saltRounds = 12;
       const hashedPassword = await bcrypt.hash(password, saltRounds);
 
       // Create doctor in Prisma
@@ -217,7 +217,7 @@ class AuthController {
           university,
           strNumber,
           gender,
-          alamatRumahSakit,
+          alamatRumahSakit: alamatRumahSakit || null,
           photo: photo || null,
         },
         select: {

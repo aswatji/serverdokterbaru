@@ -41,8 +41,8 @@ const doctorRegisterValidation = [
   body("university").notEmpty().withMessage("University is required").trim(),
   body("strNumber").notEmpty().withMessage("STR number is required").trim(),
   body("gender")
-    .isIn(["Laki-laki", "Perempuan"])
-    .withMessage("Gender must be Laki-laki or Perempuan"),
+    .isIn(["MALE", "FEMALE"])
+    .withMessage("Gender must be MALE or FEMALE"),
   body("alamatRumahSakit")
     .optional()
     .isString()
@@ -66,8 +66,6 @@ router.post("/login", loginValidation, validateRequest, authController.login);
 // 3. POST /auth/doctor/register → authController.doctorRegister
 router.post(
   "/doctor/register",
-  doctorRegisterValidation,
-  validateRequest,
   authController.doctorRegister
 );
 
