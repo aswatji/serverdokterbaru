@@ -9,6 +9,39 @@ const {
 
 const router = express.Router();
 
+const updateDoctorValidation = [
+  body("fullname")
+    .optional()
+    .notEmpty()
+    .withMessage("Full name cannot be empty"),
+  body("category")
+    .optional()
+    .isString()
+    .withMessage("Category must be a string"),
+  body("university")
+    .optional()
+    .isString()
+    .withMessage("University must be a string"),
+  body("strNumber")
+    .optional()
+    .isString()
+    .withMessage("STR Number must be a string"),
+  body("gender")
+    .optional()
+    .isIn(["MALE", "FEMALE"])
+    .withMessage("Gender must be either MALE or FEMALE"),
+  body("email").optional().isEmail().withMessage("Valid email is required"),
+  body("password")
+    .optional()
+    .isLength({ min: 6 })
+    .withMessage("Password must be at least 6 characters"),
+  body("alamatRumahSakit")
+    .optional()
+    .isString()
+    .withMessage("Hospital address must be a string"),
+  body("bio").optional().isString().withMessage("Bio must be a string"),
+  body("photo").optional().isString().withMessage("Photo must be a string"),
+];
 // Validation rules
 const addScheduleValidation = [
   body("doctorId").notEmpty().withMessage("Doctor ID is required"),
@@ -38,9 +71,14 @@ const updateScheduleValidation = [
 router.get("/", doctorController.getAllDoctors);
 router.get("/:doctorId", doctorController.getDoctorById);
 router.post("/", doctorController.createDoctor);
-router.put("/:doctorId", doctorController.updateDoctor);
-router.delete("/:doctorId", doctorController.deleteDoctor);
 
+router.delete("/:doctorId", doctorController.deleteDoctor);
+router.put(
+  "/:id",
+  updateDoctorValidation,
+  validateRequest,
+  doctorController.updateDoctor
+);
 
 // Schedule routes
 // 7. POST /doctor/schedules → doctorController.addSchedule (auth + role doctor)
