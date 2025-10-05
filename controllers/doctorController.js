@@ -139,6 +139,7 @@ class DoctorController {
 
       const hashedPassword = await bcrypt.hash(password, 12);
 
+      // Create doctor tanpa _count
       const doctor = await prisma.doctor.create({
         data: {
           fullname,
@@ -160,20 +161,29 @@ class DoctorController {
           strNumber: true,
           gender: true,
           email: true,
+          alamatRumahSakit: true,
           bio: true,
           photo: true,
           createdAt: true,
           updatedAt: true,
-          _count: {
-            select: { consultations: true },
-          },
         },
       });
+
+      // Hitung consultation secara terpisah (baru dibuat, pasti 0)
+      const consultationCount = await prisma.consultation.count({
+        where: { doctorId: doctor.id },
+      });
+
+      // Gabungkan hasil dengan spread operator
+      const result = {
+        ...doctor,
+        consultationCount: consultationCount,
+      };
 
       res.status(201).json({
         success: true,
         message: "Doctor created successfully",
-        data: doctor,
+        data: result,
       });
     } catch (error) {
       next(error);
