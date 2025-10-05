@@ -41,9 +41,14 @@ const doctorRegisterValidation = [
   body("university").notEmpty().withMessage("University is required").trim(),
   body("strNumber").notEmpty().withMessage("STR number is required").trim(),
   body("gender")
-    .isIn(["MALE", "FEMALE"])
-    .withMessage("Gender must be MALE or FEMALE"),
-  body("alamatRumahSakit").optional().trim(),
+    .isIn(["Laki-laki", "Perempuan"])
+    .withMessage("Gender must be Laki-laki or Perempuan"),
+  body("alamatRumahSakit")
+    .optional()
+    .isString()
+    .withMessage("Hospital address must be a string"),
+  body("bio").optional().isString().withMessage("Bio must be a string"),
+  body("photo").optional().isString().withMessage("Photo must be a string"),
 ];
 
 // Routes
