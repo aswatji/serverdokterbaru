@@ -205,7 +205,8 @@ class DoctorController {
       if (gender) updateData.gender = gender;
       if (email) updateData.email = email;
       if (password) updateData.password = await bcrypt.hash(password, 12);
-      if (alamatRumahSakit !== undefined) updateData.alamatRumahSakit = alamatRumahSakit;
+      if (alamatRumahSakit !== undefined)
+        updateData.alamatRumahSakit = alamatRumahSakit;
       if (bio !== undefined) updateData.bio = bio;
       if (photo !== undefined) updateData.photo = photo;
 
