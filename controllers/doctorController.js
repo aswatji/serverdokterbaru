@@ -210,6 +210,7 @@ class DoctorController {
       if (bio !== undefined) updateData.bio = bio;
       if (photo !== undefined) updateData.photo = photo;
 
+      // Update doctor tanpa _count
       const doctor = await prisma.doctor.update({
         where: { id: id },
         data: updateData,
@@ -226,17 +227,24 @@ class DoctorController {
           photo: true,
           createdAt: true,
           updatedAt: true,
-          schedules: true,
-          _count: {
-            select: { consultations: true },
-          },
         },
       });
+
+      // Hitung consultation secara terpisah
+      const consultationCount = await prisma.consultation.count({
+        where: { doctorId: id },
+      });
+
+      // Gabungkan hasil dengan spread operator
+      const result = {
+        ...doctor,
+        consultationCount: consultationCount,
+      };
 
       res.json({
         success: true,
         message: "Doctor updated successfully",
-        data: doctor,
+        data: result,
       });
     } catch (error) {
       next(error);
