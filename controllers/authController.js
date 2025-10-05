@@ -159,6 +159,7 @@ class AuthController {
         strNumber,
         gender,
         alamatRumahSakit,
+        photo,
       } = req.body;
 
       // Validate required fields
@@ -217,6 +218,7 @@ class AuthController {
           strNumber,
           gender,
           alamatRumahSakit,
+          photo: photo || null,
         },
         select: {
           id: true,
@@ -304,6 +306,7 @@ class AuthController {
             strNumber: doctor.strNumber,
             gender: doctor.gender,
             email: doctor.email,
+            alamatRumahSakit: doctor.alamatRumahSakit,
             bio: doctor.bio,
             photo: doctor.photo,
           },
