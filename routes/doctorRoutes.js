@@ -69,6 +69,8 @@ const updateScheduleValidation = [
 
 // Doctor routes
 router.get("/", doctorController.getAllDoctors);
+router.get("/categories", doctorController.getCategories);
+router.get("/category/:category", doctorController.getDoctorsByCategory);
 router.get("/:doctorId", doctorController.getDoctorById);
 router.post("/", doctorController.createDoctor);
 

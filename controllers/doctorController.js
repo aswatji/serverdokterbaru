@@ -457,6 +457,85 @@ class DoctorController {
       next(error);
     }
   }
+
+  // Get all unique categories
+  async getCategories(req, res, next) {
+    try {
+      const categories = await prisma.doctor.findMany({
+        select: {
+          category: true,
+        },
+        distinct: ["category"],
+        orderBy: {
+          category: "asc",
+        },
+      });
+
+      const categoryList = categories.map((item) => item.category);
+
+      res.json({
+        success: true,
+        data: categoryList,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Get doctors by category (Firebase-like query)
+  async getDoctorsByCategory(req, res, next) {
+    try {
+      const { category } = req.params;
+
+      const doctors = await prisma.doctor.findMany({
+        where: {
+          category: {
+            equals: category,
+            mode: "insensitive",
+          },
+        },
+        select: {
+          id: true,
+          fullname: true,
+          category: true,
+          university: true,
+          strNumber: true,
+          gender: true,
+          email: true,
+          alamatRumahSakit: true,
+          bio: true,
+          photo: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+        orderBy: {
+          fullname: "asc",
+        },
+      });
+
+      // Add consultation count for each doctor
+      const doctorsWithCount = await Promise.all(
+        doctors.map(async (doctor) => {
+          const consultationCount = await prisma.consultation.count({
+            where: { doctorId: doctor.id },
+          });
+
+          return {
+            ...doctor,
+            consultationCount: consultationCount,
+          };
+        })
+      );
+
+      res.json({
+        success: true,
+        message: `Found ${doctorsWithCount.length} doctors in category: ${category}`,
+        data: doctorsWithCount,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new DoctorController();
