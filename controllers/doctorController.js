@@ -19,21 +19,29 @@ class DoctorController {
           photo: true,
           createdAt: true,
           updatedAt: true,
-          schedules: true,
-          _count: {
-            select: {
-              consultations: true,
-            },
-          },
         },
         orderBy: {
           createdAt: "desc",
         },
       });
 
+      // Hitung consultation untuk setiap doctor
+      const doctorsWithCount = await Promise.all(
+        doctors.map(async (doctor) => {
+          const consultationCount = await prisma.consultation.count({
+            where: { doctorId: doctor.id },
+          });
+
+          return {
+            ...doctor,
+            consultationCount: consultationCount,
+          };
+        })
+      );
+
       res.json({
         success: true,
-        data: doctors,
+        data: doctorsWithCount,
       });
     } catch (error) {
       next(error);
@@ -59,33 +67,6 @@ class DoctorController {
           photo: true,
           createdAt: true,
           updatedAt: true,
-          schedules: {
-            orderBy: {
-              dayOfWeek: "asc",
-            },
-          },
-          consultations: {
-            include: {
-              patient: {
-                select: {
-                  id: true,
-                  fullname: true,
-                  email: true,
-                },
-              },
-              payment: true,
-            },
-            orderBy: {
-              startedAt: "desc",
-            },
-            take: 10,
-          },
-          _count: {
-            select: {
-              consultations: true,
-              messages: true,
-            },
-          },
         },
       });
 
@@ -96,9 +77,52 @@ class DoctorController {
         });
       }
 
+      // Hitung consultation dan message secara terpisah
+      const consultationCount = await prisma.consultation.count({
+        where: { doctorId: id },
+      });
+
+      const messageCount = await prisma.message.count({
+        where: { doctorId: id },
+      });
+
+      // Ambil schedules terpisah
+      const schedules = await prisma.doctorSchedule.findMany({
+        where: { doctorId: id },
+        orderBy: { dayOfWeek: "asc" },
+      });
+
+      // Ambil recent consultations terpisah
+      const recentConsultations = await prisma.consultation.findMany({
+        where: { doctorId: id },
+        include: {
+          patient: {
+            select: {
+              id: true,
+              fullname: true,
+              email: true,
+            },
+          },
+          payment: true,
+        },
+        orderBy: {
+          startedAt: "desc",
+        },
+        take: 10,
+      });
+
+      // Gabungkan semua data dengan struktur flat
+      const result = {
+        ...doctor,
+        consultationCount: consultationCount,
+        messageCount: messageCount,
+        schedules: schedules,
+        recentConsultations: recentConsultations,
+      };
+
       res.json({
         success: true,
-        data: doctor,
+        data: result,
       });
     } catch (error) {
       next(error);

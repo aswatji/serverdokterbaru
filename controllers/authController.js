@@ -244,6 +244,27 @@ class AuthController {
       });
     } catch (error) {
       console.error("Doctor registration error:", error);
+
+      // Handle Prisma unique constraint errors
+      if (error.code === "P2002") {
+        const field = error.meta?.target?.[0];
+        if (field === "email") {
+          return res.status(409).json({
+            success: false,
+            message: "Doctor with this email already exists",
+          });
+        } else if (field === "strNumber") {
+          return res.status(409).json({
+            success: false,
+            message: "Doctor with this STR number already exists",
+          });
+        }
+        return res.status(409).json({
+          success: false,
+          message: "A doctor with this information already exists",
+        });
+      }
+
       next(error);
     }
   }
@@ -314,6 +335,42 @@ class AuthController {
       });
     } catch (error) {
       console.error("Doctor login error:", error);
+      next(error);
+    }
+  }
+
+  // 5. logout(req, res) - User logout
+  async logout(req, res, next) {
+    try {
+      // For JWT, logout is typically handled client-side by removing the token
+      // But we can provide a logout endpoint for consistency
+      res.json({
+        success: true,
+        message: "User logged out successfully",
+        data: {
+          message: "Please remove the token from client storage",
+        },
+      });
+    } catch (error) {
+      console.error("User logout error:", error);
+      next(error);
+    }
+  }
+
+  // 6. doctorLogout(req, res) - Doctor logout
+  async doctorLogout(req, res, next) {
+    try {
+      // For JWT, logout is typically handled client-side by removing the token
+      // But we can provide a logout endpoint for consistency
+      res.json({
+        success: true,
+        message: "Doctor logged out successfully",
+        data: {
+          message: "Please remove the token from client storage",
+        },
+      });
+    } catch (error) {
+      console.error("Doctor logout error:", error);
       next(error);
     }
   }

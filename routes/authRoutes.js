@@ -64,10 +64,7 @@ router.post(
 router.post("/login", loginValidation, validateRequest, authController.login);
 
 // 3. POST /auth/doctor/register → authController.doctorRegister
-router.post(
-  "/doctor/register",
-  authController.doctorRegister
-);
+router.post("/doctor/register", authController.doctorRegister);
 
 // 4. POST /auth/doctor/login → authController.doctorLogin
 router.post(
@@ -76,5 +73,11 @@ router.post(
   validateRequest,
   authController.doctorLogin
 );
+
+// 5. POST /auth/logout → authController.logout
+router.post("/logout", authController.logout);
+
+// 6. POST /auth/doctor/logout → authController.doctorLogout
+router.post("/doctor/logout", authController.doctorLogout);
 
 module.exports = router;
