@@ -31,5 +31,10 @@ router.post("/callback", paymentController.midtransCallback);
 // Additional routes
 router.get("/", authMiddleware, paymentController.getAllPayments);
 router.get("/:id", authMiddleware, paymentController.getPaymentById);
+router.get(
+  "/status/:orderId",
+  authMiddleware,
+  paymentController.getStatusByOrderId
+);
 
 module.exports = router;

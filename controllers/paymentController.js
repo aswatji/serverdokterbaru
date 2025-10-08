@@ -416,4 +416,39 @@ class PaymentController {
   }
 }
 
+exports.getStatusByOrderId = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const core = new midtransClient.CoreApi({
+      isProduction: process.env.NODE_ENV === "production",
+      serverKey: process.env.MIDTRANS_SERVER_KEY,
+      clientKey: process.env.MIDTRANS_CLIENT_KEY,
+    });
+
+    // Panggil API Midtrans
+    const statusResponse = await core.transaction.status(orderId);
+
+    // Kembalikan hasil ke frontend
+    return res.status(200).json({
+      success: true,
+      data: {
+        order_id: statusResponse.order_id,
+        transaction_status: statusResponse.transaction_status,
+        fraud_status: statusResponse.fraud_status,
+        gross_amount: statusResponse.gross_amount,
+        status_code: statusResponse.status_code,
+        status_message: statusResponse.status_message,
+      },
+    });
+  } catch (error) {
+    console.error("Error getStatusByOrderId:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Gagal mendapatkan status pembayaran",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = new PaymentController();
