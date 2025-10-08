@@ -10,7 +10,7 @@ class ConsultationScheduler {
   start() {
     console.log("✅ Consultation Scheduler (cron-based) started");
 
-    // Job 1: Check expired consultations every minute
+    // 🕐 1. Check expired consultations every minute
     this.jobs.set(
       "expiry-check",
       cron.schedule("* * * * *", () =>
@@ -18,15 +18,16 @@ class ConsultationScheduler {
       )
     );
 
-    // Job 2: Check consultations that will expire within 5 minutes (every 30s)
+    // ⏳ 2. Check consultations expiring soon (every 30 seconds)
+    // ⚠️ FIXED: previously invalid "*/0.5 * * * * *" now replaced with valid 30s interval
     this.jobs.set(
       "expiry-warning",
-      cron.schedule("*/0.5 * * * * *", () =>
+      cron.schedule("*/30 * * * * *", () =>
         this.runSafeJob("expiry-warning", this.checkConsultationsExpiringSoon.bind(this))
       )
     );
 
-    // Job 3: Cleanup old inactive consultations daily at midnight
+    // 🧹 3. Cleanup old inactive consultations daily at midnight
     this.jobs.set(
       "cleanup",
       cron.schedule("0 0 * * *", () =>
@@ -44,8 +45,9 @@ class ConsultationScheduler {
     this.jobs.clear();
   }
 
+  // Prevent overlapping jobs (mutex lock)
   async runSafeJob(name, fn) {
-    if (this.runningJobs.has(name)) return;
+    if (this.runningJobs.has(name)) return; // skip if already running
     this.runningJobs.add(name);
 
     const start = Date.now();
@@ -60,6 +62,7 @@ class ConsultationScheduler {
     }
   }
 
+  // 🔍 Check expired consultations
   async checkExpiringConsultations() {
     const now = new Date();
     const expired = await prisma.consultation.findMany({
@@ -67,7 +70,7 @@ class ConsultationScheduler {
       select: { id: true },
     });
 
-    if (!expired.length) return;
+    if (!expired.length) return; // no log spam
 
     console.log(`⚠️ Found ${expired.length} expired consultations`);
     const ids = expired.map((c) => c.id);
@@ -80,13 +83,13 @@ class ConsultationScheduler {
     try {
       const { getIO } = require("../chatSocket");
       const io = getIO();
-      expired.forEach((c) =>
+      expired.forEach((c) => {
         io.to(`consultation:${c.id}`).emit("consultation_status", {
           isActive: false,
           expired: true,
           message: "Consultation has expired",
-        })
-      );
+        });
+      });
     } catch (e) {
       console.warn("Socket.IO broadcast skipped:", e.message);
     }
@@ -94,6 +97,7 @@ class ConsultationScheduler {
     console.log(`✅ Deactivated ${expired.length} consultations`);
   }
 
+  // ⏰ Check consultations that will expire soon
   async checkConsultationsExpiringSoon() {
     const now = new Date();
     const fiveMinutesLater = new Date(now.getTime() + 5 * 60 * 1000);
@@ -103,7 +107,7 @@ class ConsultationScheduler {
       select: { id: true, expiresAt: true },
     });
 
-    if (!soon.length) return;
+    if (!soon.length) return; // skip empty
 
     console.log(`⏳ ${soon.length} consultations expiring soon`);
 
@@ -125,6 +129,7 @@ class ConsultationScheduler {
     }
   }
 
+  // 🧹 Cleanup old inactive consultations (daily)
   async cleanupOldConsultations() {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -139,6 +144,7 @@ class ConsultationScheduler {
     return result.count;
   }
 
+  // 📊 Consultation statistics helper (optional)
   async getConsultationStats() {
     try {
       const [total, active, today, completed] = await Promise.all([
