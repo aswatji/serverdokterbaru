@@ -15,26 +15,29 @@ const createPaymentValidation = [
     .withMessage("Amount must be a positive number"),
 ];
 
-// Routes
-// 3. POST /payment/create → paymentController.createPayment (auth required)
-router.post(
-  "/create",
-  authMiddleware,
-  createPaymentValidation,
-  validateRequest,
-  paymentController.createPayment
-);
+// Buat pembayaran
+router.post("/create", authMiddleware, paymentController.createPayment);
 
-// 4. POST /payment/callback → paymentController.midtransCallback
+// Callback dari Midtrans
 router.post("/callback", paymentController.midtransCallback);
 
-// Additional routes
-router.get("/", authMiddleware, paymentController.getAllPayments);
-router.get("/:id", authMiddleware, paymentController.getPaymentById);
+// Cek status pembayaran
 router.get(
   "/status/:orderId",
   authMiddleware,
   paymentController.getStatusByOrderId
 );
+
+// Get semua pembayaran
+router.get("/", authMiddleware, paymentController.getAllPayments);
+
+// Get by id
+router.get("/:id", authMiddleware, paymentController.getPaymentById);
+
+// Update status manual
+router.put("/:id", authMiddleware, paymentController.updatePaymentStatus);
+
+// Hapus pembayaran
+router.delete("/:id", authMiddleware, paymentController.deletePayment);
 
 module.exports = router;

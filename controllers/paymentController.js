@@ -3,17 +3,16 @@ const midtransClient = require("midtrans-client");
 
 // Initialize Midtrans Snap
 const snap = new midtransClient.Snap({
-  isProduction: process.env.NODE_ENV === "production",
+  isProduction: process.env.NODE_ENV === "development",
   serverKey: process.env.MIDTRANS_SERVER_KEY,
 });
 
 class PaymentController {
-  // Create payment and initiate Midtrans transaction
+  // ✅ Create payment and initiate Midtrans transaction
   async createPayment(req, res, next) {
     try {
       const { doctorId, patientId, amount } = req.body;
 
-      // Validate required fields
       if (!doctorId || !patientId || !amount) {
         return res.status(400).json({
           success: false,
@@ -21,41 +20,28 @@ class PaymentController {
         });
       }
 
-      // Validate doctor and patient exist
+      // Validate doctor and patient
       const [doctor, patient] = await Promise.all([
         prisma.doctor.findUnique({
           where: { id: doctorId },
-          select: {
-            id: true,
-            fullname: true,
-            category: true,
-          },
+          select: { id: true, fullname: true, category: true },
         }),
         prisma.user.findUnique({
           where: { id: patientId },
-          select: {
-            id: true,
-            fullname: true,
-            email: true,
-          },
+          select: { id: true, fullname: true, email: true },
         }),
       ]);
 
-      if (!doctor) {
-        return res.status(404).json({
-          success: false,
-          message: "Doctor not found",
-        });
-      }
+      if (!doctor)
+        return res
+          .status(404)
+          .json({ success: false, message: "Doctor not found" });
+      if (!patient)
+        return res
+          .status(404)
+          .json({ success: false, message: "Patient not found" });
 
-      if (!patient) {
-        return res.status(404).json({
-          success: false,
-          message: "Patient not found",
-        });
-      }
-
-      // Create Payment record with status = "pending"
+      // Create payment record
       const payment = await prisma.payment.create({
         data: {
           amount: parseFloat(amount),
@@ -63,10 +49,10 @@ class PaymentController {
         },
       });
 
-      // Prepare Midtrans transaction parameters
+      // Prepare Midtrans parameters
       const parameter = {
         transaction_details: {
-          order_id: payment.id, // Use Payment.id as order_id
+          order_id: payment.id,
           gross_amount: amount,
         },
         customer_details: {
@@ -87,17 +73,15 @@ class PaymentController {
         custom_field3: payment.id,
       };
 
-      // Create transaction with Midtrans Snap
       const transaction = await snap.createTransaction(parameter);
 
       res.status(201).json({
         success: true,
         message: "Payment created successfully",
         data: {
-          redirectUrl: transaction.redirect_url,
-          token: transaction.token,
-          orderId: payment.id,
-          payment: payment,
+          redirect_url: transaction.redirect_url,
+          snap_token: transaction.token,
+          order_id: payment.id,
         },
       });
     } catch (error) {
@@ -106,7 +90,7 @@ class PaymentController {
     }
   }
 
-  // Midtrans webhook callback handler
+  // ✅ Midtrans webhook callback
   async midtransCallback(req, res, next) {
     try {
       const {
@@ -115,7 +99,6 @@ class PaymentController {
         fraud_status,
         custom_field1: doctorId,
         custom_field2: patientId,
-        custom_field3: paymentId,
       } = req.body;
 
       console.log("Midtrans callback received:", {
@@ -126,80 +109,44 @@ class PaymentController {
         patientId,
       });
 
-      // Find Payment by order_id
       const payment = await prisma.payment.findUnique({
         where: { id: order_id },
       });
-
-      if (!payment) {
-        return res.status(404).json({
-          success: false,
-          message: "Payment not found",
-        });
-      }
+      if (!payment)
+        return res
+          .status(404)
+          .json({ success: false, message: "Payment not found" });
 
       let paymentStatus = payment.status;
 
-      // Handle transaction status from Midtrans
       if (
         transaction_status === "settlement" ||
         (transaction_status === "capture" && fraud_status === "accept")
       ) {
-        // Payment successful
         paymentStatus = "success";
 
-        // Update Payment status
         await prisma.payment.update({
           where: { id: order_id },
           data: { status: "success" },
         });
 
-        // Create Consultation
+        // Create Consultation + Chat
         const consultation = await prisma.consultation.create({
           data: {
-            patientId: patientId || doctorId, // Use custom_field2 for patientId
-            doctorId: doctorId || patientId, // Use custom_field1 for doctorId
+            patientId,
+            doctorId,
             paymentId: order_id,
             startedAt: new Date(),
-            expiresAt: new Date(Date.now() + 30 * 60 * 1000), // 30 minutes from now
+            expiresAt: new Date(Date.now() + 30 * 60 * 1000),
             isActive: true,
           },
-          include: {
-            patient: {
-              select: {
-                id: true,
-                fullname: true,
-                photo: true,
-              },
-            },
-            doctor: {
-              select: {
-                id: true,
-                fullname: true,
-                category: true,
-                photo: true,
-              },
-            },
-          },
         });
+        await prisma.chat.create({ data: { consultationId: consultation.id } });
 
-        // Create Chat linked to Consultation
-        await prisma.chat.create({
-          data: {
-            consultationId: consultation.id,
-          },
-        });
-
-        console.log("Consultation and chat created:", consultation.id);
-
-        // Notify doctor via Socket.IO about new consultation
-        const { getIO } = require("../chatSocket");
         try {
+          const { getIO } = require("../chatSocket");
           const io = getIO();
-          io.emit("new_consultation", {
-            consultation,
-            doctorId: consultation.doctorId,
-          });
+          io.emit("new_consultation", { consultation, doctorId });
         } catch (socketError) {
           console.error("Socket.IO notification error:", socketError.message);
         }
@@ -208,9 +155,7 @@ class PaymentController {
         transaction_status === "cancel" ||
         transaction_status === "deny"
       ) {
-        // Payment failed
         paymentStatus = "failed";
-
         await prisma.payment.update({
           where: { id: order_id },
           data: { status: "failed" },
@@ -234,66 +179,42 @@ class PaymentController {
     }
   }
 
-  // Get all payments
+  // ✅ Get all payments
   async getAllPayments(req, res, next) {
     try {
       const { status } = req.query;
-
-      const where = {};
-      if (status) where.status = status;
+      const where = status ? { status } : {};
 
       const payments = await prisma.payment.findMany({
         where,
         include: {
           consultation: {
             include: {
-              patient: {
-                select: {
-                  id: true,
-                  fullname: true,
-                  email: true,
-                },
-              },
-              doctor: {
-                select: {
-                  id: true,
-                  fullname: true,
-                  category: true,
-                },
-              },
+              patient: { select: { id: true, fullname: true, email: true } },
+              doctor: { select: { id: true, fullname: true, category: true } },
             },
           },
         },
-        orderBy: {
-          createdAt: "desc",
-        },
+        orderBy: { createdAt: "desc" },
       });
 
-      res.json({
-        success: true,
-        data: payments,
-      });
+      res.json({ success: true, data: payments });
     } catch (error) {
       next(error);
     }
   }
 
-  // Get payment by ID
+  // ✅ Get payment by ID
   async getPaymentById(req, res, next) {
     try {
       const { id } = req.params;
       const payment = await prisma.payment.findUnique({
-        where: { id: id },
+        where: { id },
         include: {
           consultation: {
             include: {
               patient: {
-                select: {
-                  id: true,
-                  fullname: true,
-                  email: true,
-                  photo: true,
-                },
+                select: { id: true, fullname: true, email: true, photo: true },
               },
               doctor: {
                 select: {
@@ -308,73 +229,26 @@ class PaymentController {
         },
       });
 
-      if (!payment) {
-        return res.status(404).json({
-          success: false,
-          message: "Payment not found",
-        });
-      }
+      if (!payment)
+        return res
+          .status(404)
+          .json({ success: false, message: "Payment not found" });
 
-      res.json({
-        success: true,
-        data: payment,
-      });
+      res.json({ success: true, data: payment });
     } catch (error) {
       next(error);
     }
   }
 
-  // Create new payment
-  async createPayment(req, res, next) {
-    try {
-      const { amount, status = "pending" } = req.body;
-
-      const payment = await prisma.payment.create({
-        data: {
-          amount,
-          status,
-        },
-      });
-
-      res.status(201).json({
-        success: true,
-        message: "Payment created successfully",
-        data: payment,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  // Update payment status
+  // ✅ Update payment status
   async updatePaymentStatus(req, res, next) {
     try {
       const { id } = req.params;
       const { status } = req.body;
 
       const payment = await prisma.payment.update({
-        where: { id: id },
+        where: { id },
         data: { status },
-        include: {
-          consultation: {
-            include: {
-              patient: {
-                select: {
-                  id: true,
-                  fullname: true,
-                  email: true,
-                },
-              },
-              doctor: {
-                select: {
-                  id: true,
-                  fullname: true,
-                  category: true,
-                },
-              },
-            },
-          },
-        },
       });
 
       res.json({
@@ -387,68 +261,50 @@ class PaymentController {
     }
   }
 
-  // Delete payment
+  // ✅ Delete payment
   async deletePayment(req, res, next) {
     try {
       const { id } = req.params;
-
-      await prisma.payment.delete({
-        where: { id: id },
-      });
-
-      res.json({
-        success: true,
-        message: "Payment deleted successfully",
-      });
+      await prisma.payment.delete({ where: { id } });
+      res.json({ success: true, message: "Payment deleted successfully" });
     } catch (error) {
       next(error);
     }
   }
 
-  // Legacy webhook handler (keeping for compatibility)
-  async handleMidtransWebhook(req, res, next) {
+  // ✅ Get payment status from Midtrans (for frontend)
+  async getStatusByOrderId(req, res) {
     try {
-      // Redirect to the new callback handler
-      return this.midtransCallback(req, res, next);
+      const { orderId } = req.params;
+
+      const core = new midtransClient.CoreApi({
+        isProduction: process.env.NODE_ENV === "production",
+        serverKey: process.env.MIDTRANS_SERVER_KEY,
+        clientKey: process.env.MIDTRANS_CLIENT_KEY,
+      });
+
+      const statusResponse = await core.transaction.status(orderId);
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          order_id: statusResponse.order_id,
+          transaction_status: statusResponse.transaction_status,
+          fraud_status: statusResponse.fraud_status,
+          gross_amount: statusResponse.gross_amount,
+          status_code: statusResponse.status_code,
+          status_message: statusResponse.status_message,
+        },
+      });
     } catch (error) {
-      next(error);
+      console.error("Error getStatusByOrderId:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Gagal mendapatkan status pembayaran",
+        error: error.message,
+      });
     }
   }
 }
-
-exports.getStatusByOrderId = async (req, res) => {
-  try {
-    const { orderId } = req.params;
-
-    const core = new midtransClient.CoreApi({
-      isProduction: process.env.NODE_ENV === "production",
-      serverKey: process.env.MIDTRANS_SERVER_KEY,
-      clientKey: process.env.MIDTRANS_CLIENT_KEY,
-    });
-
-    // Panggil API Midtrans
-    const statusResponse = await core.transaction.status(orderId);
-
-    // Kembalikan hasil ke frontend
-    return res.status(200).json({
-      success: true,
-      data: {
-        order_id: statusResponse.order_id,
-        transaction_status: statusResponse.transaction_status,
-        fraud_status: statusResponse.fraud_status,
-        gross_amount: statusResponse.gross_amount,
-        status_code: statusResponse.status_code,
-        status_message: statusResponse.status_message,
-      },
-    });
-  } catch (error) {
-    console.error("Error getStatusByOrderId:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Gagal mendapatkan status pembayaran",
-      error: error.message,
-    });
-  }
-};
 
 module.exports = new PaymentController();
