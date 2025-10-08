@@ -51,5 +51,7 @@ router.get(
   authMiddleware,
   chatController.getConsultationStatus
 );
+// List all chats (like WhatsApp home screen)
+router.get("/list", chatController.listChats);
 
 module.exports = router;
