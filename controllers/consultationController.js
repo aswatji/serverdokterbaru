@@ -1,56 +1,6 @@
 const prisma = require("../config/database");
 
 class ConsultationController {
-  async getActiveConsultation(req, res, next) {
-    try {
-      const { userId, doctorId } = req.params;
-
-      // Cari konsultasi aktif
-      const consultation = await prisma.consultation.findFirst({
-        where: {
-          patientId: parseInt(userId),
-          doctorId: parseInt(doctorId),
-          isActive: true,
-          expiresAt: { gt: new Date() }, // belum expired
-        },
-        include: {
-          chat: {
-            include: {
-              messages: {
-                orderBy: { createdAt: "asc" },
-                include: {
-                  user: { select: { id: true, fullname: true, photo: true } },
-                  doctor: { select: { id: true, fullname: true, photo: true } },
-                },
-              },
-            },
-          },
-          doctor: {
-            select: { id: true, fullname: true, category: true, photo: true },
-          },
-          patient: {
-            select: { id: true, fullname: true, photo: true },
-          },
-        },
-      });
-
-      if (!consultation) {
-        return res.status(404).json({
-          success: false,
-          message: "Tidak ada konsultasi aktif ditemukan",
-        });
-      }
-
-      res.status(200).json({
-        success: true,
-        data: consultation,
-      });
-    } catch (error) {
-      console.error("Error getActiveConsultation:", error);
-      next(error);
-    }
-  }
-
   // Get all consultations
   async getAllConsultations(req, res, next) {
     try {

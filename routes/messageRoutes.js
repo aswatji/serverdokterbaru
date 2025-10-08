@@ -2,7 +2,6 @@ const express = require("express");
 const { body } = require("express-validator");
 const messageController = require("../controllers/messageController");
 const validateRequest = require("../middleware/validation");
-const { authMiddleware } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
@@ -40,9 +39,5 @@ router.put(
   messageController.updateMessage
 );
 router.delete("/:id", messageController.deleteMessage);
-router.get("/:chatId", authMiddleware, messageController.getMessagesByChatId);
-
-// Kirim pesan baru
-router.post("/", authMiddleware, messageController.createMessage);
 
 module.exports = router;

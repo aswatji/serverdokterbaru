@@ -2,7 +2,6 @@ const express = require("express");
 const { body } = require("express-validator");
 const consultationController = require("../controllers/consultationController");
 const validateRequest = require("../middleware/validation");
-const { authMiddleware } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
@@ -52,10 +51,5 @@ router.put(
 );
 router.put("/:id/end", consultationController.endConsultation);
 router.delete("/:id", consultationController.deleteConsultation);
-router.get(
-  "/active/:userId/:doctorId",
-  authMiddleware,
-  consultationController.getActiveConsultation
-);
 
 module.exports = router;
