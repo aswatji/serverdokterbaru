@@ -39,5 +39,9 @@ router.put(
   messageController.updateMessage
 );
 router.delete("/:id", messageController.deleteMessage);
+router.get("/:chatId", authMiddleware, messageController.getMessagesByChatId);
+
+// Kirim pesan baru
+router.post("/", authMiddleware, messageController.createMessage);
 
 module.exports = router;

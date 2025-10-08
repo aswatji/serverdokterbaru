@@ -51,5 +51,10 @@ router.put(
 );
 router.put("/:id/end", consultationController.endConsultation);
 router.delete("/:id", consultationController.deleteConsultation);
+router.get(
+  "/active/:userId/:doctorId",
+  authMiddleware,
+  consultationController.getActiveConsultation
+);
 
 module.exports = router;
