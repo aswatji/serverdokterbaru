@@ -364,6 +364,66 @@ class ChatController {
       next(error);
     }
   }
+  // ✅ NEW: List all chats like WhatsApp
+  async listChats(req, res, next) {
+    try {
+      const { userId, doctorId } = req.query;
+
+      if (!userId && !doctorId) {
+        return res.status(400).json({
+          success: false,
+          message: "Please provide userId or doctorId",
+        });
+      }
+
+      const consultations = await prisma.consultation.findMany({
+        where: {
+          OR: [
+            userId ? { patientId: userId } : undefined,
+            doctorId ? { doctorId: doctorId } : undefined,
+          ].filter(Boolean),
+        },
+        include: {
+          doctor: {
+            select: { id: true, fullname: true, category: true, photo: true },
+          },
+          patient: {
+            select: { id: true, fullname: true, photo: true },
+          },
+          chat: {
+            include: {
+              messages: {
+                orderBy: { sentAt: "desc" },
+                take: 1, // hanya ambil pesan terakhir
+              },
+            },
+          },
+        },
+        orderBy: { startedAt: "desc" },
+      });
+
+      const formatted = consultations.map((c) => {
+        const lastMessage = c.chat?.messages?.[0];
+        return {
+          consultationId: c.id,
+          doctor: c.doctor,
+          patient: c.patient,
+          lastMessage: lastMessage?.content || null,
+          lastMessageTime: lastMessage?.sentAt || c.startedAt,
+          isActive: c.isActive,
+        };
+      });
+
+      res.json({
+        success: true,
+        message: "Chat list fetched successfully",
+        data: formatted,
+      });
+    } catch (error) {
+      console.error("Error listing chats:", error);
+      next(error);
+    }
+  }
 
   // Get all chats (legacy)
   async getAllChats(req, res, next) {

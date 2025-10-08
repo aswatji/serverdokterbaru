@@ -51,5 +51,6 @@ router.put(
 );
 router.put("/:id/end", consultationController.endConsultation);
 router.delete("/:id", consultationController.deleteConsultation);
+router.get("/list", chatController.listChats);
 
 module.exports = router;
