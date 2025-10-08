@@ -3,7 +3,8 @@ const midtransClient = require("midtrans-client");
 
 // Initialize Midtrans Snap
 const snap = new midtransClient.Snap({
-  isProduction: process.env.NODE_ENV === "development",
+  // isProduction: process.env.NODE_ENV === "development",
+  isProduction: false,
   serverKey: process.env.MIDTRANS_SERVER_KEY,
 });
 
