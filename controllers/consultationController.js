@@ -29,15 +29,19 @@ class ConsultationController {
         orderBy: { startedAt: "desc" },
       });
 
-      res.json({ success: true, data: consultations });
+      return res.json({ success: true, data: consultations });
     } catch (error) {
-      console.error("❌ Error getAllConsultations:", error);
-      next(error);
+      console.error("❌ Error fetching consultations:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch consultations",
+        error: error.message,
+      });
     }
   }
 
   // ✅ Get consultation by ID
-  async getConsultationById(req, res, next) {
+  async getConsultationById(req, res) {
     try {
       const { id } = req.params;
       const consultation = await prisma.consultation.findUnique({
@@ -64,24 +68,30 @@ class ConsultationController {
         },
       });
 
-      if (!consultation)
+      if (!consultation) {
         return res
           .status(404)
           .json({ success: false, message: "Consultation not found" });
+      }
 
-      res.json({ success: true, data: consultation });
+      return res.json({ success: true, data: consultation });
     } catch (error) {
-      console.error("❌ Error getConsultationById:", error);
-      next(error);
+      console.error("❌ Error getting consultation:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to get consultation",
+        error: error.message,
+      });
     }
   }
 
-  // ✅ Create new consultation
-  async createConsultation(req, res, next) {
+  // ✅ Create new consultation (final & stable)
+  async createConsultation(req, res) {
     try {
       console.log("📩 Consultation request body:", req.body);
       const { patientId, doctorId, paymentId, duration = 30 } = req.body;
 
+      // 🔍 Validasi data wajib
       if (!patientId || !doctorId || !paymentId) {
         return res.status(400).json({
           success: false,
@@ -89,7 +99,7 @@ class ConsultationController {
         });
       }
 
-      // 🔍 Cek apakah paymentId sudah pernah digunakan
+      // 🔍 Cek apakah paymentId sudah digunakan
       const existing = await prisma.consultation.findUnique({
         where: { paymentId },
         include: {
@@ -105,7 +115,7 @@ class ConsultationController {
         const isExpired = new Date(existing.expiresAt) <= now;
 
         if (isExpired) {
-          console.log("⚠️ Existing consultation found but expired.");
+          console.log("⚠️ Existing consultation expired.");
           return res.status(403).json({
             success: false,
             error: "consultation_expired",
@@ -123,10 +133,10 @@ class ConsultationController {
         });
       }
 
-      // 🕒 Tentukan waktu berakhir konsultasi (default 30 menit)
+      // 🔹 Hitung waktu expired (default 30 menit)
       const expiresAt = new Date(Date.now() + duration * 60 * 1000);
 
-      // 🧠 Buat consultation baru
+      // 🔹 Buat consultation baru
       const consultation = await prisma.consultation.create({
         data: { patientId, doctorId, paymentId, expiresAt },
         include: {
@@ -140,22 +150,19 @@ class ConsultationController {
         },
       });
 
-      // 💬 Cek apakah chat sudah ada untuk consultation ini
+      // 🔹 Buat chat (hindari duplikat)
       let chat = await prisma.chat.findUnique({
         where: { consultationId: consultation.id },
       });
 
-      // Jika belum ada, buat baru
       if (!chat) {
         chat = await prisma.chat.create({
           data: { consultationId: consultation.id },
         });
-        console.log("💬 New chat created:", chat.id);
-      } else {
-        console.log("💬 Existing chat reused:", chat.id);
+        console.log("💬 Chat created:", chat.id);
       }
 
-      console.log("✅ New consultation created:", consultation.id);
+      console.log("✅ Consultation created successfully:", consultation.id);
 
       return res.status(201).json({
         success: true,
@@ -176,7 +183,7 @@ class ConsultationController {
   }
 
   // ✅ Update consultation
-  async updateConsultation(req, res, next) {
+  async updateConsultation(req, res) {
     try {
       const { id } = req.params;
       const { paymentId, expiresAt, isActive } = req.body;
@@ -201,19 +208,23 @@ class ConsultationController {
         },
       });
 
-      res.json({
+      return res.json({
         success: true,
         message: "Consultation updated successfully",
         data: consultation,
       });
     } catch (error) {
-      console.error("❌ Error updateConsultation:", error);
-      next(error);
+      console.error("❌ Error updating consultation:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to update consultation",
+        error: error.message,
+      });
     }
   }
 
   // ✅ End consultation manually
-  async endConsultation(req, res, next) {
+  async endConsultation(req, res) {
     try {
       const { id } = req.params;
 
@@ -226,30 +237,38 @@ class ConsultationController {
         },
       });
 
-      res.json({
+      return res.json({
         success: true,
         message: "Consultation ended successfully",
         data: consultation,
       });
     } catch (error) {
-      console.error("❌ Error endConsultation:", error);
-      next(error);
+      console.error("❌ Error ending consultation:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to end consultation",
+        error: error.message,
+      });
     }
   }
 
   // ✅ Delete consultation
-  async deleteConsultation(req, res, next) {
+  async deleteConsultation(req, res) {
     try {
       const { id } = req.params;
       await prisma.consultation.delete({ where: { id } });
 
-      res.json({
+      return res.json({
         success: true,
         message: "Consultation deleted successfully",
       });
     } catch (error) {
-      console.error("❌ Error deleteConsultation:", error);
-      next(error);
+      console.error("❌ Error deleting consultation:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to delete consultation",
+        error: error.message,
+      });
     }
   }
 }
