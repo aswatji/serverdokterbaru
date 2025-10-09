@@ -90,13 +90,28 @@ class ConsultationController {
       // Cegah duplikat consultation untuk payment yang sama
       const existing = await prisma.consultation.findUnique({
         where: { paymentId },
-        include: { chat: true },
+        include: { chat: true, payment: true, patient: true, doctor: true },
       });
 
       if (existing) {
-        return res.status(400).json({
-          success: false,
-          error: "paymentId already exists",
+        const now = new Date();
+        const isExpired = existing.expiresAt < now;
+        if (expired) {
+          // Kalau sudah expired, boleh buat consultation baru
+          console.log(
+            "⚠️ Existing consultation found but expired. Creating new one."
+          );
+          return res.status(403).json({
+            success: false,
+            error: "consultation_expired",
+            message:
+              "konsultasi telah berakhir, silakan buat pembayaran baru baru",
+            data: existing,
+          });
+        }
+        return res.status(200).json({
+          success: true,
+          message: "konsultasi sudah ada ",
           data: existing,
         });
       }
