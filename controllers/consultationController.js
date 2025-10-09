@@ -21,9 +21,7 @@ class ConsultationController {
           },
           payment: true,
           chat: {
-            include: {
-              _count: { select: { messages: true } },
-            },
+            include: { _count: { select: { messages: true } } },
           },
         },
         orderBy: { startedAt: "desc" },
@@ -68,11 +66,10 @@ class ConsultationController {
         },
       });
 
-      if (!consultation) {
+      if (!consultation)
         return res
           .status(404)
           .json({ success: false, message: "Consultation not found" });
-      }
 
       return res.json({ success: true, data: consultation });
     } catch (error) {
@@ -85,13 +82,13 @@ class ConsultationController {
     }
   }
 
-  // ✅ Create new consultation (final & stable)
+  // ✅ Create new consultation — fully fixed for your Prisma schema
   async createConsultation(req, res) {
     try {
       console.log("📩 Consultation request body:", req.body);
       const { patientId, doctorId, paymentId, duration = 30 } = req.body;
 
-      // 🔍 Validasi data wajib
+      // 🔍 Validasi input wajib
       if (!patientId || !doctorId || !paymentId) {
         return res.status(400).json({
           success: false,
@@ -99,7 +96,7 @@ class ConsultationController {
         });
       }
 
-      // 🔍 Cek apakah paymentId sudah digunakan
+      // 🔍 Cek apakah sudah ada consultation dengan paymentId yang sama
       const existing = await prisma.consultation.findUnique({
         where: { paymentId },
         include: {
@@ -133,12 +130,17 @@ class ConsultationController {
         });
       }
 
-      // 🔹 Hitung waktu expired (default 30 menit)
+      // 🔹 Hitung waktu kadaluarsa (default 30 menit)
       const expiresAt = new Date(Date.now() + duration * 60 * 1000);
 
       // 🔹 Buat consultation baru
       const consultation = await prisma.consultation.create({
-        data: { patientId, doctorId, paymentId, expiresAt },
+        data: {
+          patient: { connect: { id: patientId } },
+          doctor: { connect: { id: doctorId } },
+          payment: { connect: { id: paymentId } },
+          expiresAt,
+        },
         include: {
           patient: {
             select: { id: true, fullname: true, email: true, photo: true },
@@ -150,34 +152,25 @@ class ConsultationController {
         },
       });
 
-      // 🔹 Buat chat (hindari duplikat)
-      let chat = await prisma.chat.findUnique({
-        where: { consultationId: consultation.id },
+      // 🔹 Buat chat (satu per consultation)
+      const chat = await prisma.chat.create({
+        data: { consultationId: consultation.id },
       });
-
-      if (!chat) {
-        chat = await prisma.chat.create({
-          data: { consultationId: consultation.id },
-        });
-        console.log("💬 Chat created:", chat.id);
-      }
 
       console.log("✅ Consultation created successfully:", consultation.id);
 
       return res.status(201).json({
         success: true,
         message: "Consultation and chat created successfully",
-        data: {
-          ...consultation,
-          chat,
-        },
+        data: { ...consultation, chat },
       });
     } catch (error) {
-      console.error("❌ Error creating consultation:", error);
+      console.error("❌ Prisma Error (createConsultation):", error);
       return res.status(500).json({
         success: false,
         message: "Internal server error during consultation creation",
         error: error.message,
+        meta: error.meta,
       });
     }
   }
