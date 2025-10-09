@@ -77,6 +77,7 @@ class ConsultationController {
   // ✅ Create new consultation (return chat + patient + doctor)
   async createConsultation(req, res, next) {
     try {
+      console.log("📩 Consultation request body:", req.body);
       const { patientId, doctorId, paymentId, duration = 30 } = req.body;
 
       if (!patientId || !doctorId || !paymentId) {
