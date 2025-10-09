@@ -2,7 +2,7 @@ const prisma = require("../config/database");
 
 class ConsultationController {
   // ✅ Get all consultations
-  async getAllConsultations(req, res, next) {
+  async getAllConsultations(req, res) {
     try {
       const { patientId, doctorId, isActive } = req.query;
       const where = {};
@@ -20,9 +20,7 @@ class ConsultationController {
             select: { id: true, fullname: true, category: true, photo: true },
           },
           payment: true,
-          chat: {
-            include: { _count: { select: { messages: true } } },
-          },
+          chat: { include: { _count: { select: { messages: true } } } },
         },
         orderBy: { startedAt: "desc" },
       });
@@ -82,13 +80,12 @@ class ConsultationController {
     }
   }
 
-  // ✅ Create new consultation — fully fixed for your Prisma schema
+  // ✅ Create new consultation — FINAL FIX
   async createConsultation(req, res) {
     try {
       console.log("📩 Consultation request body:", req.body);
       const { patientId, doctorId, paymentId, duration = 30 } = req.body;
 
-      // 🔍 Validasi input wajib
       if (!patientId || !doctorId || !paymentId) {
         return res.status(400).json({
           success: false,
@@ -96,15 +93,10 @@ class ConsultationController {
         });
       }
 
-      // 🔍 Cek apakah sudah ada consultation dengan paymentId yang sama
+      // 🔍 Cek apakah sudah ada consultation dengan paymentId
       const existing = await prisma.consultation.findUnique({
         where: { paymentId },
-        include: {
-          chat: true,
-          payment: true,
-          patient: true,
-          doctor: true,
-        },
+        include: { chat: true, payment: true, patient: true, doctor: true },
       });
 
       if (existing) {
@@ -130,7 +122,7 @@ class ConsultationController {
         });
       }
 
-      // 🔹 Hitung waktu kadaluarsa (default 30 menit)
+      // 🔹 Waktu expired (30 menit)
       const expiresAt = new Date(Date.now() + duration * 60 * 1000);
 
       // 🔹 Buat consultation baru
@@ -138,7 +130,7 @@ class ConsultationController {
         data: {
           patient: { connect: { id: patientId } },
           doctor: { connect: { id: doctorId } },
-          payment: { connect: { id: paymentId } },
+          paymentId, // cukup isi ID saja, tidak pakai connect
           expiresAt,
         },
         include: {
@@ -152,12 +144,12 @@ class ConsultationController {
         },
       });
 
-      // 🔹 Buat chat (satu per consultation)
+      // 🔹 Buat chat (1 per konsultasi)
       const chat = await prisma.chat.create({
         data: { consultationId: consultation.id },
       });
 
-      console.log("✅ Consultation created successfully:", consultation.id);
+      console.log("✅ Consultation created:", consultation.id);
 
       return res.status(201).json({
         success: true,
@@ -220,7 +212,6 @@ class ConsultationController {
   async endConsultation(req, res) {
     try {
       const { id } = req.params;
-
       const consultation = await prisma.consultation.update({
         where: { id },
         data: { isActive: false, expiresAt: new Date() },
@@ -250,7 +241,6 @@ class ConsultationController {
     try {
       const { id } = req.params;
       await prisma.consultation.delete({ where: { id } });
-
       return res.json({
         success: true,
         message: "Consultation deleted successfully",
