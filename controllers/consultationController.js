@@ -140,10 +140,20 @@ class ConsultationController {
         },
       });
 
-      // 💬 Buat chat baru untuk consultation
-      const chat = await prisma.chat.create({
-        data: { consultationId: consultation.id },
+      // 💬 Cek apakah chat sudah ada untuk consultation ini
+      let chat = await prisma.chat.findUnique({
+        where: { consultationId: consultation.id },
       });
+
+      // Jika belum ada, buat baru
+      if (!chat) {
+        chat = await prisma.chat.create({
+          data: { consultationId: consultation.id },
+        });
+        console.log("💬 New chat created:", chat.id);
+      } else {
+        console.log("💬 Existing chat reused:", chat.id);
+      }
 
       console.log("✅ New consultation created:", consultation.id);
 
