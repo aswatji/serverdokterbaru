@@ -87,31 +87,36 @@ class ConsultationController {
         });
       }
 
-      // Cegah duplikat consultation untuk payment yang sama
+      // 🔹 Cegah duplikat consultation untuk payment yang sama
       const existing = await prisma.consultation.findUnique({
         where: { paymentId },
-        include: { chat: true, payment: true, patient: true, doctor: true },
+        include: {
+          chat: true,
+          payment: true,
+          patient: true,
+          doctor: true,
+        },
       });
 
       if (existing) {
         const now = new Date();
-        const isExpired = existing.expiresAt < now;
-        if (expired) {
-          // Kalau sudah expired, boleh buat consultation baru
-          console.log(
-            "⚠️ Existing consultation found but expired. Creating new one."
-          );
+        const isExpired = new Date(existing.expiresAt) <= now;
+
+        if (isExpired) {
+          console.log("⚠️ Existing consultation found but expired.");
           return res.status(403).json({
             success: false,
             error: "consultation_expired",
             message:
-              "konsultasi telah berakhir, silakan buat pembayaran baru baru",
+              "Konsultasi telah berakhir. Silakan lakukan pembayaran baru.",
             data: existing,
           });
         }
+
+        console.log("✅ Existing active consultation found:", existing.id);
         return res.status(200).json({
           success: true,
-          message: "konsultasi sudah ada ",
+          message: "Consultation already exists and still active.",
           data: existing,
         });
       }
@@ -136,6 +141,8 @@ class ConsultationController {
       const chat = await prisma.chat.create({
         data: { consultationId: consultation.id },
       });
+
+      console.log("✅ New consultation created:", consultation.id);
 
       // 🔹 Return langsung consultation + chat
       return res.status(201).json({
