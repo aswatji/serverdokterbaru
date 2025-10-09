@@ -16,6 +16,7 @@ const prisma = require("./config/database");
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3000;
+const chatRoutes = require("./routes/chatRoutes");
 
 console.log("🚀 Starting Dokter App Server...");
 
@@ -81,6 +82,7 @@ async function startServer() {
 
     // Routes
     app.use("/api", routes);
+    app.use("/api/chat", chatRoutes);
 
     // Root endpoint
     app.get("/", (req, res) => {

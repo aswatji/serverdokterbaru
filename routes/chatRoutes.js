@@ -41,7 +41,7 @@ router.post(
 router.get(
   "/messages/:consultationId",
   authMiddleware,
-  chatController.getMessages
+  chatController.getMessagesbyConsultation
 );
 
 // Additional routes

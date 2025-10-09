@@ -66,22 +66,14 @@ class ChatController {
         });
       }
 
-      // Tentukan pengirim (user atau doctor)
-      const messageData = {
-        chatId: chat.id,
-        sender,
-        content,
-      };
-
-      if (sender === "user") {
-        messageData.userId = user?.id || null;
-      } else if (sender === "doctor") {
-        messageData.doctorId = user?.id || null;
-      }
-
-      // Simpan pesan ke database
       const message = await prisma.message.create({
-        data: messageData,
+        data: {
+          chatId: chat.id,
+          sender,
+          content,
+          userId: sender === "user" ? userId : null,
+          doctorId: sender === "doctor" ? doctorId : null,
+        },
         include: {
           user: { select: { id: true, fullname: true, photo: true } },
           doctor: { select: { id: true, fullname: true, photo: true } },
@@ -90,7 +82,9 @@ class ChatController {
 
       // Emit ke Socket.IO (jika kamu sudah setup io di server)
       if (req.io) {
-        req.io.to(chat.id).emit("new_message", message);
+        req.io
+          .to(`consultation:${consultationId}`)
+          .emit("new_message", message);
       }
 
       return res.status(201).json({
@@ -221,6 +215,40 @@ class ChatController {
       res.status(500).json({
         success: false,
         message: "Internal server error",
+        error: error.message,
+      });
+    }
+  }
+  async getMessagesByConsultation(req, res) {
+    try {
+      const { consultationId } = req.params;
+
+      const chat = await prisma.chat.findUnique({
+        where: { consultationId },
+        include: {
+          messages: {
+            include: {
+              user: { select: { id: true, fullname: true, photo: true } },
+              doctor: { select: { id: true, fullname: true, photo: true } },
+            },
+            orderBy: { sentAt: "asc" },
+          },
+        },
+      });
+
+      if (!chat) {
+        return res.status(404).json({
+          success: false,
+          message: "Chat not found for this consultation",
+        });
+      }
+
+      return res.json({ success: true, data: chat });
+    } catch (error) {
+      console.error("❌ Error getMessagesByConsultation:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch messages",
         error: error.message,
       });
     }
