@@ -31,6 +31,7 @@ class ConsultationController {
 
       res.json({ success: true, data: consultations });
     } catch (error) {
+      console.error("❌ Error getAllConsultations:", error);
       next(error);
     }
   }
@@ -70,11 +71,12 @@ class ConsultationController {
 
       res.json({ success: true, data: consultation });
     } catch (error) {
+      console.error("❌ Error getConsultationById:", error);
       next(error);
     }
   }
 
-  // ✅ Create new consultation (return chat + patient + doctor)
+  // ✅ Create new consultation
   async createConsultation(req, res, next) {
     try {
       console.log("📩 Consultation request body:", req.body);
@@ -87,7 +89,7 @@ class ConsultationController {
         });
       }
 
-      // 🔹 Cegah duplikat consultation untuk payment yang sama
+      // 🔍 Cek apakah paymentId sudah pernah digunakan
       const existing = await prisma.consultation.findUnique({
         where: { paymentId },
         include: {
@@ -121,9 +123,10 @@ class ConsultationController {
         });
       }
 
-      const expiresAt = new Date(Date.now() + duration * 60 * 1000); // 30 minutes default
+      // 🕒 Tentukan waktu berakhir konsultasi (default 30 menit)
+      const expiresAt = new Date(Date.now() + duration * 60 * 1000);
 
-      // 🔹 Buat consultation baru
+      // 🧠 Buat consultation baru
       const consultation = await prisma.consultation.create({
         data: { patientId, doctorId, paymentId, expiresAt },
         include: {
@@ -137,14 +140,13 @@ class ConsultationController {
         },
       });
 
-      // 🔹 Buat chat untuk consultation ini
+      // 💬 Buat chat baru untuk consultation
       const chat = await prisma.chat.create({
         data: { consultationId: consultation.id },
       });
 
       console.log("✅ New consultation created:", consultation.id);
 
-      // 🔹 Return langsung consultation + chat
       return res.status(201).json({
         success: true,
         message: "Consultation and chat created successfully",
@@ -155,7 +157,11 @@ class ConsultationController {
       });
     } catch (error) {
       console.error("❌ Error creating consultation:", error);
-      next(error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error during consultation creation",
+        error: error.message,
+      });
     }
   }
 
@@ -191,11 +197,12 @@ class ConsultationController {
         data: consultation,
       });
     } catch (error) {
+      console.error("❌ Error updateConsultation:", error);
       next(error);
     }
   }
 
-  // ✅ End consultation
+  // ✅ End consultation manually
   async endConsultation(req, res, next) {
     try {
       const { id } = req.params;
@@ -215,6 +222,7 @@ class ConsultationController {
         data: consultation,
       });
     } catch (error) {
+      console.error("❌ Error endConsultation:", error);
       next(error);
     }
   }
@@ -225,8 +233,12 @@ class ConsultationController {
       const { id } = req.params;
       await prisma.consultation.delete({ where: { id } });
 
-      res.json({ success: true, message: "Consultation deleted successfully" });
+      res.json({
+        success: true,
+        message: "Consultation deleted successfully",
+      });
     } catch (error) {
+      console.error("❌ Error deleteConsultation:", error);
       next(error);
     }
   }
