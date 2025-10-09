@@ -107,6 +107,87 @@ class ChatController {
       });
     }
   }
+  // ✅ Tambahkan di dalam class ChatController (kalau pakai class)
+  async getConsultationStatus(req, res) {
+    try {
+      const { consultationId } = req.params;
+
+      const consultation = await prisma.consultation.findUnique({
+        where: { id: consultationId },
+        include: {
+          doctor: { select: { id: true, fullname: true, category: true } },
+          patient: { select: { id: true, fullname: true } },
+        },
+      });
+
+      if (!consultation) {
+        return res.status(404).json({
+          success: false,
+          message: "Consultation not found",
+        });
+      }
+
+      const now = new Date();
+      const expiresAt = new Date(consultation.expiresAt);
+      const remainingTime = Math.max(0, expiresAt - now);
+
+      return res.json({
+        success: true,
+        data: {
+          consultationId: consultation.id,
+          isActive: consultation.isActive,
+          timeRemainingMs: remainingTime,
+          expiresAt,
+          doctor: consultation.doctor,
+          patient: consultation.patient,
+        },
+      });
+    } catch (error) {
+      console.error("❌ Error getConsultationStatus:", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error",
+        error: error.message,
+      });
+    }
+  }
+
+  // ✅ Tambahkan juga fungsi listChats (kalau belum ada)
+  async listChats(req, res) {
+    try {
+      const chats = await prisma.chat.findMany({
+        include: {
+          consultation: {
+            include: {
+              doctor: {
+                select: { fullname: true, category: true, photo: true },
+              },
+              patient: { select: { fullname: true, photo: true } },
+            },
+          },
+          messages: {
+            orderBy: { sentAt: "desc" },
+            take: 1,
+          },
+        },
+        orderBy: {
+          consultation: { startedAt: "desc" },
+        },
+      });
+
+      return res.json({
+        success: true,
+        data: chats,
+      });
+    } catch (error) {
+      console.error("❌ Error listChats:", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error",
+        error: error.message,
+      });
+    }
+  }
 
   // ✅ 3. Ambil semua chat (misal daftar konsultasi user)
   async getAllChats(req, res) {
@@ -115,7 +196,14 @@ class ChatController {
         include: {
           consultation: {
             include: {
-              doctor: { select: { id: true, fullname: true, category: true, photo: true } },
+              doctor: {
+                select: {
+                  id: true,
+                  fullname: true,
+                  category: true,
+                  photo: true,
+                },
+              },
               patient: { select: { id: true, fullname: true, photo: true } },
             },
           },
