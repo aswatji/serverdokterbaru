@@ -130,7 +130,7 @@ class ConsultationController {
         data: {
           patient: { connect: { id: patientId } },
           doctor: { connect: { id: doctorId } },
-          paymentId, // cukup isi ID saja, tidak pakai connect
+          payment: { connect: { id: paymentId } },
           expiresAt,
         },
         include: {
