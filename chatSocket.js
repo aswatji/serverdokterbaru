@@ -23,16 +23,16 @@ function initChatSocket(server) {
   io.on("connection", (socket) => {
     console.log(`Client connected: ${socket.id}`);
 
-    // Handle joining consultation room
-    socket.on("join_consultation", (consultationId) => {
-      const roomName = `consultation:${consultationId}`;
+    // Handle joining chat room
+    socket.on("join_chat", (chatId) => {
+      const roomName = `chat:${chatId}`;
       socket.join(roomName);
       console.log(`Socket ${socket.id} joined room: ${roomName}`);
 
-      // Notify other users in the room
+      // Notify other users in the room about new participant
       socket.to(roomName).emit("user_joined", {
         socketId: socket.id,
-        consultationId: consultationId,
+        chatId: chatId,
         timestamp: new Date(),
       });
     });
@@ -40,12 +40,12 @@ function initChatSocket(server) {
     // Handle sending messages
     socket.on("send_message", async (payload) => {
       try {
-        const { consultationId, sender, content } = payload;
+        const { chatId, sender, content } = payload;
 
         // Validate payload
-        if (!consultationId || !sender || !content) {
+        if (!chatId || !sender || !content) {
           socket.emit("error", {
-            message: "Missing required fields: consultationId, sender, content",
+            message: "Missing required fields: chatId, sender, content",
           });
           return;
         }
@@ -58,45 +58,45 @@ function initChatSocket(server) {
           return;
         }
 
-        // Get consultation with doctor and schedule details
-        const consultation = await prisma.consultation.findUnique({
-          where: { id: consultationId },
+        const now = new Date();
+
+        // Get chat with doctor details instead of consultation
+        const chat = await prisma.chat.findUnique({
+          where: { id: chatId },
           include: {
             doctor: {
               include: {
                 schedules: true,
               },
             },
-            patient: {
+            user: {
               select: {
                 id: true,
                 fullname: true,
               },
             },
-            chat: true,
           },
         });
 
-        if (!consultation) {
+        if (!chat) {
           socket.emit("error", {
-            message: "Consultation not found",
+            message: "Chat not found",
           });
           return;
         }
 
-        // Validate consultation is active
-        if (!consultation.isActive) {
+        // Validate chat is active
+        if (!chat.isActive) {
           socket.emit("error", {
-            message: "Consultation is not active",
+            message: "Chat is not active",
           });
           return;
         }
 
-        // Validate consultation has not expired
-        const now = new Date();
-        if (now > consultation.expiresAt) {
+        // Validate chat has not expired (if expiresAt field exists)
+        if (chat.expiresAt && now > chat.expiresAt) {
           socket.emit("error", {
-            message: "Consultation has expired",
+            message: "Chat has expired",
           });
           return;
         }
@@ -105,24 +105,22 @@ function initChatSocket(server) {
         const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
         const currentTime = now.getHours() * 60 + now.getMinutes(); // Minutes from midnight
 
-        const isDoctorAvailable = consultation.doctor.schedules.some(
-          (schedule) => {
-            if (schedule.dayOfWeek !== currentDay) return false;
+        const isDoctorAvailable = chat.doctor.schedules.some((schedule) => {
+          if (schedule.dayOfWeek !== currentDay) return false;
 
-            const startTime = new Date(schedule.startTime);
-            const endTime = new Date(schedule.endTime);
+          const startTime = new Date(schedule.startTime);
+          const endTime = new Date(schedule.endTime);
 
-            const scheduleStartMinutes =
-              startTime.getHours() * 60 + startTime.getMinutes();
-            const scheduleEndMinutes =
-              endTime.getHours() * 60 + endTime.getMinutes();
+          const scheduleStartMinutes =
+            startTime.getHours() * 60 + startTime.getMinutes();
+          const scheduleEndMinutes =
+            endTime.getHours() * 60 + endTime.getMinutes();
 
-            return (
-              currentTime >= scheduleStartMinutes &&
-              currentTime <= scheduleEndMinutes
-            );
-          }
-        );
+          return (
+            currentTime >= scheduleStartMinutes &&
+            currentTime <= scheduleEndMinutes
+          );
+        });
 
         if (!isDoctorAvailable && sender === "doctor") {
           socket.emit("error", {
@@ -131,70 +129,75 @@ function initChatSocket(server) {
           return;
         }
 
-        // Ensure chat exists
-        if (!consultation.chat) {
-          socket.emit("error", {
-            message: "Chat not found for this consultation",
+        // Get or create today's chat date
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Set to start of day
+
+        let chatDate = await prisma.chatDate.findFirst({
+          where: {
+            chatId: chat.id,
+            date: today,
+          },
+        });
+
+        if (!chatDate) {
+          chatDate = await prisma.chatDate.create({
+            data: {
+              chatId: chat.id,
+              date: today,
+            },
           });
-          return;
         }
 
         // Prepare message data
         let messageData = {
-          chatId: consultation.chat.id,
+          chatDateId: chatDate.id,
           sender,
           content,
           sentAt: now,
         };
 
-        // Set userId or doctorId based on sender
-        if (sender === "user") {
-          messageData.userId = consultation.patientId;
-        } else if (sender === "doctor") {
-          messageData.doctorId = consultation.doctorId;
-        }
-
         // Create message in Prisma
-        const savedMessage = await prisma.message.create({
+        const savedMessage = await prisma.chatMessage.create({
           data: messageData,
           include: {
-            user: {
-              select: {
-                id: true,
-                fullname: true,
-                photo: true,
-              },
-            },
-            doctor: {
-              select: {
-                id: true,
-                name: true,
-                photo: true,
-              },
-            },
-            chat: {
-              select: {
-                id: true,
-                consultationId: true,
+            chatDate: {
+              include: {
+                chat: {
+                  include: {
+                    user: {
+                      select: {
+                        id: true,
+                        fullname: true,
+                        photo: true,
+                      },
+                    },
+                    doctor: {
+                      select: {
+                        id: true,
+                        fullname: true,
+                        photo: true,
+                      },
+                    },
+                  },
+                },
               },
             },
           },
         });
 
-        console.log(
-          `Message saved: ${savedMessage.id} in consultation: ${consultationId}`
-        );
+        console.log(`Message saved: ${savedMessage.id} in chat: ${chatId}`);
 
-        // Broadcast message to all clients in the consultation room
-        const roomName = `consultation:${consultationId}`;
+        // Broadcast message to all clients in the chat room
+        const roomName = `chat:${chatId}`;
         io.to(roomName).emit("new_message", {
           messageId: savedMessage.id,
-          consultationId: consultationId,
+          chatId: chatId,
           sender: savedMessage.sender,
           content: savedMessage.content,
           sentAt: savedMessage.sentAt,
-          user: savedMessage.user,
-          doctor: savedMessage.doctor,
+          user: savedMessage.chatDate.chat.user,
+          doctor: savedMessage.chatDate.chat.doctor,
           timestamp: new Date(),
         });
       } catch (error) {
@@ -205,16 +208,16 @@ function initChatSocket(server) {
       }
     });
 
-    // Handle leaving consultation room
-    socket.on("leave_consultation", (consultationId) => {
-      const roomName = `consultation:${consultationId}`;
+    // Handle leaving chat room
+    socket.on("leave_chat", (chatId) => {
+      const roomName = `chat:${chatId}`;
       socket.leave(roomName);
       console.log(`Socket ${socket.id} left room: ${roomName}`);
 
       // Notify other users in the room
       socket.to(roomName).emit("user_left", {
         socketId: socket.id,
-        consultationId: consultationId,
+        chatId: chatId,
         timestamp: new Date(),
       });
     });
@@ -245,14 +248,8 @@ function startDoctorAvailabilityNotification() {
       const currentDay = now.getDay();
       const currentTime = now.getHours() * 60 + now.getMinutes();
 
-      // Get all active consultations with doctor schedules
-      const activeConsultations = await prisma.consultation.findMany({
-        where: {
-          isActive: true,
-          expiresAt: {
-            gt: now,
-          },
-        },
+      // Get all active chats with doctor schedules (using Chat model instead of Consultation)
+      const activeChats = await prisma.chat.findMany({
         include: {
           doctor: {
             select: {
@@ -264,48 +261,46 @@ function startDoctorAvailabilityNotification() {
         },
       });
 
-      for (const consultation of activeConsultations) {
+      for (const chat of activeChats) {
         // Check if doctor is available according to current schedule
-        const isDoctorAvailable = consultation.doctor.schedules.some(
-          (schedule) => {
-            if (schedule.dayOfWeek !== currentDay) return false;
+        const isDoctorAvailable = chat.doctor.schedules.some((schedule) => {
+          if (schedule.dayOfWeek !== currentDay) return false;
 
-            const startTime = new Date(schedule.startTime);
-            const endTime = new Date(schedule.endTime);
+          const startTime = new Date(schedule.startTime);
+          const endTime = new Date(schedule.endTime);
 
-            const scheduleStartMinutes =
-              startTime.getHours() * 60 + startTime.getMinutes();
-            const scheduleEndMinutes =
-              endTime.getHours() * 60 + endTime.getMinutes();
+          const scheduleStartMinutes =
+            startTime.getHours() * 60 + startTime.getMinutes();
+          const scheduleEndMinutes =
+            endTime.getHours() * 60 + endTime.getMinutes();
 
-            return (
-              currentTime >= scheduleStartMinutes &&
-              currentTime <= scheduleEndMinutes
-            );
-          }
-        );
+          return (
+            currentTime >= scheduleStartMinutes &&
+            currentTime <= scheduleEndMinutes
+          );
+        });
 
         if (isDoctorAvailable) {
-          const roomName = `consultation:${consultation.id}`;
+          const roomName = `chat:${chat.id}`;
 
-          // Emit doctor_ready event to consultation room
+          // Emit doctor_ready event to chat room
           io.to(roomName).emit("doctor_ready", {
-            consultationId: consultation.id,
-            doctorId: consultation.doctorId,
+            chatId: chat.id,
+            doctorId: chat.doctorId,
             message: "Doctor is now available",
-            doctorName: consultation.doctor.fullname,
+            doctorName: chat.doctor.fullname,
             timestamp: new Date(),
           });
 
           console.log(
-            `Doctor availability notification sent for consultation: ${consultation.id}`
+            `Doctor availability notification sent for chat: ${chat.id}`
           );
         }
       }
 
       // Add periodic log for monitoring
       console.log(
-        `Checking doctor availability for ${activeConsultations.length} active consultations`
+        `Checking doctor availability for ${activeChats.length} active chats`
       );
     } catch (error) {
       console.error("Error in doctor availability notification:", error);
