@@ -1,91 +1,45 @@
-const prisma = require("../config/database");
+// controllers/userController.js
+const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient();
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 
 class UserController {
-  // Get all users
-  async getAllUsers(req, res, next) {
+  // ✅ Ambil semua user
+  async getAll(req, res) {
     try {
       const users = await prisma.user.findMany({
         select: {
           id: true,
           fullname: true,
           email: true,
-          photo: true,
           profession: true,
+          photo: true,
           createdAt: true,
-          _count: {
-            select: {
-              messages: true,
-              consultations: true,
-            },
-          },
         },
+        orderBy: { createdAt: "desc" },
       });
 
-      res.json({
-        success: true,
-        data: users,
-      });
+      res.json({ success: true, data: users });
     } catch (error) {
-      next(error);
+      console.error("❌ Error getAll:", error);
+      res.status(500).json({ success: false, message: error.message });
     }
   }
 
-  // Get user by ID
-  async getUserById(req, res, next) {
+  // ✅ Ambil user berdasarkan ID
+  async getById(req, res) {
     try {
       const { id } = req.params;
+
       const user = await prisma.user.findUnique({
-        where: { id: id },
-        include: {
-          consultations: {
-            include: {
-              doctor: {
-                select: {
-                  id: true,
-                  fullname: true,
-                  category: true,
-                },
-              },
-              payment: true,
-              chat: {
-                include: {
-                  messages: {
-                    orderBy: {
-                      sentAt: "desc",
-                    },
-                    take: 5, // Get last 5 messages
-                  },
-                },
-              },
-            },
-            orderBy: {
-              startedAt: "desc",
-            },
-          },
-          messages: {
-            include: {
-              chat: {
-                include: {
-                  consultation: {
-                    select: {
-                      id: true,
-                      doctor: {
-                        select: {
-                          fullname: true,
-                          category: true,
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-            orderBy: {
-              sentAt: "desc",
-            },
-          },
+        where: { id },
+        select: {
+          id: true,
+          fullname: true,
+          email: true,
+          profession: true,
+          photo: true,
+          createdAt: true,
         },
       });
 
@@ -96,105 +50,105 @@ class UserController {
         });
       }
 
-      // Remove password from response
-      const { password, ...userWithoutPassword } = user;
-
-      res.json({
-        success: true,
-        data: userWithoutPassword,
-      });
+      res.json({ success: true, data: user });
     } catch (error) {
-      next(error);
+      console.error("❌ Error getById:", error);
+      res.status(500).json({ success: false, message: error.message });
     }
   }
 
-  // Create new user
-  async createUser(req, res, next) {
+  // ✅ Tambah user baru
+  async create(req, res) {
     try {
       const { fullname, email, password, profession, photo } = req.body;
 
-      // Hash password
-      const hashedPassword = await bcrypt.hash(password, 12);
+      const existing = await prisma.user.findUnique({ where: { email } });
+      if (existing) {
+        return res.status(400).json({
+          success: false,
+          message: "Email already registered",
+        });
+      }
 
-      const user = await prisma.user.create({
-        data: {
-          fullname,
-          email,
-          password: hashedPassword,
-          profession: profession || null,
-          photo: photo || null,
-        },
-        select: {
-          id: true,
-          fullname: true,
-          email: true,
-          profession: true,
-          photo: true,
-          createdAt: true,
-        },
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const newUser = await prisma.user.create({
+        data: { fullname, email, password: hashedPassword, profession, photo },
       });
 
       res.status(201).json({
         success: true,
         message: "User created successfully",
-        data: user,
+        data: newUser,
       });
     } catch (error) {
-      next(error);
+      console.error("❌ Error create:", error);
+      res.status(500).json({ success: false, message: error.message });
     }
   }
 
-  // Update user
-  async updateUser(req, res, next) {
+  // ✅ Update user
+  async update(req, res) {
     try {
       const { id } = req.params;
-      const { fullname, email, profession, photo } = req.body;
+      const { fullname, email, profession, photo, password } = req.body;
 
-      const updateData = {};
-      if (fullname) updateData.fullname = fullname;
-      if (email) updateData.email = email;
-      if (profession !== undefined) updateData.profession = profession;
-      if (photo !== undefined) updateData.photo = photo;
+      const user = await prisma.user.findUnique({ where: { id } });
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
 
-      const user = await prisma.user.update({
-        where: { id: id },
-        data: updateData,
-        select: {
-          id: true,
-          fullname: true,
-          email: true,
-          profession: true,
-          photo: true,
-          createdAt: true,
-          updatedAt: true,
-        },
+      const updatedData = {
+        fullname,
+        email,
+        profession,
+        photo,
+      };
+
+      if (password) {
+        updatedData.password = await bcrypt.hash(password, 10);
+      }
+
+      const updatedUser = await prisma.user.update({
+        where: { id },
+        data: updatedData,
       });
 
       res.json({
         success: true,
         message: "User updated successfully",
-        data: user,
+        data: updatedUser,
       });
     } catch (error) {
-      next(error);
+      console.error("❌ Error update:", error);
+      res.status(500).json({ success: false, message: error.message });
     }
   }
 
-  // Delete user
-  async deleteUser(req, res, next) {
+  // ✅ Hapus user
+  async delete(req, res) {
     try {
       const { id } = req.params;
 
-      await prisma.user.delete({
-        where: { id: id },
-      });
+      const user = await prisma.user.findUnique({ where: { id } });
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+
+      await prisma.user.delete({ where: { id } });
 
       res.json({
         success: true,
         message: "User deleted successfully",
       });
     } catch (error) {
-      next(error);
+      console.error("❌ Error delete:", error);
+      res.status(500).json({ success: false, message: error.message });
     }
   }
 }

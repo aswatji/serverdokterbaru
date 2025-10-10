@@ -1,75 +1,76 @@
+// controllers/doctorController.js
+const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient();
 const bcrypt = require("bcryptjs");
-const prisma = require("../config/database");
 
 class DoctorController {
-  // Get all doctors
-  async getAllDoctors(req, res, next) {
+  // ✅ Ambil semua dokter
+  async getAllDoctors(req, res) {
     try {
       const doctors = await prisma.doctor.findMany({
-        select: {
-          id: true,
-          fullname: true,
-          category: true,
-          university: true,
-          strNumber: true,
-          gender: true,
-          email: true,
-          alamatRumahSakit: true,
-          bio: true,
-          photo: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
+        orderBy: { createdAt: "desc" },
       });
-
-      // Hitung consultation untuk setiap doctor
-      const doctorsWithCount = await Promise.all(
-        doctors.map(async (doctor) => {
-          const consultationCount = await prisma.consultation.count({
-            where: { doctorId: doctor.id },
-          });
-
-          return {
-            ...doctor,
-            consultationCount: consultationCount,
-          };
-        })
-      );
-
-      res.json({
-        success: true,
-        data: doctorsWithCount,
-      });
+      res.json({ success: true, data: doctors });
     } catch (error) {
-      next(error);
+      console.error("❌ Error getAllDoctors:", error);
+      res.status(500).json({ success: false, message: error.message });
     }
   }
 
-  // Get doctor by ID
-  async getDoctorById(req, res, next) {
+  // ✅ Ambil dokter berdasarkan kategori
+  async getDoctorsByCategory(req, res) {
     try {
-      const { id } = req.params;
-      const doctor = await prisma.doctor.findUnique({
-        where: { id: id },
-        select: {
-          id: true,
-          fullname: true,
-          category: true,
-          university: true,
-          strNumber: true,
-          gender: true,
-          email: true,
-          alamatRumahSakit: true,
-          bio: true,
-          photo: true,
-          createdAt: true,
-          updatedAt: true,
-        },
+      const { category } = req.params;
+      const doctors = await prisma.doctor.findMany({
+        where: { category },
+        orderBy: { fullname: "asc" },
       });
+      res.json({ success: true, data: doctors });
+    } catch (error) {
+      console.error("❌ Error getDoctorsByCategory:", error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
 
+  // ✅ Ambil dokter berdasarkan ID
+  async getDoctorById(req, res) {
+    try {
+      const { doctorId } = req.params;
+      const doctor = await prisma.doctor.findUnique({
+        where: { id: doctorId },
+      });
+      if (!doctor) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Doctor not found" });
+      }
+      res.json({ success: true, data: doctor });
+    } catch (error) {
+      console.error("❌ Error getDoctorById:", error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  // ✅ Update profil dokter (autentikasi dokter)
+  async updateProfile(req, res) {
+    try {
+      const doctorId = req.user.id; // dari token JWT
+      const {
+        fullname,
+        category,
+        university,
+        strNumber,
+        gender,
+        email,
+        password,
+        alamatRumahSakit,
+        bio,
+        photo,
+      } = req.body;
+
+      const doctor = await prisma.doctor.findUnique({
+        where: { id: doctorId },
+      });
       if (!doctor) {
         return res.status(404).json({
           success: false,
@@ -77,244 +78,59 @@ class DoctorController {
         });
       }
 
-      // Hitung consultation dan message secara terpisah
-      const consultationCount = await prisma.consultation.count({
-        where: { doctorId: id },
-      });
-
-      const messageCount = await prisma.message.count({
-        where: { doctorId: id },
-      });
-
-      // Ambil schedules terpisah
-      const schedules = await prisma.doctorSchedule.findMany({
-        where: { doctorId: id },
-        orderBy: { dayOfWeek: "asc" },
-      });
-
-      // Ambil recent consultations terpisah
-      const recentConsultations = await prisma.consultation.findMany({
-        where: { doctorId: id },
-        include: {
-          patient: {
-            select: {
-              id: true,
-              fullname: true,
-              email: true,
-            },
-          },
-          payment: true,
-        },
-        orderBy: {
-          startedAt: "desc",
-        },
-        take: 10,
-      });
-
-      // Gabungkan semua data dengan struktur flat
-      const result = {
-        ...doctor,
-        consultationCount: consultationCount,
-        messageCount: messageCount,
-        schedules: schedules,
-        recentConsultations: recentConsultations,
-      };
-
-      res.json({
-        success: true,
-        data: result,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  // Create new doctor
-  async createDoctor(req, res, next) {
-    try {
-      const {
+      let updatedData = {
         fullname,
         category,
         university,
         strNumber,
         gender,
         email,
-        password,
         alamatRumahSakit,
         bio,
         photo,
-      } = req.body;
+      };
 
-      if (
-        !fullname ||
-        !category ||
-        !university ||
-        !strNumber ||
-        !gender ||
-        !email ||
-        !password
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "fullname, category, university, strNumber, gender, email, and password are required",
-        });
+      if (password) {
+        updatedData.password = await bcrypt.hash(password, 10);
       }
 
-      const hashedPassword = await bcrypt.hash(password, 12);
-
-      // Create doctor tanpa _count
-      const doctor = await prisma.doctor.create({
-        data: {
-          fullname,
-          category,
-          university,
-          strNumber,
-          gender,
-          email,
-          password: hashedPassword,
-          alamatRumahSakit: alamatRumahSakit || null,
-          bio: bio || null,
-          photo: photo || null,
-        },
-        select: {
-          id: true,
-          fullname: true,
-          category: true,
-          university: true,
-          strNumber: true,
-          gender: true,
-          email: true,
-          alamatRumahSakit: true,
-          bio: true,
-          photo: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-      });
-
-      // Hitung consultation secara terpisah (baru dibuat, pasti 0)
-      const consultationCount = await prisma.consultation.count({
-        where: { doctorId: doctor.id },
-      });
-
-      // Gabungkan hasil dengan spread operator
-      const result = {
-        ...doctor,
-        consultationCount: consultationCount,
-      };
-
-      res.status(201).json({
-        success: true,
-        message: "Doctor created successfully",
-        data: result,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  // Update doctor
-  async updateDoctor(req, res, next) {
-    try {
-      const { id } = req.params;
-      const {
-        fullname,
-        category,
-        university,
-        strNumber,
-        gender,
-        email,
-        password,
-        alamatRumahSakit,
-        bio,
-        photo,
-      } = req.body;
-
-      const updateData = {};
-      if (fullname) updateData.fullname = fullname;
-      if (category) updateData.category = category;
-      if (university) updateData.university = university;
-      if (strNumber) updateData.strNumber = strNumber;
-      if (gender) updateData.gender = gender;
-      if (email) updateData.email = email;
-      if (password) updateData.password = await bcrypt.hash(password, 12);
-      if (alamatRumahSakit !== undefined)
-        updateData.alamatRumahSakit = alamatRumahSakit;
-      if (bio !== undefined) updateData.bio = bio;
-      if (photo !== undefined) updateData.photo = photo;
-
-      // Update doctor tanpa _count
-      const doctor = await prisma.doctor.update({
-        where: { id: id },
-        data: updateData,
-        select: {
-          id: true,
-          fullname: true,
-          category: true,
-          university: true,
-          strNumber: true,
-          gender: true,
-          email: true,
-          alamatRumahSakit: true,
-          bio: true,
-          photo: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-      });
-
-      // Hitung consultation secara terpisah
-      const consultationCount = await prisma.consultation.count({
-        where: { doctorId: id },
-      });
-
-      // Gabungkan hasil dengan spread operator
-      const result = {
-        ...doctor,
-        consultationCount: consultationCount,
-      };
-
-      res.json({
-        success: true,
-        message: "Doctor updated successfully",
-        data: result,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  // Delete doctor
-  async deleteDoctor(req, res, next) {
-    try {
-      const { id } = req.params;
-
-      await prisma.doctor.delete({
-        where: { id: id },
+      const updatedDoctor = await prisma.doctor.update({
+        where: { id: doctorId },
+        data: updatedData,
       });
 
       res.json({
         success: true,
-        message: "Doctor deleted successfully",
+        message: "Profile updated successfully",
+        data: updatedDoctor,
       });
     } catch (error) {
-      next(error);
+      console.error("❌ Error updateProfile:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to update profile",
+        error: error.message,
+      });
     }
   }
 
-  // Add doctor schedule
-  async addSchedule(req, res, next) {
+  // ✅ Ambil profil dokter yang sedang login
+  async getProfile(req, res) {
     try {
-      const { doctorId, dayOfWeek, startTime, endTime } = req.body;
-
-      // Check if doctor exists
+      const doctorId = req.user.id;
       const doctor = await prisma.doctor.findUnique({
         where: { id: doctorId },
         select: {
           id: true,
           fullname: true,
           category: true,
+          university: true,
+          strNumber: true,
+          gender: true,
+          email: true,
+          alamatRumahSakit: true,
+          bio: true,
+          photo: true,
         },
       });
 
@@ -325,215 +141,167 @@ class DoctorController {
         });
       }
 
+      res.json({ success: true, data: doctor });
+    } catch (error) {
+      console.error("❌ Error getProfile:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch profile",
+        error: error.message,
+      });
+    }
+  }
+
+  // ✅ Buat jadwal dokter baru
+  async createSchedule(req, res) {
+    try {
+      const doctorId = req.user.id;
+      const { dayOfWeek, startTime, endTime } = req.body;
+
       const schedule = await prisma.doctorSchedule.create({
-        data: {
-          doctorId,
-          dayOfWeek,
-          startTime: new Date(startTime),
-          endTime: new Date(endTime),
-        },
-        include: {
-          doctor: {
-            select: {
-              id: true,
-              fullname: true,
-              category: true,
-            },
-          },
-        },
+        data: { doctorId, dayOfWeek, startTime, endTime },
       });
 
       res.status(201).json({
         success: true,
-        message: "Schedule added successfully",
+        message: "Schedule created successfully",
         data: schedule,
       });
     } catch (error) {
-      next(error);
+      console.error("❌ Error createSchedule:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to create schedule",
+        error: error.message,
+      });
     }
   }
 
-  // Get schedules for a doctor
-  async getSchedules(req, res, next) {
+  // ✅ Ambil semua jadwal dokter tertentu
+  async getSchedules(req, res) {
     try {
       const { doctorId } = req.params;
-
-      // Check if doctor exists
-      const doctor = await prisma.doctor.findUnique({
-        where: { id: doctorId },
-        select: {
-          id: true,
-          fullname: true,
-          category: true,
-        },
-      });
-
-      if (!doctor) {
-        return res.status(404).json({
-          success: false,
-          message: "Doctor not found",
-        });
-      }
-
       const schedules = await prisma.doctorSchedule.findMany({
         where: { doctorId },
         orderBy: { dayOfWeek: "asc" },
-        include: {
-          doctor: {
-            select: {
-              id: true,
-              fullname: true,
-              category: true,
-            },
-          },
-        },
       });
-
-      res.json({
-        success: true,
-        data: {
-          doctor: {
-            id: doctor.id,
-            fullname: doctor.fullname,
-            category: doctor.category,
-          },
-          schedules: schedules,
-        },
-      });
+      res.json({ success: true, data: schedules });
     } catch (error) {
-      next(error);
+      console.error("❌ Error getSchedules:", error);
+      res.status(500).json({ success: false, message: error.message });
     }
   }
 
-  // Update doctor schedule
-  async updateSchedule(req, res, next) {
+  // ✅ Update jadwal dokter
+  async updateSchedule(req, res) {
     try {
       const { scheduleId } = req.params;
       const { dayOfWeek, startTime, endTime } = req.body;
 
-      const updateData = {};
-      if (dayOfWeek !== undefined) updateData.dayOfWeek = dayOfWeek;
-      if (startTime) updateData.startTime = new Date(startTime);
-      if (endTime) updateData.endTime = new Date(endTime);
-
-      const schedule = await prisma.doctorSchedule.update({
+      const schedule = await prisma.doctorSchedule.findUnique({
         where: { id: scheduleId },
-        data: updateData,
-        include: {
-          doctor: {
-            select: {
-              id: true,
-              fullname: true,
-              category: true,
-            },
-          },
-        },
+      });
+
+      if (!schedule) {
+        return res.status(404).json({
+          success: false,
+          message: "Schedule not found",
+        });
+      }
+
+      const updated = await prisma.doctorSchedule.update({
+        where: { id: scheduleId },
+        data: { dayOfWeek, startTime, endTime },
       });
 
       res.json({
         success: true,
         message: "Schedule updated successfully",
-        data: schedule,
+        data: updated,
       });
     } catch (error) {
-      next(error);
+      console.error("❌ Error updateSchedule:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to update schedule",
+        error: error.message,
+      });
     }
   }
 
-  // Delete doctor schedule
-  async deleteSchedule(req, res, next) {
+  // ✅ Hapus jadwal dokter
+  async deleteSchedule(req, res) {
     try {
       const { scheduleId } = req.params;
 
-      await prisma.doctorSchedule.delete({
-        where: { id: scheduleId },
-      });
+      await prisma.doctorSchedule.delete({ where: { id: scheduleId } });
 
       res.json({
         success: true,
         message: "Schedule deleted successfully",
       });
     } catch (error) {
-      next(error);
+      console.error("❌ Error deleteSchedule:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to delete schedule",
+        error: error.message,
+      });
     }
   }
 
-  // Get all unique categories
-  async getCategories(req, res, next) {
+  // ✅ Ambil semua chat milik dokter (opsional)
+  async getDoctorChats(req, res) {
     try {
-      const categories = await prisma.doctor.findMany({
-        select: {
-          category: true,
-        },
-        distinct: ["category"],
-        orderBy: {
-          category: "asc",
-        },
+      const doctorId = req.user.id;
+      const chats = await prisma.chat.findMany({
+        where: { doctorId },
+        orderBy: { createdAt: "desc" },
+        include: { user: true, lastMessage: true },
       });
 
-      const categoryList = categories.map((item) => item.category);
-
-      res.json({
-        success: true,
-        data: categoryList,
-      });
+      res.json({ success: true, data: chats });
     } catch (error) {
-      next(error);
+      console.error("❌ Error getDoctorChats:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch chats",
+        error: error.message,
+      });
     }
   }
 
-  // Get doctors by category (Firebase-like query)
-  async getDoctorsByCategory(req, res, next) {
+  // ✅ Ambil detail chat tertentu
+  async getDoctorChatById(req, res) {
     try {
-      const { category } = req.params;
+      const { id } = req.params;
+      const doctorId = req.user.id;
 
-      const doctors = await prisma.doctor.findMany({
-        where: {
-          category: {
-            equals: category,
-            mode: "insensitive",
+      const chat = await prisma.chat.findFirst({
+        where: { id, doctorId },
+        include: {
+          user: true,
+          messages: {
+            orderBy: { sentAt: "asc" },
           },
         },
-        select: {
-          id: true,
-          fullname: true,
-          category: true,
-          university: true,
-          strNumber: true,
-          gender: true,
-          email: true,
-          alamatRumahSakit: true,
-          bio: true,
-          photo: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-        orderBy: {
-          fullname: "asc",
-        },
       });
 
-      // Add consultation count for each doctor
-      const doctorsWithCount = await Promise.all(
-        doctors.map(async (doctor) => {
-          const consultationCount = await prisma.consultation.count({
-            where: { doctorId: doctor.id },
-          });
+      if (!chat) {
+        return res.status(404).json({
+          success: false,
+          message: "Chat not found",
+        });
+      }
 
-          return {
-            ...doctor,
-            consultationCount: consultationCount,
-          };
-        })
-      );
-
-      res.json({
-        success: true,
-        message: `Found ${doctorsWithCount.length} doctors in category: ${category}`,
-        data: doctorsWithCount,
-      });
+      res.json({ success: true, data: chat });
     } catch (error) {
-      next(error);
+      console.error("❌ Error getDoctorChatById:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch chat detail",
+        error: error.message,
+      });
     }
   }
 }

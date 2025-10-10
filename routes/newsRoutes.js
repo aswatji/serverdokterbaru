@@ -1,3 +1,6 @@
+// routes/newsRoutes.js
+// ✅ Final version — News routes (Prisma-based)
+
 const express = require("express");
 const { body } = require("express-validator");
 const newsController = require("../controllers/newsController");
@@ -5,32 +8,48 @@ const validateRequest = require("../middleware/validation");
 
 const router = express.Router();
 
-// Validation rules
+/* -------------------------------------------
+   🧾 VALIDATION RULES
+------------------------------------------- */
 const createNewsValidation = [
   body("title").notEmpty().withMessage("Title is required"),
   body("content").notEmpty().withMessage("Content is required"),
+  body("image").optional().isString().withMessage("Image must be a string URL"),
 ];
 
 const updateNewsValidation = [
   body("title").optional().notEmpty().withMessage("Title cannot be empty"),
   body("content").optional().notEmpty().withMessage("Content cannot be empty"),
+  body("image").optional().isString().withMessage("Image must be a string URL"),
 ];
 
-// Routes
-router.get("/", newsController.getAllNews);
-router.get("/:id", newsController.getNewsById);
+/* -------------------------------------------
+   📰 ROUTES
+------------------------------------------- */
+
+// ✅ Ambil semua berita
+router.get("/", newsController.getAll);
+
+// ✅ Ambil berita berdasarkan ID
+router.get("/:id", newsController.getById);
+
+// ✅ Tambah berita baru
 router.post(
   "/",
   createNewsValidation,
   validateRequest,
-  newsController.createNews
+  newsController.create
 );
+
+// ✅ Update berita
 router.put(
   "/:id",
   updateNewsValidation,
   validateRequest,
-  newsController.updateNews
+  newsController.update
 );
-router.delete("/:id", newsController.deleteNews);
+
+// ✅ Hapus berita
+router.delete("/:id", newsController.delete);
 
 module.exports = router;

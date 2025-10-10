@@ -1,232 +1,175 @@
-const prisma = require("../config/database");
+// controllers/paymentController.js
+// ✅ Final version — works with Prisma schema and paymentRoutes.js
+
+const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient();
 const midtransClient = require("midtrans-client");
 
-// Initialize Midtrans Snap
-const snap = new midtransClient.Snap({
-  // isProduction: process.env.NODE_ENV === "development",
-  isProduction: false,
-  serverKey: process.env.MIDTRANS_SERVER_KEY,
-});
-
 class PaymentController {
-  // ✅ Create payment and initiate Midtrans transaction
-  async createPayment(req, res, next) {
+  constructor() {
+    this.snap = new midtransClient.Snap({
+      isProduction: false,
+      serverKey: process.env.MIDTRANS_SERVER_KEY,
+      clientKey: process.env.MIDTRANS_CLIENT_KEY,
+    });
+  }
+
+  // ✅ 1. Buat pembayaran (user -> doctor)
+  async createPayment(req, res) {
     try {
-      const { doctorId, patientId, amount } = req.body;
+      const { doctorId, amount } = req.body;
+      const { id: userId } = req.user;
 
-      if (!doctorId || !patientId || !amount) {
-        return res.status(400).json({
-          success: false,
-          message: "doctorId, patientId, and amount are required",
-        });
-      }
-
-      // Validate doctor and patient
-      const [doctor, patient] = await Promise.all([
-        prisma.doctor.findUnique({
-          where: { id: doctorId },
-          select: { id: true, fullname: true, category: true },
-        }),
-        prisma.user.findUnique({
-          where: { id: patientId },
-          select: { id: true, fullname: true, email: true },
-        }),
-      ]);
-
-      if (!doctor)
+      if (!doctorId || !amount)
         return res
-          .status(404)
-          .json({ success: false, message: "Doctor not found" });
-      if (!patient)
-        return res
-          .status(404)
-          .json({ success: false, message: "Patient not found" });
+          .status(400)
+          .json({
+            success: false,
+            message: "doctorId and amount are required",
+          });
 
-      // Create payment record
+      // Buat record pembayaran di DB
       const payment = await prisma.payment.create({
         data: {
+          doctorId,
+          userId,
           amount: parseFloat(amount),
           status: "pending",
         },
       });
 
-      // Prepare Midtrans parameters
+      // Buat transaksi Midtrans
       const parameter = {
         transaction_details: {
           order_id: payment.id,
-          gross_amount: amount,
+          gross_amount: payment.amount,
         },
         customer_details: {
-          first_name: patient.fullname,
-          email: patient.email,
-          phone: "08123456789",
+          user_id: userId,
         },
-        item_details: [
-          {
-            id: `consultation_${doctorId}`,
-            price: amount,
-            quantity: 1,
-            name: `Konsultasi dengan ${doctor.fullname} - ${doctor.category}`,
-          },
-        ],
-        custom_field1: doctorId,
-        custom_field2: patientId,
-        custom_field3: payment.id,
       };
 
-      const transaction = await snap.createTransaction(parameter);
+      const transaction = await this.snap.createTransaction(parameter);
 
       res.status(201).json({
         success: true,
         message: "Payment created successfully",
         data: {
+          paymentId: payment.id,
           redirect_url: transaction.redirect_url,
-          snap_token: transaction.token,
-          order_id: payment.id,
+          token: transaction.token,
         },
       });
     } catch (error) {
-      console.error("Midtrans error:", error);
-      next(error);
+      console.error("❌ createPayment error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to create payment",
+        error: error.message,
+      });
     }
   }
 
-  // ✅ Midtrans webhook callback
-  async midtransCallback(req, res, next) {
+  // ✅ 2. Callback dari Midtrans
+  async midtransCallback(req, res) {
     try {
-      const {
-        order_id,
-        transaction_status,
-        fraud_status,
-        custom_field1: doctorId,
-        custom_field2: patientId,
-      } = req.body;
+      const payload = req.body;
+      const orderId = payload.order_id;
+      const transactionStatus = payload.transaction_status;
 
-      console.log("Midtrans callback received:", {
-        order_id,
-        transaction_status,
-        fraud_status,
-        doctorId,
-        patientId,
+      let status = "pending";
+      if (["capture", "settlement"].includes(transactionStatus))
+        status = "success";
+      if (["cancel", "deny", "expire"].includes(transactionStatus))
+        status = "failed";
+
+      const updatedPayment = await prisma.payment.update({
+        where: { id: orderId },
+        data: { status },
       });
 
+      // Jika sukses, buat chat otomatis
+      if (status === "success") {
+        await prisma.chat.create({
+          data: {
+            chatKey: `CHAT-${Date.now()}`,
+            userId: updatedPayment.userId,
+            doctorId: updatedPayment.doctorId,
+            paymentId: updatedPayment.id,
+          },
+        });
+      }
+
+      res.json({ success: true, message: "Callback processed", status });
+    } catch (error) {
+      console.error("❌ midtransCallback error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to process callback",
+        error: error.message,
+      });
+    }
+  }
+
+  // ✅ 3. Cek status pembayaran
+  async checkPaymentStatus(req, res) {
+    try {
+      const { orderId } = req.params;
       const payment = await prisma.payment.findUnique({
-        where: { id: order_id },
+        where: { id: orderId },
       });
+
       if (!payment)
         return res
           .status(404)
           .json({ success: false, message: "Payment not found" });
 
-      let paymentStatus = payment.status;
-
-      if (
-        transaction_status === "settlement" ||
-        (transaction_status === "capture" && fraud_status === "accept")
-      ) {
-        paymentStatus = "success";
-
-        await prisma.payment.update({
-          where: { id: order_id },
-          data: { status: "success" },
-        });
-
-        // Create Consultation + Chat
-        const consultation = await prisma.consultation.create({
-          data: {
-            patientId,
-            doctorId,
-            paymentId: order_id,
-            startedAt: new Date(),
-            expiresAt: new Date(Date.now() + 30 * 60 * 1000),
-            isActive: true,
-          },
-        });
-        await prisma.chat.create({ data: { consultationId: consultation.id } });
-
-        try {
-          const { getIO } = require("../chatSocket");
-          const io = getIO();
-          io.emit("new_consultation", { consultation, doctorId });
-        } catch (socketError) {
-          console.error("Socket.IO notification error:", socketError.message);
-        }
-      } else if (
-        transaction_status === "expire" ||
-        transaction_status === "cancel" ||
-        transaction_status === "deny"
-      ) {
-        paymentStatus = "failed";
-        await prisma.payment.update({
-          where: { id: order_id },
-          data: { status: "failed" },
-        });
-      } else if (transaction_status === "pending") {
-        paymentStatus = "pending";
-      }
-
-      res.status(200).json({
-        success: true,
-        message: "Callback processed successfully",
-        data: {
-          orderId: order_id,
-          status: paymentStatus,
-          transactionStatus: transaction_status,
-        },
-      });
+      res.json({ success: true, data: payment });
     } catch (error) {
-      console.error("Midtrans callback error:", error);
-      next(error);
+      console.error("❌ checkPaymentStatus error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to get payment status",
+        error: error.message,
+      });
     }
   }
 
-  // ✅ Get all payments
-  async getAllPayments(req, res, next) {
+  // ✅ 4. Ambil semua pembayaran user login
+  async getUserPayments(req, res) {
     try {
-      const { status } = req.query;
-      const where = status ? { status } : {};
+      const { id, type } = req.user;
+      const where = type === "doctor" ? { doctorId: id } : { userId: id };
 
       const payments = await prisma.payment.findMany({
         where,
         include: {
-          consultation: {
-            include: {
-              patient: { select: { id: true, fullname: true, email: true } },
-              doctor: { select: { id: true, fullname: true, category: true } },
-            },
-          },
+          doctor: { select: { id: true, fullname: true, category: true } },
+          user: { select: { id: true, fullname: true, email: true } },
         },
         orderBy: { createdAt: "desc" },
       });
 
       res.json({ success: true, data: payments });
     } catch (error) {
-      next(error);
+      console.error("❌ getUserPayments error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to get user payments",
+        error: error.message,
+      });
     }
   }
 
-  // ✅ Get payment by ID
-  async getPaymentById(req, res, next) {
+  // ✅ 5. Ambil detail pembayaran
+  async getPaymentById(req, res) {
     try {
       const { id } = req.params;
       const payment = await prisma.payment.findUnique({
         where: { id },
         include: {
-          consultation: {
-            include: {
-              patient: {
-                select: { id: true, fullname: true, email: true, photo: true },
-              },
-              doctor: {
-                select: {
-                  id: true,
-                  fullname: true,
-                  category: true,
-                  photo: true,
-                },
-              },
-            },
-          },
+          user: { select: { id: true, fullname: true, email: true } },
+          doctor: { select: { id: true, fullname: true, category: true } },
         },
       });
 
@@ -237,71 +180,56 @@ class PaymentController {
 
       res.json({ success: true, data: payment });
     } catch (error) {
-      next(error);
+      console.error("❌ getPaymentById error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch payment",
+        error: error.message,
+      });
     }
   }
 
-  // ✅ Update payment status
-  async updatePaymentStatus(req, res, next) {
+  // ✅ 6. Update status pembayaran
+  async updatePaymentStatus(req, res) {
     try {
       const { id } = req.params;
       const { status } = req.body;
 
-      const payment = await prisma.payment.update({
+      const updated = await prisma.payment.update({
         where: { id },
         data: { status },
       });
 
       res.json({
         success: true,
-        message: "Payment status updated successfully",
-        data: payment,
+        message: "Payment status updated",
+        data: updated,
       });
     } catch (error) {
-      next(error);
+      console.error("❌ updatePaymentStatus error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to update payment",
+        error: error.message,
+      });
     }
   }
 
-  // ✅ Delete payment
-  async deletePayment(req, res, next) {
+  // ✅ 7. Hapus pembayaran
+  async deletePayment(req, res) {
     try {
       const { id } = req.params;
       await prisma.payment.delete({ where: { id } });
-      res.json({ success: true, message: "Payment deleted successfully" });
-    } catch (error) {
-      next(error);
-    }
-  }
 
-  // ✅ Get payment status from Midtrans (for frontend)
-  async getStatusByOrderId(req, res) {
-    try {
-      const { orderId } = req.params;
-
-      const core = new midtransClient.CoreApi({
-        isProduction: process.env.NODE_ENV === "production",
-        serverKey: process.env.MIDTRANS_SERVER_KEY,
-        clientKey: process.env.MIDTRANS_CLIENT_KEY,
-      });
-
-      const statusResponse = await core.transaction.status(orderId);
-
-      return res.status(200).json({
+      res.json({
         success: true,
-        data: {
-          order_id: statusResponse.order_id,
-          transaction_status: statusResponse.transaction_status,
-          fraud_status: statusResponse.fraud_status,
-          gross_amount: statusResponse.gross_amount,
-          status_code: statusResponse.status_code,
-          status_message: statusResponse.status_message,
-        },
+        message: "Payment deleted successfully",
       });
     } catch (error) {
-      console.error("Error getStatusByOrderId:", error);
-      return res.status(500).json({
+      console.error("❌ deletePayment error:", error);
+      res.status(500).json({
         success: false,
-        message: "Gagal mendapatkan status pembayaran",
+        message: "Failed to delete payment",
         error: error.message,
       });
     }

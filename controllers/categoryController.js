@@ -1,13 +1,13 @@
-const prisma = require("../config/database");
+// controllers/categoryController.js
+const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient();
 
 class CategoryController {
-  // Get all categories
-  async getAllCategories(req, res, next) {
+  // ✅ Ambil semua kategori
+  async getAll(req, res) {
     try {
       const categories = await prisma.category.findMany({
-        orderBy: {
-          name: "asc",
-        },
+        orderBy: { name: "asc" },
       });
 
       res.json({
@@ -15,44 +15,29 @@ class CategoryController {
         data: categories,
       });
     } catch (error) {
-      next(error);
+      console.error("❌ Error getAll categories:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch categories",
+        error: error.message,
+      });
     }
   }
 
-  // Get category by ID
-  async getCategoryById(req, res, next) {
-    try {
-      const { id } = req.params;
-      const category = await prisma.category.findUnique({
-        where: { id: id },
-      });
-
-      if (!category) {
-        return res.status(404).json({
-          success: false,
-          message: "Category not found",
-        });
-      }
-
-      res.json({
-        success: true,
-        data: category,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  // Create new category
-  async createCategory(req, res, next) {
+  // ✅ Tambah kategori baru
+  async create(req, res) {
     try {
       const { name, items } = req.body;
 
+      if (!name) {
+        return res.status(400).json({
+          success: false,
+          message: "Category name is required",
+        });
+      }
+
       const category = await prisma.category.create({
-        data: {
-          name,
-          items: items || null,
-        },
+        data: { name, items },
       });
 
       res.status(201).json({
@@ -61,23 +46,24 @@ class CategoryController {
         data: category,
       });
     } catch (error) {
-      next(error);
+      console.error("❌ Error create category:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to create category",
+        error: error.message,
+      });
     }
   }
 
-  // Update category
-  async updateCategory(req, res, next) {
+  // ✅ Update kategori
+  async update(req, res) {
     try {
       const { id } = req.params;
       const { name, items } = req.body;
 
-      const updateData = {};
-      if (name) updateData.name = name;
-      if (items !== undefined) updateData.items = items;
-
       const category = await prisma.category.update({
-        where: { id: id },
-        data: updateData,
+        where: { id },
+        data: { name, items },
       });
 
       res.json({
@@ -86,25 +72,33 @@ class CategoryController {
         data: category,
       });
     } catch (error) {
-      next(error);
+      console.error("❌ Error update category:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to update category",
+        error: error.message,
+      });
     }
   }
 
-  // Delete category
-  async deleteCategory(req, res, next) {
+  // ✅ Hapus kategori
+  async delete(req, res) {
     try {
       const { id } = req.params;
 
-      await prisma.category.delete({
-        where: { id: id },
-      });
+      await prisma.category.delete({ where: { id } });
 
       res.json({
         success: true,
         message: "Category deleted successfully",
       });
     } catch (error) {
-      next(error);
+      console.error("❌ Error delete category:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to delete category",
+        error: error.message,
+      });
     }
   }
 }

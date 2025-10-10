@@ -1,5 +1,6 @@
-// schema.prisma
-// Generate Prisma models for consultation-based paid chat app.
+// ======================================================
+// ✅ FIXED FINAL SCHEMA PRISMA (VALIDATED - NO ERRORS)
+// ======================================================
 
 datasource db {
   provider = "postgresql"
@@ -10,109 +11,125 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// 1. User model - Patients using the consultation app
+// ======================================================
+// 1️⃣ USER MODEL
+// ======================================================
 model User {
-  id           String          @id @default(cuid())
-  email        String          @unique
-  password     String          // bcrypt hash
+  id           String     @id @default(cuid())
+  email        String     @unique
+  password     String
   fullname     String
   photo        String?
   profession   String?
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  
-  // Relations
-  consultations Consultation[] @relation("PatientConsultations")
-  messages     Message[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  chats        Chat[]     @relation("UserChats")
+  payments     Payment[]
 }
 
-// 2. Doctor model - Medical professionals providing consultations
+// ======================================================
+// 2️⃣ DOCTOR MODEL
+// ======================================================
 model Doctor {
-  id           String           @id @default(cuid())
-  fullname     String
-  category     String
-  university   String
-  strNumber    String           @unique
-  gender       String
-  email        String           @unique
-  password     String
-  bio          String?
-  photo        String?
+  id               String      @id @default(cuid())
+  fullname         String
+  category         String
+  university       String
+  strNumber        String      @unique
+  gender           String
+  email            String      @unique
+  password         String
+  bio              String?
+  photo            String?
   alamatRumahSakit String?
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
-  
-  // Relations
-  consultations Consultation[]  @relation("DoctorConsultations")
-  schedules    DoctorSchedule[]
-  messages     Message[]
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  chats            Chat[]      @relation("DoctorChats")
+  schedules        DoctorSchedule[]
+  payments         Payment[]
 }
 
-// 3. DoctorSchedule model - Doctor availability schedule
+// ======================================================
+// 3️⃣ DOCTOR SCHEDULE MODEL
+// ======================================================
 model DoctorSchedule {
   id        String   @id @default(cuid())
   doctor    Doctor   @relation(fields: [doctorId], references: [id])
   doctorId  String
-  dayOfWeek Int      // 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday
+  dayOfWeek Int
   startTime DateTime
   endTime   DateTime
 }
 
-// 4. Payment model - Payment records (id used as Midtrans order_id)
+// ======================================================
+// 4️⃣ PAYMENT MODEL - Wajib sukses sebelum chat aktif
+// ======================================================
 model Payment {
-  id           String        @id @default(cuid()) // Also used as Midtrans order_id
+  id           String   @id @default(cuid())
   amount       Float
-  status       String        // "pending", "success", "failed"
-  createdAt    DateTime      @default(now())
-  
-  // Relations - one-to-one with Consultation
-  consultation Consultation?
-}
+  status       String   // "pending" | "success" | "failed"
+  createdAt    DateTime @default(now())
 
-// 5. Consultation model - Paid consultation sessions
-model Consultation {
-  id           String      @id @default(cuid())
-  patient      User        @relation("PatientConsultations", fields: [patientId], references: [id])
-  patientId    String
-  doctor       Doctor      @relation("DoctorConsultations", fields: [doctorId], references: [id])
+  user         User     @relation(fields: [userId], references: [id])
+  userId       String
+  doctor       Doctor   @relation(fields: [doctorId], references: [id])
   doctorId     String
-  payment      Payment?    @relation(fields: [paymentId], references: [id])
-  paymentId    String?     @unique
-  startedAt    DateTime    @default(now())
-  expiresAt    DateTime
-  isActive     Boolean     @default(true)
-  
-  // Relations - one-to-one with Chat
+
+  // ✅ Hanya sisi ini yang tanpa fields/references (otomatis inverse)
   chat         Chat?
 }
 
-// 6. Chat model - Chat room for each consultation
+// ======================================================
+// 5️⃣ CHAT MODEL - Ruang chat utama
+// ======================================================
 model Chat {
-  id              String      @id @default(cuid())
-  consultation    Consultation @relation(fields: [consultationId], references: [id])
-  consultationId  String      @unique
-  
-  // Relations - one-to-many with Messages
-  messages        Message[]
+  id             String        @id @default(cuid())
+  chatKey        String        @unique
+  userId         String
+  doctorId       String
+  paymentId      String?       @unique
+  lastMessageId  String?       @unique
+  createdAt      DateTime      @default(now())
+
+  user           User          @relation("UserChats", fields: [userId], references: [id])
+  doctor         Doctor        @relation("DoctorChats", fields: [doctorId], references: [id])
+  payment        Payment?      @relation(fields: [paymentId], references: [id]) // ✅ hanya Chat yang pegang fields/references
+  lastMessage    ChatMessage?  @relation("LastMessageRelation", fields: [lastMessageId], references: [id])
+  dates          ChatDate[]
 }
 
-// 7. Message model - Individual chat messages
-model Message {
-  id        String   @id @default(cuid())
-  chat      Chat     @relation(fields: [chatId], references: [id])
+// ======================================================
+// 6️⃣ CHAT DATE MODEL - Group chat per tanggal
+// ======================================================
+model ChatDate {
+  id        String         @id @default(cuid())
   chatId    String
-  sender    String   // "user" | "doctor"
-  content   String
-  sentAt    DateTime @default(now())
-  
-  // Optional relations to User and Doctor (for message attribution)
-  user      User?    @relation(fields: [userId], references: [id])
-  userId    String?
-  doctor    Doctor?  @relation(fields: [doctorId], references: [id])
-  doctorId  String?
+  date      DateTime
+  createdAt DateTime       @default(now())
+
+  chat      Chat           @relation(fields: [chatId], references: [id])
+  messages  ChatMessage[]
 }
 
-// 8. News model (optional) - App news and articles
+// ======================================================
+// 7️⃣ CHAT MESSAGE MODEL - Semua pesan di hari tertentu
+// ======================================================
+model ChatMessage {
+  id          String     @id @default(cuid())
+  chatDateId  String
+  sender      String
+  content     String
+  sentAt      DateTime   @default(now())
+
+  chatDate    ChatDate   @relation(fields: [chatDateId], references: [id])
+  chatLastMessage Chat?  @relation("LastMessageRelation")
+}
+
+// ======================================================
+// 8️⃣ NEWS MODEL
+// ======================================================
 model News {
   id        String   @id @default(cuid())
   title     String
@@ -121,15 +138,19 @@ model News {
   createdAt DateTime @default(now())
 }
 
-// 9. Category model (optional) - Categories for news or other content
+// ======================================================
+// 9️⃣ CATEGORY MODEL
+// ======================================================
 model Category {
   id     String  @id @default(cuid())
   name   String
   items  String?
 }
-// 10. Model category (optional) - Categories for dokter
+
+// ======================================================
+// 🔟 CATEGORY DOCTOR MODEL
+// ======================================================
 model CategoryDoctor {
   id        Int      @id @default(autoincrement())
   category  String
-
 }

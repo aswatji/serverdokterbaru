@@ -1,14 +1,49 @@
-const prisma = require("../config/database");
+// controllers/chatController.js
+// ✅ Final version — Simple chat controller (without consultationId)
+
+const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient();
 
 class ChatController {
-  // ✅ 1. Ambil semua pesan berdasarkan consultationId (frontend pakai ini)
-  async getMessages(req, res) {
+  // ✅ Ambil semua chat milik user / doctor (home chat list)
+  async getAllChats(req, res) {
     try {
-      const { consultationId } = req.params;
+      const { id, type } = req.user; // dari authMiddleware
+      const where =
+        type === "doctor"
+          ? { doctorId: id }
+          : type === "user"
+          ? { userId: id }
+          : {};
 
-      // Cari chat berdasarkan consultationId
+      const chats = await prisma.chat.findMany({
+        where,
+        include: {
+          user: { select: { id: true, fullname: true, photo: true } },
+          doctor: { select: { id: true, fullname: true, photo: true } },
+          lastMessage: true,
+        },
+        orderBy: { updatedAt: "desc" },
+      });
+
+      res.json({ success: true, data: chats });
+    } catch (error) {
+      console.error("❌ Error getAllChats:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch chats",
+        error: error.message,
+      });
+    }
+  }
+
+  // ✅ Ambil 1 chat berdasarkan chatKey (unique ID)
+  async getChatByKey(req, res) {
+    try {
+      const { chatKey } = req.params;
+
       const chat = await prisma.chat.findUnique({
-        where: { consultationId },
+        where: { chatKey },
         include: {
           messages: {
             orderBy: { sentAt: "asc" },
@@ -17,77 +52,63 @@ class ChatController {
               doctor: { select: { id: true, fullname: true, photo: true } },
             },
           },
+          user: true,
+          doctor: true,
         },
       });
 
       if (!chat) {
         return res.status(404).json({
           success: false,
-          message: "Chat not found for this consultation",
+          message: "Chat not found",
         });
       }
 
-      return res.json({
-        success: true,
-        data: { messages: chat.messages },
-      });
+      res.json({ success: true, data: chat });
     } catch (error) {
-      console.error("❌ Error getMessages:", error);
+      console.error("❌ Error getChatByKey:", error);
       res.status(500).json({
         success: false,
-        message: "Internal server error",
+        message: "Failed to fetch chat",
         error: error.message,
       });
     }
   }
 
-  // ✅ 2. Kirim pesan baru (user atau doctor)
+  // ✅ Kirim pesan baru
   async sendMessage(req, res) {
     try {
-      const { consultationId, sender, content } = req.body;
-      const user = req.user; // dari authMiddleware
+      const { chatKey } = req.params;
+      const { content } = req.body;
+      const { id, type } = req.user;
 
-      if (!consultationId || !sender || !content) {
-        return res.status(400).json({
-          success: false,
-          message: "consultationId, sender, and content are required",
-        });
-      }
-
-      // Temukan chat berdasarkan consultationId
-      const chat = await prisma.chat.findUnique({
-        where: { consultationId },
-      });
-
+      const chat = await prisma.chat.findUnique({ where: { chatKey } });
       if (!chat) {
         return res.status(404).json({
           success: false,
-          message: "Chat not found for this consultation",
+          message: "Chat not found",
         });
       }
 
       const message = await prisma.message.create({
         data: {
           chatId: chat.id,
-          sender,
+          sender: type,
           content,
-          userId: sender === "user" ? userId : null,
-          doctorId: sender === "doctor" ? doctorId : null,
-        },
-        include: {
-          user: { select: { id: true, fullname: true, photo: true } },
-          doctor: { select: { id: true, fullname: true, photo: true } },
+          userId: type === "user" ? id : null,
+          doctorId: type === "doctor" ? id : null,
         },
       });
 
-      // Emit ke Socket.IO (jika kamu sudah setup io di server)
-      if (req.io) {
-        req.io
-          .to(`consultation:${consultationId}`)
-          .emit("new_message", message);
-      }
+      await prisma.chat.update({
+        where: { id: chat.id },
+        data: {
+          lastMessageId: message.id,
+          updatedAt: new Date(),
+        },
+      });
 
-      return res.status(201).json({
+      res.status(201).json({
         success: true,
         message: "Message sent successfully",
         data: message,
@@ -96,159 +117,7 @@ class ChatController {
       console.error("❌ Error sendMessage:", error);
       res.status(500).json({
         success: false,
-        message: "Internal server error",
-        error: error.message,
-      });
-    }
-  }
-  // ✅ Tambahkan di dalam class ChatController (kalau pakai class)
-  async getConsultationStatus(req, res) {
-    try {
-      const { consultationId } = req.params;
-
-      const consultation = await prisma.consultation.findUnique({
-        where: { id: consultationId },
-        include: {
-          doctor: { select: { id: true, fullname: true, category: true } },
-          patient: { select: { id: true, fullname: true } },
-        },
-      });
-
-      if (!consultation) {
-        return res.status(404).json({
-          success: false,
-          message: "Consultation not found",
-        });
-      }
-
-      const now = new Date();
-      const expiresAt = new Date(consultation.expiresAt);
-      const remainingTime = Math.max(0, expiresAt - now);
-
-      return res.json({
-        success: true,
-        data: {
-          consultationId: consultation.id,
-          isActive: consultation.isActive,
-          timeRemainingMs: remainingTime,
-          expiresAt,
-          doctor: consultation.doctor,
-          patient: consultation.patient,
-        },
-      });
-    } catch (error) {
-      console.error("❌ Error getConsultationStatus:", error);
-      res.status(500).json({
-        success: false,
-        message: "Internal server error",
-        error: error.message,
-      });
-    }
-  }
-
-  // ✅ Tambahkan juga fungsi listChats (kalau belum ada)
-  async listChats(req, res) {
-    try {
-      const chats = await prisma.chat.findMany({
-        include: {
-          consultation: {
-            include: {
-              doctor: {
-                select: { fullname: true, category: true, photo: true },
-              },
-              patient: { select: { fullname: true, photo: true } },
-            },
-          },
-          messages: {
-            orderBy: { sentAt: "desc" },
-            take: 1,
-          },
-        },
-        orderBy: {
-          consultation: { startedAt: "desc" },
-        },
-      });
-
-      return res.json({
-        success: true,
-        data: chats,
-      });
-    } catch (error) {
-      console.error("❌ Error listChats:", error);
-      res.status(500).json({
-        success: false,
-        message: "Internal server error",
-        error: error.message,
-      });
-    }
-  }
-
-  // ✅ 3. Ambil semua chat (misal daftar konsultasi user)
-  async getAllChats(req, res) {
-    try {
-      const chats = await prisma.chat.findMany({
-        include: {
-          consultation: {
-            include: {
-              doctor: {
-                select: {
-                  id: true,
-                  fullname: true,
-                  category: true,
-                  photo: true,
-                },
-              },
-              patient: { select: { id: true, fullname: true, photo: true } },
-            },
-          },
-          _count: { select: { messages: true } },
-        },
-        orderBy: { consultation: { startedAt: "desc" } },
-      });
-
-      return res.json({
-        success: true,
-        data: chats,
-      });
-    } catch (error) {
-      console.error("❌ Error getAllChats:", error);
-      res.status(500).json({
-        success: false,
-        message: "Internal server error",
-        error: error.message,
-      });
-    }
-  }
-  async getMessagesByChatId(req, res) {
-    try {
-      const { chatId } = req.params; // ✅ Ganti dari consultationId ke chatId
-
-      const chat = await prisma.chat.findUnique({
-        where: { id: chatId }, // ✅ Cari berdasarkan ID chat
-        include: {
-          messages: {
-            include: {
-              user: { select: { id: true, fullname: true, photo: true } },
-              doctor: { select: { id: true, fullname: true, photo: true } },
-            },
-            orderBy: { sentAt: "asc" },
-          },
-        },
-      });
-
-      if (!chat) {
-        return res.status(404).json({
-          success: false,
-          message: "Chat not found for this chatId",
-        });
-      }
-
-      return res.json({ success: true, data: chat });
-    } catch (error) {
-      console.error("❌ Error getMessagesByChatId:", error);
-      return res.status(500).json({
-        success: false,
-        message: "Failed to fetch messages",
+        message: "Failed to send message",
         error: error.message,
       });
     }

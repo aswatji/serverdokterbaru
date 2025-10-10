@@ -1,34 +1,37 @@
-const prisma = require("../config/database");
-const path = require("path");
-const fs = require("fs");
+// controllers/newsController.js
+const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient();
 
 class NewsController {
-  // ✅ GET all news
-  async getAllNews(req, res, next) {
+  // ✅ Ambil semua berita
+  async getAll(req, res) {
     try {
-      const news = await prisma.news.findMany({
+      const newsList = await prisma.news.findMany({
         orderBy: { createdAt: "desc" },
       });
 
       res.json({
         success: true,
-        data: news.map((n) => ({
-          ...n,
-          imageUrl: n.image
-            ? `${req.protocol}://${req.get("host")}/uploads/news/${n.image}`
-            : null,
-        })),
+        data: newsList,
       });
     } catch (error) {
-      next(error);
+      console.error("❌ Error getAll news:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch news",
+        error: error.message,
+      });
     }
   }
 
-  // ✅ GET single news
-  async getNewsById(req, res, next) {
+  // ✅ Ambil berita berdasarkan ID
+  async getById(req, res) {
     try {
       const { id } = req.params;
-      const news = await prisma.news.findUnique({ where: { id } });
+
+      const news = await prisma.news.findUnique({
+        where: { id },
+      });
 
       if (!news) {
         return res.status(404).json({
@@ -39,133 +42,79 @@ class NewsController {
 
       res.json({
         success: true,
-        data: {
-          ...news,
-          imageUrl: news.image
-            ? `${req.protocol}://${req.get("host")}/uploads/news/${news.image}`
-            : null,
-        },
+        data: news,
       });
     } catch (error) {
-      next(error);
+      console.error("❌ Error getById news:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch news",
+        error: error.message,
+      });
     }
   }
 
-  // ✅ CREATE news (accept Base64 image)
-  async createNews(req, res, next) {
+  // ✅ Tambah berita baru
+  async create(req, res) {
     try {
-      const { title, content, imageBase64 } = req.body;
-      let imageFilename = null;
+      const { title, content, image } = req.body;
 
-      if (imageBase64) {
-        // Decode base64 dan simpan ke file lokal
-        const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
-        const buffer = Buffer.from(base64Data, "base64");
-
-        // Tentukan ekstensi berdasarkan MIME type
-        const ext = imageBase64.startsWith("data:image/png") ? "png" : "jpg";
-        imageFilename = `${Date.now()}.${ext}`;
-        const filePath = path.join(__dirname, "../uploads/news", imageFilename);
-
-        // Pastikan folder ada
-        const dir = path.dirname(filePath);
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-
-        fs.writeFileSync(filePath, buffer);
+      if (!title || !content) {
+        return res.status(400).json({
+          success: false,
+          message: "Title and content are required",
+        });
       }
 
       const news = await prisma.news.create({
-        data: {
-          title,
-          content,
-          image: imageFilename,
-        },
+        data: { title, content, image },
       });
 
       res.status(201).json({
         success: true,
         message: "News created successfully",
-        data: {
-          ...news,
-          imageUrl: imageFilename
-            ? `${req.protocol}://${req.get("host")}/uploads/news/${imageFilename}`
-            : null,
-        },
+        data: news,
       });
     } catch (error) {
-      next(error);
+      console.error("❌ Error create news:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to create news",
+        error: error.message,
+      });
     }
   }
 
-  // ✅ UPDATE news (accept Base64 image)
-  async updateNews(req, res, next) {
+  // ✅ Update berita
+  async update(req, res) {
     try {
       const { id } = req.params;
-      const { title, content, imageBase64 } = req.body;
+      const { title, content, image } = req.body;
 
-      const existing = await prisma.news.findUnique({ where: { id } });
-      if (!existing) {
-        return res.status(404).json({
-          success: false,
-          message: "News not found",
-        });
-      }
-
-      let imageFilename = existing.image;
-
-      if (imageBase64) {
-        // Hapus gambar lama
-        if (imageFilename) {
-          const oldPath = path.join(__dirname, "../uploads/news", imageFilename);
-          if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-        }
-
-        // Simpan gambar baru
-        const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
-        const buffer = Buffer.from(base64Data, "base64");
-        const ext = imageBase64.startsWith("data:image/png") ? "png" : "jpg";
-        imageFilename = `${Date.now()}.${ext}`;
-        const filePath = path.join(__dirname, "../uploads/news", imageFilename);
-        fs.writeFileSync(filePath, buffer);
-      }
-
-      const updated = await prisma.news.update({
+      const news = await prisma.news.update({
         where: { id },
-        data: { title, content, image: imageFilename },
+        data: { title, content, image },
       });
 
       res.json({
         success: true,
         message: "News updated successfully",
-        data: {
-          ...updated,
-          imageUrl: imageFilename
-            ? `${req.protocol}://${req.get("host")}/uploads/news/${imageFilename}`
-            : null,
-        },
+        data: news,
       });
     } catch (error) {
-      next(error);
+      console.error("❌ Error update news:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to update news",
+        error: error.message,
+      });
     }
   }
 
-  // ✅ DELETE news
-  async deleteNews(req, res, next) {
+  // ✅ Hapus berita
+  async delete(req, res) {
     try {
       const { id } = req.params;
-
-      const news = await prisma.news.findUnique({ where: { id } });
-      if (!news) {
-        return res.status(404).json({
-          success: false,
-          message: "News not found",
-        });
-      }
-
-      if (news.image) {
-        const imagePath = path.join(__dirname, "../uploads/news", news.image);
-        if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
-      }
 
       await prisma.news.delete({ where: { id } });
 
@@ -174,7 +123,12 @@ class NewsController {
         message: "News deleted successfully",
       });
     } catch (error) {
-      next(error);
+      console.error("❌ Error delete news:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to delete news",
+        error: error.message,
+      });
     }
   }
 }

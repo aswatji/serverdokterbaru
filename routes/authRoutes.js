@@ -1,6 +1,4 @@
-// authRoutes.js
-// Authentication routes for user registration and login
-
+// routes/authRoutes.js
 const express = require("express");
 const { body } = require("express-validator");
 const authController = require("../controllers/authController");
@@ -20,15 +18,8 @@ const registerValidation = [
   body("fullname").notEmpty().withMessage("Full name is required").trim(),
 ];
 
-const loginValidation = [
-  body("email")
-    .isEmail()
-    .withMessage("Valid email is required")
-    .normalizeEmail(),
-  body("password").notEmpty().withMessage("Password is required"),
-];
-
 const doctorRegisterValidation = [
+  body("fullname").notEmpty().withMessage("Full name is required"),
   body("email")
     .isEmail()
     .withMessage("Valid email is required")
@@ -36,48 +27,39 @@ const doctorRegisterValidation = [
   body("password")
     .isLength({ min: 6 })
     .withMessage("Password must be at least 6 characters long"),
-  body("fullname").notEmpty().withMessage("Full name is required").trim(),
-  body("category").notEmpty().withMessage("Category is required").trim(),
-  body("university").notEmpty().withMessage("University is required").trim(),
-  body("strNumber").notEmpty().withMessage("STR number is required").trim(),
+  body("category").notEmpty().withMessage("Category is required"),
+  body("university").optional().isString(),
+  body("strNumber").notEmpty().withMessage("STR number is required"),
   body("gender")
     .isIn(["MALE", "FEMALE"])
     .withMessage("Gender must be MALE or FEMALE"),
-  body("alamatRumahSakit")
-    .optional()
-    .isString()
-    .withMessage("Hospital address must be a string"),
-  body("bio").optional().isString().withMessage("Bio must be a string"),
-  body("photo").optional().isString().withMessage("Photo must be a string"),
 ];
 
-// Routes
-// 1. POST /auth/register → authController.register
+const loginValidation = [
+  body("email")
+    .isEmail()
+    .withMessage("Valid email is required")
+    .normalizeEmail(),
+  body("password").notEmpty().withMessage("Password is required"),
+  body("role")
+    .isIn(["user", "doctor"])
+    .withMessage("Role must be 'user' or 'doctor'"),
+];
+
+// ✅ Routes
 router.post(
   "/register",
   registerValidation,
   validateRequest,
-  authController.register
+  authController.registerUser
 );
-
-// 2. POST /auth/login → authController.login
-router.post("/login", loginValidation, validateRequest, authController.login);
-
-// 3. POST /auth/doctor/register → authController.doctorRegister
-router.post("/doctor/register", authController.doctorRegister);
-
-// 4. POST /auth/doctor/login → authController.doctorLogin
 router.post(
-  "/doctor/login",
-  loginValidation,
+  "/doctor/register",
+  doctorRegisterValidation,
   validateRequest,
-  authController.doctorLogin
+  authController.registerDoctor
 );
-
-// 5. POST /auth/logout → authController.logout
-router.post("/logout", authController.logout);
-
-// 6. POST /auth/doctor/logout → authController.doctorLogout
-router.post("/doctor/logout", authController.doctorLogout);
+router.post("/login", loginValidation, validateRequest, authController.login);
+router.get("/profile", authController.getProfile);
 
 module.exports = router;

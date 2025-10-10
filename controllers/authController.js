@@ -1,377 +1,239 @@
-// authController.js
-// Implement user registration and login with Prisma, bcrypt, and JWT.
-
+// controllers/authController.js
+const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const prisma = require("../config/database");
+
+const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key";
 
 class AuthController {
-  // 1. register(req, res) - User registration
-  async register(req, res, next) {
+  // ✅ Register user
+  async registerUser(req, res) {
     try {
       const { email, password, fullname, profession } = req.body;
 
-      // Validate required fields
-      if (!email || !password || !fullname || !profession) {
+      if (!email || !password || !fullname) {
         return res.status(400).json({
           success: false,
-          message: "Email, password, profession, and fullname are required",
+          message: "email, password, and fullname are required",
         });
       }
 
-      // Check if user already exists
-      const existingUser = await prisma.user.findUnique({
-        where: { email },
-      });
-
-      if (existingUser) {
-        return res.status(409).json({
+      const existing = await prisma.user.findUnique({ where: { email } });
+      if (existing) {
+        return res.status(400).json({
           success: false,
-          message: "User with this email already exists",
+          message: "Email already registered",
         });
       }
 
-      // Hash password with bcrypt
-      const saltRounds = 12;
-      const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-      // Create user in Prisma
+      const hashedPassword = await bcrypt.hash(password, 10);
       const user = await prisma.user.create({
-        data: {
-          email,
-          password: hashedPassword,
-          fullname,
-          profession,
-        },
-        select: {
-          id: true,
-          email: true,
-          fullname: true,
-          photo: true,
-          profession: true,
-          createdAt: true,
-          updatedAt: true,
-        },
+        data: { email, password: hashedPassword, fullname, profession },
       });
 
-      // Return created user without password
       res.status(201).json({
         success: true,
         message: "User registered successfully",
         data: user,
       });
     } catch (error) {
-      console.error("Registration error:", error);
-      next(error);
+      console.error("❌ Error registerUser:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to register user",
+        error: error.message,
+      });
     }
   }
 
-  // 2. login(req, res) - User login
-  async login(req, res, next) {
-    try {
-      const { email, password } = req.body;
-
-      // Validate required fields
-      if (!email || !password) {
-        return res.status(400).json({
-          success: false,
-          message: "Email and password are required",
-        });
-      }
-
-      // Find user by email
-      const user = await prisma.user.findUnique({
-        where: { email },
-        select: {
-          id: true,
-          email: true,
-          password: true,
-          fullname: true,
-          photo: true,
-          profession: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-      });
-
-      if (!user) {
-        return res.status(401).json({
-          success: false,
-          message: "Invalid email or password",
-        });
-      }
-
-      // Compare password with bcrypt
-      const isPasswordValid = await bcrypt.compare(password, user.password);
-
-      if (!isPasswordValid) {
-        return res.status(401).json({
-          success: false,
-          message: "Invalid email or password",
-        });
-      }
-
-      // If valid, issue JWT (id, email) with 1h expiry
-      const token = jwt.sign(
-        {
-          id: user.id,
-          email: user.email,
-          type: "user",
-        },
-        process.env.JWT_SECRET || "your-secret-key",
-        { expiresIn: "1h" }
-      );
-
-      // Return { token, user } without password
-      const userResponse = {
-        id: user.id,
-        email: user.email,
-        fullname: user.fullname,
-        photo: user.photo,
-        profession: user.profession,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      };
-
-      res.json({
-        success: true,
-        message: "Login successful",
-        data: {
-          token,
-          user: userResponse,
-        },
-      });
-    } catch (error) {
-      console.error("Login error:", error);
-      next(error);
-    }
-  }
-
-  // 3. doctorRegister(req, res) - Doctor registration
-  async doctorRegister(req, res, next) {
+  // ✅ Register doctor
+  async registerDoctor(req, res) {
     try {
       const {
-        email,
-        password,
         fullname,
         category,
         university,
         strNumber,
         gender,
-        alamatRumahSakit,
+        email,
+        password,
+        bio,
         photo,
+        alamatRumahSakit,
       } = req.body;
 
-      // Validate required fields
-      if (
-        !email ||
-        !password ||
-        !fullname ||
-        !category ||
-        !university ||
-        !strNumber ||
-        !gender
-      ) {
+      if (!fullname || !email || !password || !category || !strNumber) {
         return res.status(400).json({
           success: false,
           message:
-            "All fields are required: email, password, fullname, category, university, strNumber, gender",
+            "fullname, email, password, category, and strNumber are required",
         });
       }
 
-      // Check if doctor already exists by email
-      const existingDoctorByEmail = await prisma.doctor.findUnique({
-        where: { email },
-      });
-
-      if (existingDoctorByEmail) {
-        return res.status(409).json({
+      const existing = await prisma.doctor.findUnique({ where: { email } });
+      if (existing) {
+        return res.status(400).json({
           success: false,
-          message: "Doctor with this email already exists",
+          message: "Email already registered",
         });
       }
 
-      // Check if doctor already exists by STR number
-      const existingDoctorByStr = await prisma.doctor.findUnique({
-        where: { strNumber },
-      });
-
-      if (existingDoctorByStr) {
-        return res.status(409).json({
-          success: false,
-          message: "Doctor with this STR number already exists",
-        });
-      }
-
-      // Hash password with bcrypt
-      const saltRounds = 12;
-      const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-      // Create doctor in Prisma
+      const hashedPassword = await bcrypt.hash(password, 10);
       const doctor = await prisma.doctor.create({
         data: {
-          email,
-          password: hashedPassword,
           fullname,
           category,
           university,
           strNumber,
           gender,
-          alamatRumahSakit: alamatRumahSakit || null,
-          photo: photo || null,
-        },
-        select: {
-          id: true,
-          email: true,
-          fullname: true,
-          category: true,
-          university: true,
-          strNumber: true,
-          gender: true,
-          alamatRumahSakit: true,
-          bio: true,
-          photo: true,
-          createdAt: true,
-          updatedAt: true,
+          email,
+          password: hashedPassword,
+          bio,
+          photo,
+          alamatRumahSakit,
         },
       });
 
-      // Return created doctor without password
       res.status(201).json({
         success: true,
         message: "Doctor registered successfully",
         data: doctor,
       });
     } catch (error) {
-      console.error("Doctor registration error:", error);
-
-      // Handle Prisma unique constraint errors
-      if (error.code === "P2002") {
-        const field = error.meta?.target?.[0];
-        if (field === "email") {
-          return res.status(409).json({
-            success: false,
-            message: "Doctor with this email already exists",
-          });
-        } else if (field === "strNumber") {
-          return res.status(409).json({
-            success: false,
-            message: "Doctor with this STR number already exists",
-          });
-        }
-        return res.status(409).json({
-          success: false,
-          message: "A doctor with this information already exists",
-        });
-      }
-
-      next(error);
+      console.error("❌ Error registerDoctor:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to register doctor",
+        error: error.message,
+      });
     }
   }
 
-  // Additional method for doctor login (if needed)
-  async doctorLogin(req, res, next) {
+  // ✅ Login untuk user & doctor
+  async login(req, res) {
     try {
-      const { email, password } = req.body;
+      const { email, password, role } = req.body;
 
-      // Validate required fields
-      if (!email || !password) {
+      if (!email || !password || !role) {
         return res.status(400).json({
           success: false,
-          message: "Email and password are required",
+          message:
+            "email, password, and role are required ('user' or 'doctor')",
         });
       }
 
-      const doctor = await prisma.doctor.findUnique({
-        where: {
-          email,
-        },
+      let account;
+      if (role === "user") {
+        account = await prisma.user.findUnique({ where: { email } });
+      } else if (role === "doctor") {
+        account = await prisma.doctor.findUnique({ where: { email } });
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid role. Must be 'user' or 'doctor'",
+        });
+      }
+
+      if (!account) {
+        return res.status(404).json({
+          success: false,
+          message: `${role} not found`,
+        });
+      }
+
+      const isMatch = await bcrypt.compare(password, account.password);
+      if (!isMatch) {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid credentials",
+        });
+      }
+
+      const token = jwt.sign({ id: account.id, type: role }, JWT_SECRET, {
+        expiresIn: "1d",
       });
-
-      if (!doctor) {
-        return res.status(401).json({
-          success: false,
-          message: "Doctor not found",
-        });
-      }
-
-      const isPasswordValid = await bcrypt.compare(password, doctor.password);
-
-      if (!isPasswordValid) {
-        return res.status(401).json({
-          success: false,
-          message: "Invalid email or password",
-        });
-      }
-
-      const token = jwt.sign(
-        {
-          id: doctor.id,
-          email: doctor.email,
-          type: "doctor",
-        },
-        process.env.JWT_SECRET || "your-secret-key",
-        { expiresIn: "1h" }
-      );
 
       res.json({
         success: true,
-        message: "Doctor login successful",
-        data: {
-          token,
-          doctor: {
-            id: doctor.id,
-            fullname: doctor.fullname,
-            category: doctor.category,
-            university: doctor.university,
-            strNumber: doctor.strNumber,
-            gender: doctor.gender,
-            email: doctor.email,
-            alamatRumahSakit: doctor.alamatRumahSakit,
-            bio: doctor.bio,
-            photo: doctor.photo,
+        message: `${role} login successful`,
+        data: { token, account },
+      });
+    } catch (error) {
+      console.error("❌ Error login:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to login",
+        error: error.message,
+      });
+    }
+  }
+  async doctorRegister(req, res) {
+    try {
+      // logic register dokter
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  async doctorLogin(req, res) {
+    try {
+      // logic login dokter
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  // ✅ Get profile (otomatis berdasarkan token)
+  async getProfile(req, res) {
+    try {
+      const { id, type } = req.user;
+
+      if (type === "user") {
+        const user = await prisma.user.findUnique({
+          where: { id },
+          select: {
+            id: true,
+            fullname: true,
+            email: true,
+            photo: true,
+            profession: true,
+            createdAt: true,
           },
-        },
-      });
-    } catch (error) {
-      console.error("Doctor login error:", error);
-      next(error);
-    }
-  }
+        });
 
-  // 5. logout(req, res) - User logout
-  async logout(req, res, next) {
-    try {
-      // For JWT, logout is typically handled client-side by removing the token
-      // But we can provide a logout endpoint for consistency
-      res.json({
-        success: true,
-        message: "User logged out successfully",
-        data: {
-          message: "Please remove the token from client storage",
-        },
-      });
-    } catch (error) {
-      console.error("User logout error:", error);
-      next(error);
-    }
-  }
+        return res.json({ success: true, type, data: user });
+      }
 
-  // 6. doctorLogout(req, res) - Doctor logout
-  async doctorLogout(req, res, next) {
-    try {
-      // For JWT, logout is typically handled client-side by removing the token
-      // But we can provide a logout endpoint for consistency
-      res.json({
-        success: true,
-        message: "Doctor logged out successfully",
-        data: {
-          message: "Please remove the token from client storage",
-        },
+      if (type === "doctor") {
+        const doctor = await prisma.doctor.findUnique({
+          where: { id },
+          select: {
+            id: true,
+            fullname: true,
+            email: true,
+            category: true,
+            university: true,
+            strNumber: true,
+            photo: true,
+            createdAt: true,
+          },
+        });
+
+        return res.json({ success: true, type, data: doctor });
+      }
+
+      return res.status(400).json({
+        success: false,
+        message: "Invalid account type",
       });
     } catch (error) {
-      console.error("Doctor logout error:", error);
-      next(error);
+      console.error("❌ Error getProfile:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch profile",
+        error: error.message,
+      });
     }
   }
 }

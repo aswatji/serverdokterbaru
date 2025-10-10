@@ -1,3 +1,6 @@
+// routes/userRoutes.js
+// ✅ Final version — User routes (Prisma-based)
+
 const express = require("express");
 const { body } = require("express-validator");
 const userController = require("../controllers/userController");
@@ -5,18 +8,23 @@ const validateRequest = require("../middleware/validation");
 
 const router = express.Router();
 
-// Validation rules
+/* -------------------------------------------
+   🧾 VALIDATION RULES
+------------------------------------------- */
 const createUserValidation = [
   body("fullname").notEmpty().withMessage("Full name is required"),
   body("email").isEmail().withMessage("Valid email is required"),
   body("password")
     .isLength({ min: 6 })
-    .withMessage("Password must be at least 6 characters"),
+    .withMessage("Password must be at least 6 characters long"),
   body("profession")
     .optional()
     .isString()
     .withMessage("Profession must be a string"),
-  body("photo").optional().isString().withMessage("Photo must be a valid URL"),
+  body("photo")
+    .optional()
+    .isString()
+    .withMessage("Photo must be a valid URL string"),
 ];
 
 const updateUserValidation = [
@@ -29,24 +37,39 @@ const updateUserValidation = [
     .optional()
     .isString()
     .withMessage("Profession must be a string"),
-  body("photo").optional().isString().withMessage("Photo must be a valid URL"),
+  body("photo")
+    .optional()
+    .isString()
+    .withMessage("Photo must be a valid URL string"),
 ];
 
-// Routes
-router.get("/", userController.getAllUsers);
-router.get("/:id", userController.getUserById);
+/* -------------------------------------------
+   👤 USER ROUTES
+------------------------------------------- */
+
+// ✅ Ambil semua user
+router.get("/", userController.getAll);
+
+// ✅ Ambil detail user berdasarkan ID
+router.get("/:id", userController.getById);
+
+// ✅ Tambah user baru (opsional, biasanya lewat /auth/register)
 router.post(
   "/",
   createUserValidation,
   validateRequest,
-  userController.createUser
+  userController.create
 );
+
+// ✅ Update data user
 router.put(
   "/:id",
   updateUserValidation,
   validateRequest,
-  userController.updateUser
+  userController.update
 );
-router.delete("/:id", userController.deleteUser);
+
+// ✅ Hapus user
+router.delete("/:id", userController.delete);
 
 module.exports = router;

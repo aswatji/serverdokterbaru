@@ -1,3 +1,6 @@
+// routes/paymentRoutes.js
+// ✅ Final version — Payment routes (Prisma-based, chat auto-create)
+
 const express = require("express");
 const { body } = require("express-validator");
 const paymentController = require("../controllers/paymentController");
@@ -6,38 +9,49 @@ const { authMiddleware } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-// Validation rules
+/* -------------------------------------------
+   🧾 VALIDATION RULES
+------------------------------------------- */
 const createPaymentValidation = [
   body("doctorId").notEmpty().withMessage("Doctor ID is required"),
-  body("patientId").notEmpty().withMessage("Patient ID is required"),
   body("amount")
-    .isFloat({ min: 0 })
-    .withMessage("Amount must be a positive number"),
+    .isFloat({ min: 1000 })
+    .withMessage("Amount must be greater than 0"),
 ];
 
-// Buat pembayaran
-router.post("/create", authMiddleware, paymentController.createPayment);
+/* -------------------------------------------
+   💰 PAYMENT ROUTES
+------------------------------------------- */
 
-// Callback dari Midtrans
+// ✅ Buat pembayaran baru
+router.post(
+  "/create",
+  authMiddleware,
+  createPaymentValidation,
+  validateRequest,
+  paymentController.createPayment
+);
+
+// ✅ Callback dari Midtrans (tidak perlu auth)
 router.post("/callback", paymentController.midtransCallback);
 
-// Cek status pembayaran
+// ✅ Cek status pembayaran berdasarkan orderId
 router.get(
   "/status/:orderId",
   authMiddleware,
-  paymentController.getStatusByOrderId
+  paymentController.checkPaymentStatus
 );
 
-// Get semua pembayaran
-router.get("/", authMiddleware, paymentController.getAllPayments);
+// ✅ Ambil semua pembayaran user login
+router.get("/", authMiddleware, paymentController.getUserPayments);
 
-// Get by id
+// ✅ (Opsional) Ambil detail pembayaran by ID (admin)
 router.get("/:id", authMiddleware, paymentController.getPaymentById);
 
-// Update status manual
+// ✅ (Opsional) Update status pembayaran (admin)
 router.put("/:id", authMiddleware, paymentController.updatePaymentStatus);
 
-// Hapus pembayaran
+// ✅ (Opsional) Hapus pembayaran (admin)
 router.delete("/:id", authMiddleware, paymentController.deletePayment);
 
 module.exports = router;

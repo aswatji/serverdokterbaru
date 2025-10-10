@@ -1,47 +1,62 @@
-const prisma = require("../config/database");
+// controllers/categoryDoctorController.js
+const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient();
 
 class CategoryDoctorController {
-  async getAll(req, res, next) {
+  // ✅ Ambil semua kategori dokter
+  async getAll(req, res) {
     try {
-      const categories = await prisma.categoryDoctor.findMany({ orderBy: { id: "asc" } });
-      res.json({ success: true, data: categories });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async getById(req, res, next) {
-    try {
-      const { id } = req.params;
-      const category = await prisma.categoryDoctor.findUnique({
-        where: { id: Number(id) },
+      const categories = await prisma.categoryDoctor.findMany({
+        orderBy: { category: "asc" },
       });
 
-      if (!category) {
-        return res.status(404).json({ success: false, message: "Category not found" });
-      }
-
-      res.json({ success: true, data: category });
+      res.json({
+        success: true,
+        data: categories,
+      });
     } catch (error) {
-      next(error);
+      console.error("❌ Error getAll doctor categories:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch doctor categories",
+        error: error.message,
+      });
     }
   }
 
-  async create(req, res, next) {
+  // ✅ Tambah kategori dokter baru
+  async create(req, res) {
     try {
       const { category } = req.body;
+
       if (!category) {
-        return res.status(400).json({ success: false, message: "Category name is required" });
+        return res.status(400).json({
+          success: false,
+          message: "Category name is required",
+        });
       }
 
-      const newCategory = await prisma.categoryDoctor.create({ data: { category } });
-      res.status(201).json({ success: true, data: newCategory });
+      const newCategory = await prisma.categoryDoctor.create({
+        data: { category },
+      });
+
+      res.status(201).json({
+        success: true,
+        message: "Doctor category created successfully",
+        data: newCategory,
+      });
     } catch (error) {
-      next(error);
+      console.error("❌ Error create doctor category:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to create doctor category",
+        error: error.message,
+      });
     }
   }
 
-  async update(req, res, next) {
+  // ✅ Update kategori dokter
+  async update(req, res) {
     try {
       const { id } = req.params;
       const { category } = req.body;
@@ -51,25 +66,41 @@ class CategoryDoctorController {
         data: { category },
       });
 
-      res.json({ success: true, data: updated });
+      res.json({
+        success: true,
+        message: "Doctor category updated successfully",
+        data: updated,
+      });
     } catch (error) {
-      if (error.code === "P2025") {
-        return res.status(404).json({ success: false, message: "Category not found" });
-      }
-      next(error);
+      console.error("❌ Error update doctor category:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to update doctor category",
+        error: error.message,
+      });
     }
   }
 
-  async delete(req, res, next) {
+  // ✅ Hapus kategori dokter
+  async delete(req, res) {
     try {
       const { id } = req.params;
-      await prisma.categoryDoctor.delete({ where: { id: Number(id) } });
-      res.json({ success: true, message: "Category deleted successfully" });
+
+      await prisma.categoryDoctor.delete({
+        where: { id: Number(id) },
+      });
+
+      res.json({
+        success: true,
+        message: "Doctor category deleted successfully",
+      });
     } catch (error) {
-      if (error.code === "P2025") {
-        return res.status(404).json({ success: false, message: "Category not found" });
-      }
-      next(error);
+      console.error("❌ Error delete doctor category:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to delete doctor category",
+        error: error.message,
+      });
     }
   }
 }

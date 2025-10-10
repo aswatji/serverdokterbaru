@@ -1,60 +1,74 @@
 // routes/index.js
-// Setup Express routes for auth, payment, chat, and doctor schedule.
+// ✅ Final version — route aggregator for DokterApp API
 
 const express = require("express");
+
+// Import all route modules
 const authRoutes = require("./authRoutes");
 const userRoutes = require("./userRoutes");
 const doctorRoutes = require("./doctorRoutes");
-const consultationRoutes = require("./consultationRoutes");
 const messageRoutes = require("./messageRoutes");
 const chatRoutes = require("./chatRoutes");
 const paymentRoutes = require("./paymentRoutes");
 const newsRoutes = require("./newsRoutes");
 const categoryRoutes = require("./categoryRoutes");
 const categoryDoctorRoutes = require("./categoryDoctorRoutes");
-const {
-  authMiddleware,
-  requireDoctor,
-} = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-// Health check endpoint
+/* -------------------------------------------
+   🩺 HEALTH CHECK
+------------------------------------------- */
 router.get("/health", (req, res) => {
   res.json({
     success: true,
-    message: "Consultation App Server is running",
+    message: "🚀 DokterApp API is running smoothly",
+    version: "3.0.0",
     timestamp: new Date().toISOString(),
-    version: "2.0.0",
   });
 });
 
-// API routes with authentication requirements
-
-// 1. POST /auth/register → authController.register
-// 2. POST /auth/login → authController.login
+/* -------------------------------------------
+   🔐 AUTHENTICATION
+------------------------------------------- */
 router.use("/auth", authRoutes);
 
-// 3. POST /payment/create → paymentController.createPayment (auth required)
-// 4. POST /payment/callback → paymentController.midtransCallback
+/* -------------------------------------------
+   💰 PAYMENTS
+------------------------------------------- */
 router.use("/payment", paymentRoutes);
 
-// 5. POST /chat/send → chatController.sendMessage (auth required)
-// 6. GET /chat/messages/:consultationId → chatController.getMessages (auth required)
+/* -------------------------------------------
+   💬 CHAT & MESSAGES
+------------------------------------------- */
 router.use("/chat", chatRoutes);
+router.use("/messages", messageRoutes);
 
-// 7. POST /doctor/schedules → doctorController.addSchedule (auth + role doctor)
-// 8. GET /doctor/schedules/:doctorId → doctorController.getSchedules
-// 9. PUT /doctor/schedules/:scheduleId → doctorController.updateSchedule
-// 10. DELETE /doctor/schedules/:scheduleId → doctorController.deleteSchedule
+/* -------------------------------------------
+   👨‍⚕️ DOCTORS
+------------------------------------------- */
 router.use("/doctor", doctorRoutes);
 
-// Other existing routes
+/* -------------------------------------------
+   👤 USERS
+------------------------------------------- */
 router.use("/users", userRoutes);
-router.use("/consultations", consultationRoutes);
-router.use("/messages", messageRoutes);
+
+/* -------------------------------------------
+   📰 NEWS & CATEGORIES
+------------------------------------------- */
 router.use("/news", newsRoutes);
 router.use("/categories", categoryRoutes);
 router.use("/category-doctors", categoryDoctorRoutes);
+
+/* -------------------------------------------
+   🧭 404 HANDLER
+------------------------------------------- */
+router.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `Route not found: ${req.originalUrl}`,
+  });
+});
 
 module.exports = router;
