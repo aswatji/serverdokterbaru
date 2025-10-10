@@ -37,11 +37,11 @@ router.post(
   chatController.sendMessage
 );
 
-// 6. GET /chat/messages/:consultationId → chatController.getMessages (auth required)
+// 6. GET /chat/messages/:chatID → chatController.getMessages (auth required)
 router.get(
-  "/messages/:consultationId",
+  "/messages/:chatId",
   authMiddleware,
-  chatController.getMessagesByConsultation
+  chatController.getMessagesByChatId
 );
 
 // Additional routes

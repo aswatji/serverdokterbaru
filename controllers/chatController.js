@@ -219,12 +219,12 @@ class ChatController {
       });
     }
   }
-  async getMessagesByConsultation(req, res) {
+  async getMessagesByChatId(req, res) {
     try {
-      const { consultationId } = req.params;
+      const { chatId } = req.params; // ✅ Ganti dari consultationId ke chatId
 
       const chat = await prisma.chat.findUnique({
-        where: { consultationId },
+        where: { id: chatId }, // ✅ Cari berdasarkan ID chat
         include: {
           messages: {
             include: {
@@ -239,13 +239,13 @@ class ChatController {
       if (!chat) {
         return res.status(404).json({
           success: false,
-          message: "Chat not found for this consultation",
+          message: "Chat not found for this chatId",
         });
       }
 
       return res.json({ success: true, data: chat });
     } catch (error) {
-      console.error("❌ Error getMessagesByConsultation:", error);
+      console.error("❌ Error getMessagesByChatId:", error);
       return res.status(500).json({
         success: false,
         message: "Failed to fetch messages",
