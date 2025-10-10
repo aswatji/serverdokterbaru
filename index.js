@@ -10,7 +10,6 @@ const {
   initChatSocket,
   stopDoctorAvailabilityNotification,
 } = require("./chatSocket");
-const ConsultationScheduler = require("./scheduler/consultationScheduler");
 const prisma = require("./config/database");
 
 const app = express();
@@ -150,17 +149,7 @@ async function startServer() {
       }, 60000); // Every 60 seconds
     }
 
-    // Initialize Consultation Scheduler with delay
-    setTimeout(() => {
-      console.log("📅 Initializing Consultation Scheduler...");
-      try {
-        global.consultationScheduler = new ConsultationScheduler();
-        global.consultationScheduler.start();
-        console.log("📅 Consultation scheduler started");
-      } catch (error) {
-        console.error("❌ Failed to start consultation scheduler:", error);
-      }
-    }, 5000); // Wait 5 seconds before starting scheduler
+    console.log("✅ Server initialization complete");
   } catch (error) {
     console.error("💥 Server startup failed:", error);
     process.exit(1);
@@ -172,11 +161,6 @@ async function gracefulShutdown(signal) {
   console.log(`Received ${signal}, shutting down gracefully...`);
 
   try {
-    if (global.consultationScheduler) {
-      console.log("Stopping consultation scheduler...");
-      global.consultationScheduler.stop();
-    }
-
     stopDoctorAvailabilityNotification();
 
     await prisma.$disconnect();

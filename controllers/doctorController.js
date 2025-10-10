@@ -304,6 +304,95 @@ class DoctorController {
       });
     }
   }
+
+  // ✅ Get all unique categories
+  async getCategories(req, res) {
+    try {
+      const categories = await prisma.doctor.findMany({
+        select: {
+          category: true,
+        },
+        distinct: ["category"],
+        orderBy: {
+          category: "asc",
+        },
+      });
+
+      const categoryList = categories.map((item) => item.category);
+
+      res.json({
+        success: true,
+        data: categoryList,
+      });
+    } catch (error) {
+      console.error("❌ Error getCategories:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch categories",
+        error: error.message,
+      });
+    }
+  }
+
+  // ✅ Get doctors by category (Firebase-like query)
+  async getDoctorsByCategory(req, res) {
+    try {
+      const { category } = req.params;
+
+      const doctors = await prisma.doctor.findMany({
+        where: {
+          category: {
+            equals: category,
+            mode: "insensitive",
+          },
+        },
+        select: {
+          id: true,
+          fullname: true,
+          category: true,
+          university: true,
+          strNumber: true,
+          gender: true,
+          email: true,
+          alamatRumahSakit: true,
+          bio: true,
+          photo: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+        orderBy: {
+          fullname: "asc",
+        },
+      });
+
+      // Add consultation count for each doctor using Chat model instead
+      const doctorsWithCount = await Promise.all(
+        doctors.map(async (doctor) => {
+          const chatCount = await prisma.chat.count({
+            where: { doctorId: doctor.id },
+          });
+
+          return {
+            ...doctor,
+            consultationCount: chatCount,
+          };
+        })
+      );
+
+      res.json({
+        success: true,
+        message: `Found ${doctorsWithCount.length} doctors in category: ${category}`,
+        data: doctorsWithCount,
+      });
+    } catch (error) {
+      console.error("❌ Error getDoctorsByCategory:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch doctors by category",
+        error: error.message,
+      });
+    }
+  }
 }
 
 module.exports = new DoctorController();

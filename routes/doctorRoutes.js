@@ -76,6 +76,9 @@ const updateScheduleValidation = [
 // ✅ Ambil semua dokter
 router.get("/", doctorController.getAllDoctors);
 
+// ✅ Ambil semua kategori
+router.get("/categories", doctorController.getCategories);
+
 // ✅ Ambil dokter berdasarkan kategori
 router.get("/category/:category", doctorController.getDoctorsByCategory);
 
