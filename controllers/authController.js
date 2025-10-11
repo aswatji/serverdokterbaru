@@ -95,10 +95,20 @@ class AuthController {
         },
       });
 
+      const token = jwt.sign({ id: doctor.id, type: "doctor" }, JWT_SECRET, {
+        expiresIn: "1d",
+      });
+
+      // Remove password from response
+      const { password: _, ...doctorWithoutPassword } = doctor;
+
       res.status(201).json({
         success: true,
         message: "Doctor registered successfully",
-        data: doctor,
+        data: {
+          token,
+          doctor: doctorWithoutPassword,
+        },
       });
     } catch (error) {
       console.error("❌ Error registerDoctor:", error);
@@ -142,18 +152,15 @@ class AuthController {
         expiresIn: "1d",
       });
 
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = user;
+
       res.json({
         success: true,
         message: "User login successful",
         data: {
           token,
-          user: {
-            id: user.id,
-            email: user.email,
-            fullname: user.fullname,
-            profession: user.profession,
-            photo: user.photo,
-          },
+          user: userWithoutPassword,
         },
       });
     } catch (error) {
@@ -198,21 +205,15 @@ class AuthController {
         expiresIn: "1d",
       });
 
+      // Remove password from response
+      const { password: _, ...doctorWithoutPassword } = doctor;
+
       res.json({
         success: true,
         message: "Doctor login successful",
         data: {
           token,
-          doctor: {
-            id: doctor.id,
-            email: doctor.email,
-            fullname: doctor.fullname,
-            category: doctor.category,
-            university: doctor.university,
-            strNumber: doctor.strNumber,
-            photo: doctor.photo,
-            bio: doctor.bio,
-          },
+          doctor: doctorWithoutPassword,
         },
       });
     } catch (error) {
@@ -279,74 +280,6 @@ class AuthController {
       res.status(500).json({
         success: false,
         message: "Failed to login",
-        error: error.message,
-      });
-    }
-  }
-
-  // ✅ Signout khusus untuk user/pasien
-  async signoutUser(req, res) {
-    try {
-      const { id } = req.user;
-
-      // Pastikan yang logout adalah user
-      if (req.user.type !== "user") {
-        return res.status(403).json({
-          success: false,
-          message: "Access denied. User endpoint only.",
-        });
-      }
-
-      console.log(`User ${id} signed out at ${new Date()}`);
-
-      res.json({
-        success: true,
-        message: "User signed out successfully",
-        data: {
-          signedOutAt: new Date(),
-          message: "Please remove token from client storage",
-          userType: "user",
-        },
-      });
-    } catch (error) {
-      console.error("❌ Error signoutUser:", error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to signout user",
-        error: error.message,
-      });
-    }
-  }
-
-  // ✅ Signout khusus untuk doctor
-  async signoutDoctor(req, res) {
-    try {
-      const doctorId = req.params.id;
-
-      // Pastikan yang logout adalah doctor
-      if (!doctorId) {
-        return res.status(403).json({
-          success: false,
-          message: "Access denied. Doctor endpoint only.",
-        });
-      }
-
-      console.log(`Doctor ${doctorId} signed out at ${new Date()}`);
-
-      res.json({
-        success: true,
-        message: "Doctor signed out successfully",
-        data: {
-          signedOutAt: new Date(),
-          message: "Please remove token from client storage",
-          userType: "doctor",
-        },
-      });
-    } catch (error) {
-      console.error("❌ Error signoutDoctor:", error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to signout doctor",
         error: error.message,
       });
     }
@@ -501,6 +434,74 @@ class AuthController {
       res.status(500).json({
         success: false,
         message: "Failed to fetch doctor profile",
+        error: error.message,
+      });
+    }
+  }
+
+  // ✅ Signout khusus untuk user/pasien
+  async signoutUser(req, res) {
+    try {
+      const { id, type } = req.user;
+
+      // Pastikan yang logout adalah user
+      if (type !== "user") {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied. User endpoint only.",
+        });
+      }
+
+      console.log(`User ${id} signed out at ${new Date()}`);
+
+      res.json({
+        success: true,
+        message: "User signed out successfully",
+        data: {
+          signedOutAt: new Date(),
+          message: "Please remove token from client storage",
+          userType: "user"
+        }
+      });
+    } catch (error) {
+      console.error("❌ Error signoutUser:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to signout user",
+        error: error.message,
+      });
+    }
+  }
+
+  // ✅ Signout khusus untuk doctor
+  async signoutDoctor(req, res) {
+    try {
+      const { id, type } = req.user;
+
+      // Pastikan yang logout adalah doctor
+      if (type !== "doctor") {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied. Doctor endpoint only.",
+        });
+      }
+
+      console.log(`Doctor ${id} signed out at ${new Date()}`);
+
+      res.json({
+        success: true,
+        message: "Doctor signed out successfully",
+        data: {
+          signedOutAt: new Date(),
+          message: "Please remove token from client storage",
+          userType: "doctor"
+        }
+      });
+    } catch (error) {
+      console.error("❌ Error signoutDoctor:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to signout doctor",
         error: error.message,
       });
     }
