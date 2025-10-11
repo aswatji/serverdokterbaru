@@ -113,6 +113,34 @@ class DoctorController {
       });
     }
   }
+  async updatePhoto(req, res) {
+    try {
+      const doctorId = req.user.id;
+      const { photo } = req.body;
+      if (!photo) {
+        return res.status(400).json({
+          success: false,
+          message: "Photo diperlukan silahkan upload photo",
+        });
+      }
+      const updatedDoctor = await prisma.doctor.update({
+        where: { id: doctorId },
+        data: { photo },
+      });
+      res.json({
+        success: true,
+        message: "Photo Berhasil di update",
+        data: updatedDoctor,
+      });
+    } catch (error) {
+      console.error("❌ Error updatePhoto:", error);
+      res.status(500).json({
+        success: false,
+        message: "Gagal untuk update photo",
+        error: error.message,
+      });
+    }
+  }
 
   // ✅ Ambil profil dokter yang sedang login
   async getProfile(req, res) {

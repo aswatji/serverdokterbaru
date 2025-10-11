@@ -102,7 +102,12 @@ router.get(
   requireDoctor,
   doctorController.getProfile
 );
-
+router.put(
+  "/profile/photo",
+  authMiddleware,
+  requireDoctor,
+  doctorController.updatePhoto
+);
 /* -------------------------------------------
    🕒 DOCTOR SCHEDULE ROUTES
 ------------------------------------------- */
