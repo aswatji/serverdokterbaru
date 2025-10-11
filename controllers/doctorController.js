@@ -115,7 +115,7 @@ class DoctorController {
   }
   async updatePhoto(req, res) {
     try {
-      const doctorId = req.user.id;
+      const doctorId = req.body.id;
       const { photo } = req.body;
       if (!photo) {
         return res.status(400).json({
