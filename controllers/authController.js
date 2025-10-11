@@ -99,15 +99,15 @@ class AuthController {
         expiresIn: "1d",
       });
 
-      // Remove password from response
-      const { password: _, ...doctorWithoutPassword } = doctor;
+      // // Remove password from response
+      // const { password: _, ...doctorWithoutPassword } = doctor;
 
       res.status(201).json({
         success: true,
         message: "Doctor registered successfully",
         data: {
           token,
-          doctor: doctorWithoutPassword,
+          doctor,
         },
       });
     } catch (error) {
@@ -460,8 +460,8 @@ class AuthController {
         data: {
           signedOutAt: new Date(),
           message: "Please remove token from client storage",
-          userType: "user"
-        }
+          userType: "user",
+        },
       });
     } catch (error) {
       console.error("❌ Error signoutUser:", error);
@@ -494,8 +494,8 @@ class AuthController {
         data: {
           signedOutAt: new Date(),
           message: "Please remove token from client storage",
-          userType: "doctor"
-        }
+          userType: "doctor",
+        },
       });
     } catch (error) {
       console.error("❌ Error signoutDoctor:", error);
