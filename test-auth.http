@@ -1,0 +1,62 @@
+### Test Authentication Endpoints
+
+# Variables
+@baseUrl = http://localhost:3000/api/auth
+@token = your_jwt_token_here
+
+### 1. Register User
+POST {{baseUrl}}/register
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com",
+  "password": "password123",
+  "fullname": "Test User",
+  "profession": "Software Engineer"
+}
+
+### 2. Register Doctor
+POST {{baseUrl}}/doctor/register
+Content-Type: application/json
+
+{
+  "fullname": "Dr. Test Doctor",
+  "email": "testdoctor@example.com",
+  "password": "password123",
+  "category": "Umum",
+  "university": "Universitas Indonesia",
+  "strNumber": "STR123456789",
+  "gender": "MALE",
+  "bio": "Experienced doctor"
+}
+
+### 3. Login User
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com",
+  "password": "password123",
+  "role": "user"
+}
+
+### 4. Login Doctor
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "email": "testdoctor@example.com",
+  "password": "password123",
+  "role": "doctor"
+}
+
+### 5. Get Profile (User)
+GET {{baseUrl}}/profile
+Authorization: Bearer {{token}}
+
+### 6. Signout (User atau Doctor)
+POST {{baseUrl}}/signout
+Authorization: Bearer {{token}}
+
+### 7. Test Signout Without Token (Should Fail)
+POST {{baseUrl}}/signout

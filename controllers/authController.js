@@ -110,7 +110,122 @@ class AuthController {
     }
   }
 
-  // ✅ Login untuk user & doctor
+  // ✅ Login khusus untuk user/pasien
+  async loginUser(req, res) {
+    try {
+      const { email, password } = req.body;
+
+      if (!email || !password) {
+        return res.status(400).json({
+          success: false,
+          message: "Email and password are required",
+        });
+      }
+
+      const user = await prisma.user.findUnique({ where: { email } });
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid credentials",
+        });
+      }
+
+      const token = jwt.sign({ id: user.id, type: "user" }, JWT_SECRET, {
+        expiresIn: "1d",
+      });
+
+      res.json({
+        success: true,
+        message: "User login successful",
+        data: { 
+          token, 
+          user: {
+            id: user.id,
+            email: user.email,
+            fullname: user.fullname,
+            profession: user.profession,
+            photo: user.photo
+          }
+        },
+      });
+    } catch (error) {
+      console.error("❌ Error loginUser:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to login user",
+        error: error.message,
+      });
+    }
+  }
+
+  // ✅ Login khusus untuk doctor
+  async loginDoctor(req, res) {
+    try {
+      const { email, password } = req.body;
+
+      if (!email || !password) {
+        return res.status(400).json({
+          success: false,
+          message: "Email and password are required",
+        });
+      }
+
+      const doctor = await prisma.doctor.findUnique({ where: { email } });
+      if (!doctor) {
+        return res.status(404).json({
+          success: false,
+          message: "Doctor not found",
+        });
+      }
+
+      const isMatch = await bcrypt.compare(password, doctor.password);
+      if (!isMatch) {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid credentials",
+        });
+      }
+
+      const token = jwt.sign({ id: doctor.id, type: "doctor" }, JWT_SECRET, {
+        expiresIn: "1d",
+      });
+
+      res.json({
+        success: true,
+        message: "Doctor login successful",
+        data: { 
+          token, 
+          doctor: {
+            id: doctor.id,
+            email: doctor.email,
+            fullname: doctor.fullname,
+            category: doctor.category,
+            university: doctor.university,
+            strNumber: doctor.strNumber,
+            photo: doctor.photo,
+            bio: doctor.bio
+          }
+        },
+      });
+    } catch (error) {
+      console.error("❌ Error loginDoctor:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to login doctor",
+        error: error.message,
+      });
+    }
+  }
+
+  // ✅ Login gabungan (backward compatibility)
   async login(req, res) {
     try {
       const { email, password, role } = req.body;
@@ -168,19 +283,72 @@ class AuthController {
       });
     }
   }
-  async doctorRegister(req, res) {
+
+  // ✅ Signout khusus untuk user/pasien
+  async signoutUser(req, res) {
     try {
-      // logic register dokter
+      const { id } = req.user;
+
+      // Pastikan yang logout adalah user
+      if (req.user.type !== "user") {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied. User endpoint only.",
+        });
+      }
+
+      console.log(`User ${id} signed out at ${new Date()}`);
+
+      res.json({
+        success: true,
+        message: "User signed out successfully",
+        data: {
+          signedOutAt: new Date(),
+          message: "Please remove token from client storage",
+          userType: "user"
+        }
+      });
     } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
+      console.error("❌ Error signoutUser:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to signout user",
+        error: error.message,
+      });
     }
   }
 
-  async doctorLogin(req, res) {
+  // ✅ Signout khusus untuk doctor
+  async signoutDoctor(req, res) {
     try {
-      // logic login dokter
+      const { id } = req.user;
+
+      // Pastikan yang logout adalah doctor
+      if (req.user.type !== "doctor") {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied. Doctor endpoint only.",
+        });
+      }
+
+      console.log(`Doctor ${id} signed out at ${new Date()}`);
+
+      res.json({
+        success: true,
+        message: "Doctor signed out successfully",
+        data: {
+          signedOutAt: new Date(),
+          message: "Please remove token from client storage",
+          userType: "doctor"
+        }
+      });
     } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
+      console.error("❌ Error signoutDoctor:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to signout doctor",
+        error: error.message,
+      });
     }
   }
 
@@ -232,6 +400,134 @@ class AuthController {
       res.status(500).json({
         success: false,
         message: "Failed to fetch profile",
+        error: error.message,
+      });
+    }
+  }
+
+  // ✅ Get profile khusus untuk user/pasien
+  async getUserProfile(req, res) {
+    try {
+      const { id, type } = req.user;
+
+      // Pastikan yang akses adalah user
+      if (type !== "user") {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied. User endpoint only.",
+        });
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          fullname: true,
+          email: true,
+          photo: true,
+          profession: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+
+      res.json({ 
+        success: true, 
+        message: "User profile retrieved successfully",
+        data: user 
+      });
+    } catch (error) {
+      console.error("❌ Error getUserProfile:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch user profile",
+        error: error.message,
+      });
+    }
+  }
+
+  // ✅ Get profile khusus untuk doctor
+  async getDoctorProfile(req, res) {
+    try {
+      const { id, type } = req.user;
+
+      // Pastikan yang akses adalah doctor
+      if (type !== "doctor") {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied. Doctor endpoint only.",
+        });
+      }
+
+      const doctor = await prisma.doctor.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          fullname: true,
+          email: true,
+          category: true,
+          university: true,
+          strNumber: true,
+          gender: true,
+          photo: true,
+          bio: true,
+          alamatRumahSakit: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      if (!doctor) {
+        return res.status(404).json({
+          success: false,
+          message: "Doctor not found",
+        });
+      }
+
+      res.json({ 
+        success: true, 
+        message: "Doctor profile retrieved successfully",
+        data: doctor 
+      });
+    } catch (error) {
+      console.error("❌ Error getDoctorProfile:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch doctor profile",
+        error: error.message,
+      });
+    }
+  }
+
+  // ✅ Signout gabungan (backward compatibility)
+  async signout(req, res) {
+    try {
+      // Untuk JWT-based auth, signout dilakukan dengan menghapus token di client
+      // Di sini kita bisa log aktivitas signout
+      const { id, type } = req.user;
+
+      console.log(`${type} ${id} signed out at ${new Date()}`);
+
+      res.json({
+        success: true,
+        message: `${type} signed out successfully`,
+        data: {
+          signedOutAt: new Date(),
+          message: "Please remove token from client storage"
+        }
+      });
+    } catch (error) {
+      console.error("❌ Error signout:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to signout",
         error: error.message,
       });
     }
