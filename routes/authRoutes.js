@@ -3,7 +3,6 @@ const express = require("express");
 const { body } = require("express-validator");
 const authController = require("../controllers/authController");
 const validateRequest = require("../middleware/validation");
-const { authMiddleware } = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -48,8 +47,6 @@ const loginValidation = [
 ];
 
 // ✅ Routes
-
-// Registration routes
 router.post(
   "/register",
   registerValidation,
@@ -62,45 +59,7 @@ router.post(
   validateRequest,
   authController.registerDoctor
 );
-
-// Login routes - Terpisah untuk user dan doctor
-router.post(
-  "/user/login",
-  [
-    body("email")
-      .isEmail()
-      .withMessage("Valid email is required")
-      .normalizeEmail(),
-    body("password").notEmpty().withMessage("Password is required"),
-  ],
-  validateRequest,
-  authController.loginUser
-);
-
-router.post(
-  "/doctor/login",
-  [
-    body("email")
-      .isEmail()
-      .withMessage("Valid email is required")
-      .normalizeEmail(),
-    body("password").notEmpty().withMessage("Password is required"),
-  ],
-  validateRequest,
-  authController.loginDoctor
-);
-
-// Profile routes - Terpisah untuk user dan doctor
-router.get("/user/profile", authMiddleware, authController.getUserProfile);
-router.get("/doctor/profile", authMiddleware, authController.getDoctorProfile);
-
-// Signout routes - Terpisah untuk user dan doctor
-router.post("/user/signout", authMiddleware, authController.signoutUser);
-router.post("/doctor/signout", authMiddleware, authController.signoutDoctor);
-
-// Backward compatibility routes
 router.post("/login", loginValidation, validateRequest, authController.login);
-router.post("/signout", authMiddleware, authController.signout);
-router.get("/profile", authMiddleware, authController.getProfile);
+router.get("/profile", authController.getProfile);
 
 module.exports = router;
