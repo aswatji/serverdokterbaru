@@ -106,7 +106,7 @@ class AuthController {
         success: true,
         message: "Doctor registered successfully",
         data: {
-          token,
+          // token,
           doctor,
         },
       });
