@@ -102,7 +102,7 @@ router.get(
   requireDoctor,
   doctorController.getProfile
 );
-router.put("/profile/photo", doctorController.updatePhoto);
+router.put("/:id", doctorController.updatePhoto);
 /* -------------------------------------------
    🕒 DOCTOR SCHEDULE ROUTES
 ------------------------------------------- */
