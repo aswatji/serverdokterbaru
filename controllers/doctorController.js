@@ -114,32 +114,30 @@ class DoctorController {
     }
   }
   async updatePhoto(req, res) {
-    try {
-      const { photo } = req.body;
-      if (!photo) {
-        return res.status(400).json({
-          success: false,
-          message: "photo dokter diperlukan",
-        });
-      }
-      const updatedDoctor = await prisma.doctor.update({
-        where: { id: doctorId },
-        data: { photo },
-      });
-      res.json({
-        success: true,
-        message: "Photo Berhasil di update",
-        data: updatedDoctor,
-      });
-    } catch (error) {
-      console.error("❌ Error updatePhoto:", error);
-      res.status(500).json({
-        success: false,
-        message: "Gagal untuk update photo",
-        error: error.message,
-      });
-    }
+  try {
+    const doctorId = req.params.id; // ambil dari URL
+    const { photo } = req.body;
+
+    const updatedDoctor = await prisma.doctor.update({
+      where: { id: doctorId },
+      data: { photo },
+    });
+
+    res.json({
+      success: true,
+      message: "Photo berhasil diupdate",
+      data: updatedDoctor,
+    });
+  } catch (error) {
+    console.error("❌ Error updatePhoto:", error);
+    res.status(500).json({
+      success: false,
+      message: "Gagal untuk update photo",
+      error: error.message,
+    });
   }
+}
+
 
   // ✅ Ambil profil dokter yang sedang login
   async getProfile(req, res) {
