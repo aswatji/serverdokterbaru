@@ -115,11 +115,11 @@ class DoctorController {
   }
   async updatePhoto(req, res) {
     try {
-      const { id, photo } = req.body;
-      if (!id) {
+      const { photo } = req.body;
+      if (!photo) {
         return res.status(400).json({
           success: false,
-          message: "ID dokter diperlukan",
+          message: "photo dokter diperlukan",
         });
       }
       const updatedDoctor = await prisma.doctor.update({
