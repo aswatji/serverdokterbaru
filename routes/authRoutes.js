@@ -64,21 +64,29 @@ router.post(
 );
 
 // Login routes - Terpisah untuk user dan doctor
-router.post("/user/login", 
+router.post(
+  "/user/login",
   [
-    body("email").isEmail().withMessage("Valid email is required").normalizeEmail(),
-    body("password").notEmpty().withMessage("Password is required")
-  ], 
-  validateRequest, 
+    body("email")
+      .isEmail()
+      .withMessage("Valid email is required")
+      .normalizeEmail(),
+    body("password").notEmpty().withMessage("Password is required"),
+  ],
+  validateRequest,
   authController.loginUser
 );
 
-router.post("/doctor/login", 
+router.post(
+  "/doctor/login",
   [
-    body("email").isEmail().withMessage("Valid email is required").normalizeEmail(),
-    body("password").notEmpty().withMessage("Password is required")
-  ], 
-  validateRequest, 
+    body("email")
+      .isEmail()
+      .withMessage("Valid email is required")
+      .normalizeEmail(),
+    body("password").notEmpty().withMessage("Password is required"),
+  ],
+  validateRequest,
   authController.loginDoctor
 );
 

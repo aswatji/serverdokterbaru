@@ -145,15 +145,15 @@ class AuthController {
       res.json({
         success: true,
         message: "User login successful",
-        data: { 
-          token, 
+        data: {
+          token,
           user: {
             id: user.id,
             email: user.email,
             fullname: user.fullname,
             profession: user.profession,
-            photo: user.photo
-          }
+            photo: user.photo,
+          },
         },
       });
     } catch (error) {
@@ -201,8 +201,8 @@ class AuthController {
       res.json({
         success: true,
         message: "Doctor login successful",
-        data: { 
-          token, 
+        data: {
+          token,
           doctor: {
             id: doctor.id,
             email: doctor.email,
@@ -211,8 +211,8 @@ class AuthController {
             university: doctor.university,
             strNumber: doctor.strNumber,
             photo: doctor.photo,
-            bio: doctor.bio
-          }
+            bio: doctor.bio,
+          },
         },
       });
     } catch (error) {
@@ -305,8 +305,8 @@ class AuthController {
         data: {
           signedOutAt: new Date(),
           message: "Please remove token from client storage",
-          userType: "user"
-        }
+          userType: "user",
+        },
       });
     } catch (error) {
       console.error("❌ Error signoutUser:", error);
@@ -321,17 +321,17 @@ class AuthController {
   // ✅ Signout khusus untuk doctor
   async signoutDoctor(req, res) {
     try {
-      const { id } = req.user;
+      const doctorId = req.params.id;
 
       // Pastikan yang logout adalah doctor
-      if (req.user.type !== "doctor") {
+      if (!doctorId) {
         return res.status(403).json({
           success: false,
           message: "Access denied. Doctor endpoint only.",
         });
       }
 
-      console.log(`Doctor ${id} signed out at ${new Date()}`);
+      console.log(`Doctor ${doctorId} signed out at ${new Date()}`);
 
       res.json({
         success: true,
@@ -339,8 +339,8 @@ class AuthController {
         data: {
           signedOutAt: new Date(),
           message: "Please remove token from client storage",
-          userType: "doctor"
-        }
+          userType: "doctor",
+        },
       });
     } catch (error) {
       console.error("❌ Error signoutDoctor:", error);
@@ -438,10 +438,10 @@ class AuthController {
         });
       }
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: "User profile retrieved successfully",
-        data: user 
+        data: user,
       });
     } catch (error) {
       console.error("❌ Error getUserProfile:", error);
@@ -491,10 +491,10 @@ class AuthController {
         });
       }
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: "Doctor profile retrieved successfully",
-        data: doctor 
+        data: doctor,
       });
     } catch (error) {
       console.error("❌ Error getDoctorProfile:", error);
@@ -520,8 +520,8 @@ class AuthController {
         message: `${type} signed out successfully`,
         data: {
           signedOutAt: new Date(),
-          message: "Please remove token from client storage"
-        }
+          message: "Please remove token from client storage",
+        },
       });
     } catch (error) {
       console.error("❌ Error signout:", error);

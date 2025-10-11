@@ -26,8 +26,8 @@ class EnhancedAuthController {
         message: `${type} signed out successfully`,
         data: {
           signedOutAt: new Date(),
-          message: "Token has been invalidated"
-        }
+          message: "Token has been invalidated",
+        },
       });
     } catch (error) {
       console.error("❌ Error signout:", error);
