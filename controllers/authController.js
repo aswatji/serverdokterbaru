@@ -95,9 +95,9 @@ class AuthController {
         },
       });
 
-      const token = jwt.sign({ id: doctor.id, type: "doctor" }, JWT_SECRET, {
-        expiresIn: "1d",
-      });
+      // const token = jwt.sign({ id: doctor.id, type: "doctor" }, JWT_SECRET, {
+      //   expiresIn: "1d",
+      // });
 
       // // Remove password from response
       // const { password: _, ...doctorWithoutPassword } = doctor;
