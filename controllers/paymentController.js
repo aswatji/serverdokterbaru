@@ -368,7 +368,13 @@ class PaymentController {
           .status(404)
           .json({ success: false, message: "Payment not found" });
 
-      return res.json({ success: true, data: payment });
+      return res.json({
+        success: true,
+        data: {
+          transaction_status: payment.status, // biar front-end bisa baca
+          status: payment.status,
+        },
+      });
     } catch (error) {
       console.error("❌ checkPaymentStatus error:", error);
       return res.status(500).json({
