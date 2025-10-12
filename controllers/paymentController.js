@@ -311,63 +311,27 @@ class PaymentController {
   };
 
   // ✅ 2. Callback dari Midtrans
-  // ✅ 2. Callback dari Midtrans (versi dengan log)
   midtransCallback = async (req, res) => {
     try {
-      const payload = req.body;
-      console.log("📩 Midtrans callback diterima:", payload); // 🟢 Tambahkan log
-
-      const orderId = payload.order_id;
-      const transactionStatus = payload.transaction_status;
-
-      // 🟢 Validasi ID
-      if (!orderId) {
-        console.error("❌ order_id tidak ditemukan di payload");
-        return res
-          .status(400)
-          .json({ success: false, message: "Invalid order_id" });
-      }
+      console.log("📩 Callback dari Midtrans:", req.body);
+      const { order_id, transaction_status } = req.body;
 
       let status = "pending";
-      if (["capture", "settlement"].includes(transactionStatus))
+      if (["capture", "settlement"].includes(transaction_status))
         status = "success";
-      if (["cancel", "deny", "expire"].includes(transactionStatus))
+      if (["cancel", "deny", "expire"].includes(transaction_status))
         status = "failed";
 
-      console.log(`🔄 Update transaksi ${orderId} -> ${status}`);
-
       const updatedPayment = await prisma.payment.update({
-        where: { id: orderId },
+        where: { id: order_id },
         data: { status },
       });
 
       console.log("✅ Payment updated:", updatedPayment);
-
-      // 🟢 Jika sukses, buat chat otomatis
-      if (status === "success") {
-        await prisma.chat.create({
-          data: {
-            chatKey: `CHAT-${Date.now()}`,
-            userId: updatedPayment.userId,
-            doctorId: updatedPayment.doctorId,
-            paymentId: updatedPayment.id,
-          },
-        });
-        console.log("💬 Chat otomatis dibuat");
-      }
-
-      return res.json({
-        success: true,
-        message: "Callback processed successfully",
-        status,
-      });
-    } catch (error) {
-      console.error("❌ midtransCallback error:", error);
-      return res.status(500).json({
-        success: false,
-        message: "Failed to process callback",
-        error: error.message,
-      });
+      res.json({ success: true, status });
+    } catch (err) {
+      console.error("❌ midtransCallback error:", err);
+      res.status(500).json({ success: false, error: err.message });
     }
   };
 
