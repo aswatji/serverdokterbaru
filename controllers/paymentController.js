@@ -19,15 +19,16 @@ class PaymentController {
   async createPayment(req, res) {
     try {
       const { doctorId, amount } = req.body;
-      const { id: userId } = req.user;
+      const { id: userId, fullname, email, phone } = req.user;
 
-      if (!doctorId || !amount)
+      if (!doctorId || !amount) {
         return res.status(400).json({
           success: false,
           message: "doctorId and amount are required",
         });
+      }
 
-      // Buat record pembayaran di DB
+      // ✅ Simpan ke database (status pending)
       const payment = await prisma.payment.create({
         data: {
           doctorId,
@@ -37,31 +38,36 @@ class PaymentController {
         },
       });
 
-      // Buat transaksi Midtrans
+      // ✅ Siapkan parameter untuk Midtrans
       const parameter = {
         transaction_details: {
-          order_id: payment.id,
+          order_id: payment.id, // wajib sama dengan DB ID
           gross_amount: payment.amount,
         },
         customer_details: {
-          user_id: userId,
+          first_name: fullname || "User",
+          email: email || "user@example.com",
+          phone: phone || "08123456789",
         },
       };
 
+      // ✅ Buat transaksi ke Midtrans
       const transaction = await this.snap.createTransaction(parameter);
 
-      res.status(201).json({
+      return res.status(201).json({
         success: true,
         message: "Payment created successfully",
         data: {
           paymentId: payment.id,
+          order_id: payment.id,
+          gross_amount: payment.amount,
           redirect_url: transaction.redirect_url,
           token: transaction.token,
         },
       });
     } catch (error) {
       console.error("❌ createPayment error:", error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: "Failed to create payment",
         error: error.message,
