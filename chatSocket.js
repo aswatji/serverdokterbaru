@@ -305,7 +305,7 @@ function startDoctorAvailabilityNotification() {
     } catch (error) {
       console.error("Error in doctor availability notification:", error);
     }
-  }, 120000); // Every 120 seconds (optimized)
+  }, 600000); // Every 120 seconds (optimized)
 
   console.log(
     "Doctor availability notification interval started (120 seconds)"
