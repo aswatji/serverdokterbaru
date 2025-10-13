@@ -21,12 +21,10 @@ class PaymentController {
       const { id: userId } = req.user;
 
       if (!doctorId || !amount)
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "doctorId and amount are required",
-          });
+        return res.status(400).json({
+          success: false,
+          message: "doctorId and amount are required",
+        });
 
       // Buat record pembayaran di DB
       const payment = await prisma.payment.create({
@@ -71,12 +69,32 @@ class PaymentController {
   }
 
   // ✅ 2. Callback dari Midtrans
+  // ✅ Fixed Midtrans callback with signature verification and logging
   async midtransCallback(req, res) {
     try {
       const payload = req.body;
-      const orderId = payload.order_id;
-      const transactionStatus = payload.transaction_status;
 
+      // Verifikasi signature key
+      const crypto = require("crypto");
+      const signatureKey = crypto
+        .createHash("sha512")
+        .update(
+          payload.order_id +
+            payload.status_code +
+            payload.gross_amount +
+            process.env.MIDTRANS_SERVER_KEY
+        )
+        .digest("hex");
+
+      if (signatureKey !== payload.signature_key) {
+        console.warn("🚫 Invalid signature, ignored");
+        return res
+          .status(403)
+          .json({ success: false, message: "Invalid signature" });
+      }
+
+      // Mapping status
+      const transactionStatus = payload.transaction_status;
       let status = "pending";
       if (["capture", "settlement"].includes(transactionStatus))
         status = "success";
@@ -84,11 +102,10 @@ class PaymentController {
         status = "failed";
 
       const updatedPayment = await prisma.payment.update({
-        where: { id: orderId },
+        where: { id: payload.order_id },
         data: { status },
       });
 
-      // Jika sukses, buat chat otomatis
       if (status === "success") {
         await prisma.chat.create({
           data: {
@@ -100,7 +117,8 @@ class PaymentController {
         });
       }
 
-      res.json({ success: true, message: "Callback processed", status });
+      console.log(`✅ Payment ${payload.order_id} updated to ${status}`);
+      res.status(200).json({ success: true, status });
     } catch (error) {
       console.error("❌ midtransCallback error:", error);
       res.status(500).json({
@@ -240,4 +258,3 @@ module.exports = new PaymentController();
 
 // controllers/paymentController.js
 // ✅ Versi stabil — aman dari error this.snap undefined
-
