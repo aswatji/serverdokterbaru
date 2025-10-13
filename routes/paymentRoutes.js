@@ -1,69 +1,11 @@
-// // routes/paymentRoutes.js
-// // ✅ Final version — Payment routes (Prisma-based, chat auto-create)
-
-// const express = require("express");
-// const { body } = require("express-validator");
-// const paymentController = require("../controllers/paymentController");
-// const validateRequest = require("../middleware/validation");
-// const { authMiddleware } = require("../middleware/authMiddleware");
-
-// const router = express.Router();
-
-// /* -------------------------------------------
-//    🧾 VALIDATION RULES
-// ------------------------------------------- */
-// const createPaymentValidation = [
-//   body("doctorId").notEmpty().withMessage("Doctor ID is required"),
-//   body("amount")
-//     .isFloat({ min: 1000 })
-//     .withMessage("Amount must be greater than 0"),
-// ];
-
-// /* -------------------------------------------
-//    💰 PAYMENT ROUTES
-// ------------------------------------------- */
-
-// // ✅ Buat pembayaran baru
-// router.post(
-//   "/create",
-//   authMiddleware,
-//   createPaymentValidation,
-//   validateRequest,
-//   paymentController.createPayment
-// );
-
-// // ✅ Callback dari Midtrans (tidak perlu auth)
-// router.post("/callback", paymentController.midtransCallback);
-
-// // ✅ Cek status pembayaran berdasarkan orderId
-// router.get(
-//   "/status/:orderId",
-//   authMiddleware,
-//   paymentController.checkPaymentStatus
-// );
-
-// // ✅ Ambil semua pembayaran user login
-// router.get("/", authMiddleware, paymentController.getUserPayments);
-
-// // ✅ (Opsional) Ambil detail pembayaran by ID (admin)
-// router.get("/:id", authMiddleware, paymentController.getPaymentById);
-
-// // ✅ (Opsional) Update status pembayaran (admin)
-// router.put("/:id", authMiddleware, paymentController.updatePaymentStatus);
-
-// // ✅ (Opsional) Hapus pembayaran (admin)
-// router.delete("/:id", authMiddleware, paymentController.deletePayment);
-
-// module.exports = router;
-
-// routes/paymentRoutes.js
-// ✅ FINAL VERSION — Payment routes (Prisma + Midtrans + Validation)
-
+// ======================================================
+// ✅ PAYMENT ROUTES — Prisma + Midtrans + Validation
+// ======================================================
 const express = require("express");
 const { body, param } = require("express-validator");
 const paymentController = require("../controllers/paymentController");
-const validateRequest = require("../middleware/validation");
-const { authMiddleware } = require("../middleware/authMiddleware");
+const validateRequest = require("../middlewares/validation");
+const { authMiddleware } = require("../middlewares/authMiddleware");
 
 const router = express.Router();
 
@@ -71,14 +13,13 @@ const router = express.Router();
    🧾 VALIDATION RULES
 ------------------------------------------- */
 
-// ✅ Saat membuat pembayaran baru
+// Saat membuat pembayaran baru
 const createPaymentValidation = [
   body("doctorId")
     .notEmpty()
     .withMessage("Doctor ID is required")
     .isString()
     .withMessage("Doctor ID must be a string"),
-
   body("amount")
     .notEmpty()
     .withMessage("Amount is required")
@@ -86,7 +27,7 @@ const createPaymentValidation = [
     .withMessage("Amount must be at least 1000 (Rp)"),
 ];
 
-// ✅ Saat update status pembayaran (admin)
+// Saat update status pembayaran (admin)
 const updateStatusValidation = [
   param("id").notEmpty().withMessage("Payment ID is required"),
   body("status")
@@ -109,7 +50,7 @@ router.post(
   paymentController.createPayment
 );
 
-// ✅ 2. Callback dari Midtrans (tidak perlu auth)
+// ✅ 2. Callback dari Midtrans (tidak perlu token JWT)
 router.post("/callback", paymentController.midtransCallback);
 
 // ✅ 3. Cek status pembayaran berdasarkan orderId
@@ -121,10 +62,10 @@ router.get(
   paymentController.checkPaymentStatus
 );
 
-// ✅ 4. Ambil semua pembayaran user login
+// ✅ 4. Ambil semua pembayaran milik user/doctor login
 router.get("/", authMiddleware, paymentController.getUserPayments);
 
-// ✅ 5. Ambil detail pembayaran by ID (user atau admin)
+// ✅ 5. Ambil detail pembayaran by ID
 router.get(
   "/:id",
   authMiddleware,
@@ -133,7 +74,7 @@ router.get(
   paymentController.getPaymentById
 );
 
-// ✅ 6. Update status pembayaran (admin)
+// ✅ 6. Update status pembayaran (admin atau internal)
 router.put(
   "/:id",
   authMiddleware,
@@ -142,7 +83,7 @@ router.put(
   paymentController.updatePaymentStatus
 );
 
-// ✅ 7. Hapus pembayaran (admin)
+// ✅ 7. Hapus pembayaran (opsional / admin)
 router.delete(
   "/:id",
   authMiddleware,
