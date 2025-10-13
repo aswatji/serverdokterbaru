@@ -37,6 +37,47 @@ class ChatController {
     }
   }
 
+  // ✅ Tambahkan di chatController.js
+  async createChat(req, res) {
+    try {
+      const { userId, doctorId, paymentId } = req.body;
+
+      // Cek apakah chat sudah ada sebelumnya
+      let existingChat = await prisma.chat.findFirst({
+        where: { userId, doctorId },
+      });
+
+      if (existingChat) {
+        return res.status(200).json({ success: true, data: existingChat });
+      }
+
+      const chat = await prisma.chat.create({
+        data: {
+          userId,
+          doctorId,
+          paymentId,
+          chatKey: `${userId}-${doctorId}-${Date.now()}`, // bisa juga pakai uuid
+        },
+        include: {
+          user: true,
+          doctor: true,
+        },
+      });
+
+      return res.status(201).json({
+        success: true,
+        data: chat,
+      });
+    } catch (error) {
+      console.error("❌ Error createChat:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to create chat",
+        error: error.message,
+      });
+    }
+  }
+
   // ✅ Ambil 1 chat berdasarkan chatKey (unique ID)
   async getChatByKey(req, res) {
     try {

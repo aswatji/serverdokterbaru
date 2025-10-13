@@ -40,4 +40,6 @@ router.post(
   chatController.sendMessage
 );
 
+router.post("/", authMiddleware, chatController.createChat);
+
 module.exports = router;
