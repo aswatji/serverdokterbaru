@@ -92,6 +92,7 @@ model Chat {
   paymentId      String?       @unique
   lastMessageId  String?       @unique
   createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @default(now()) @updatedAt
 
   user           User          @relation("UserChats", fields: [userId], references: [id])
   doctor         Doctor        @relation("DoctorChats", fields: [doctorId], references: [id])
