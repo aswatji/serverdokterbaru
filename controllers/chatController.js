@@ -388,29 +388,13 @@ class ChatController {
         });
       }
 
-      // 1️⃣ Cek apakah chat sudah ada
-      let existingChat = await prisma.chat.findFirst({
+      // 🔹 Cari chat yang sudah ada (1 pasien 1 dokter)
+      let chat = await prisma.chat.findFirst({
         where: { userId, doctorId },
         include: { user: true, doctor: true, payment: true },
       });
 
-      if (existingChat) {
-        // Perbarui paymentId kalau dikirim
-        if (paymentId) {
-          await prisma.chat.update({
-            where: { id: existingChat.id },
-            data: { paymentId },
-          });
-        }
-
-        return res.status(200).json({
-          success: true,
-          message: "Existing chat loaded",
-          data: existingChat,
-        });
-      }
-
-      // 2️⃣ Cek pembayaran terakhir user ke dokter ini
+      // 🔹 Ambil payment terakhir yang sukses
       const recentPayment = await prisma.payment.findFirst({
         where: {
           userId,
@@ -420,44 +404,63 @@ class ChatController {
         orderBy: { createdAt: "desc" },
       });
 
-      // Kalau belum pernah bayar sama sekali
       if (!recentPayment) {
         return res.status(403).json({
           success: false,
-          message: "No successful payment found",
+          message: "Belum ada pembayaran sukses untuk dokter ini.",
         });
       }
 
-      // 3️⃣ Hitung waktu selisih dari pembayaran
       const now = new Date();
       const paymentTime = new Date(recentPayment.createdAt);
       const diffMs = now - paymentTime;
-      const tenMinutes = 10 * 60 * 1000; // 10 menit dalam ms
+      const tenMinutes = 10 * 60 * 1000;
 
-      // 4️⃣ Kalau sudah lewat 10 menit, tolak
-      if (diffMs > tenMinutes) {
-        return res.status(403).json({
-          success: false,
-          message: "Payment expired — please pay again",
+      // 🔹 Kalau payment masih berlaku
+      if (diffMs <= tenMinutes) {
+        if (chat) {
+          // 🔄 Update chat dengan paymentId terbaru (biar bisa lanjut chat)
+          await prisma.chat.update({
+            where: { id: chat.id },
+            data: {
+              paymentId: recentPayment.id,
+              updatedAt: new Date(),
+            },
+          });
+          const updatedChat = await prisma.chat.findUnique({
+            where: { id: chat.id },
+            include: { user: true, doctor: true, payment: true },
+          });
+          return res.status(200).json({
+            success: true,
+            message: "Chat diperbarui dengan pembayaran baru",
+            data: updatedChat,
+          });
+        }
+
+        // 🆕 Kalau belum ada chat, buat baru
+        const chatKey = `${userId}-${doctorId}`;
+        const newChat = await prisma.chat.create({
+          data: {
+            userId,
+            doctorId,
+            paymentId: recentPayment.id,
+            chatKey,
+          },
+          include: { user: true, doctor: true, payment: true },
+        });
+
+        return res.status(201).json({
+          success: true,
+          message: "Chat baru dibuat (pembayaran valid)",
+          data: newChat,
         });
       }
 
-      // 5️⃣ Kalau masih dalam masa aktif, buat chat baru
-      const chatKey = `${userId}-${doctorId}`;
-      const newChat = await prisma.chat.create({
-        data: {
-          userId,
-          doctorId,
-          paymentId: recentPayment.id,
-          chatKey,
-        },
-        include: { user: true, doctor: true, payment: true },
-      });
-
-      res.status(201).json({
-        success: true,
-        message: "New chat created (within 10-minute access window)",
-        data: newChat,
+      // 🔒 Kalau payment sudah lewat 10 menit
+      return res.status(403).json({
+        success: false,
+        message: "Payment expired — silakan bayar lagi untuk mulai chat.",
       });
     } catch (error) {
       console.error("❌ Error createChat:", error);
