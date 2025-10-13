@@ -12,32 +12,60 @@ class PaymentController {
       serverKey: process.env.MIDTRANS_SERVER_KEY,
       clientKey: process.env.MIDTRANS_CLIENT_KEY,
     });
-
-    // Bind method supaya 'this' tetap mengarah ke class
     this.createPayment = this.createPayment.bind(this);
   }
 
+  // ✅ 1. Buat pembayaran (user -> doctor)
   async createPayment(req, res) {
     try {
+      const { doctorId, amount } = req.body;
+      const { id: userId } = req.user;
+
+      if (!doctorId || !amount)
+        return res.status(400).json({
+          success: false,
+          message: "doctorId and amount are required",
+        });
+
+      // Buat record pembayaran di DB
+      const payment = await prisma.payment.create({
+        data: {
+          doctorId,
+          userId,
+          amount: parseFloat(amount),
+          status: "pending",
+        },
+      });
+
+      // Buat transaksi Midtrans
       const parameter = {
         transaction_details: {
-          order_id: `ORDER-${Date.now()}`,
-          gross_amount: req.body.amount || 50000,
+          order_id: payment.id,
+          gross_amount: payment.amount,
         },
-        credit_card: {
-          secure: true,
+        customer_details: {
+          user_id: userId,
         },
       };
 
       const transaction = await this.snap.createTransaction(parameter);
 
-      res.status(200).json({
-        token: transaction.token,
-        redirect_url: transaction.redirect_url,
+      res.status(201).json({
+        success: true,
+        message: "Payment created successfully",
+        data: {
+          paymentId: payment.id,
+          redirect_url: transaction.redirect_url,
+          token: transaction.token,
+        },
       });
     } catch (error) {
-      console.error("createPayment error:", error);
-      res.status(500).json({ message: error.message });
+      console.error("❌ createPayment error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to create payment",
+        error: error.message,
+      });
     }
   }
 
