@@ -99,6 +99,7 @@ model Chat {
   payment        Payment?      @relation(fields: [paymentId], references: [id]) // ✅ hanya Chat yang pegang fields/references
   lastMessage    ChatMessage?  @relation("LastMessageRelation", fields: [lastMessageId], references: [id])
   dates          ChatDate[]
+  @@unique([userId, doctorId]) // 🔥 ini kunci utamanya
 }
 
 // ======================================================
