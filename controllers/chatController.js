@@ -115,41 +115,63 @@ class ChatController {
       });
     }
   }
-
-  // ✅ Kirim pesan baru
   async sendMessage(req, res) {
     try {
       const { chatKey } = req.params;
       const { content } = req.body;
       const { id, type } = req.user;
 
-      const chat = await prisma.chat.findUnique({ where: { chatKey } });
+      // 1️⃣ Cari chat berdasarkan chatKey
+      const chat = await prisma.chat.findUnique({
+        where: { chatKey },
+        include: { dates: true },
+      });
       if (!chat) {
-        return res.status(404).json({
-          success: false,
-          message: "Chat not found",
+        return res
+          .status(404)
+          .json({ success: false, message: "Chat not found" });
+      }
+
+      // 2️⃣ Cek apakah sudah ada ChatDate untuk hari ini
+      const today = new Date();
+      const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+
+      let chatDate = await prisma.chatDate.findFirst({
+        where: {
+          chatId: chat.id,
+          date: {
+            gte: startOfDay,
+          },
+        },
+      });
+
+      // 3️⃣ Jika belum ada, buat baru
+      if (!chatDate) {
+        chatDate = await prisma.chatDate.create({
+          data: {
+            chatId: chat.id,
+            date: new Date(),
+          },
         });
       }
 
-      const message = await prisma.message.create({
+      // 4️⃣ Buat pesan
+      const message = await prisma.chatMessage.create({
         data: {
-          chatId: chat.id,
+          chatDateId: chatDate.id,
           sender: type,
           content,
-          userId: type === "user" ? id : null,
-          doctorId: type === "doctor" ? id : null,
         },
       });
 
+      // 5️⃣ Update lastMessage di Chat
       await prisma.chat.update({
         where: { id: chat.id },
-        data: {
-          lastMessageId: message.id,
-          updatedAt: new Date(),
-        },
+        data: { lastMessageId: message.id },
       });
 
-      res.status(201).json({
+      // 6️⃣ Kirim respons
+      return res.status(201).json({
         success: true,
         message: "Message sent successfully",
         data: message,
@@ -163,6 +185,54 @@ class ChatController {
       });
     }
   }
+
+  // ✅ Kirim pesan baru
+  // async sendMessage(req, res) {
+  //   try {
+  //     const { chatKey } = req.params;
+  //     const { content } = req.body;
+  //     const { id, type } = req.user;
+
+  //     const chat = await prisma.chat.findUnique({ where: { chatKey } });
+  //     if (!chat) {
+  //       return res.status(404).json({
+  //         success: false,
+  //         message: "Chat not found",
+  //       });
+  //     }
+
+  //     const message = await prisma.chatMessage.create({
+  //       data: {
+  //         chatId: chat.id,
+  //         sender: type,
+  //         content,
+  //         userId: type === "user" ? id : null,
+  //         doctorId: type === "doctor" ? id : null,
+  //       },
+  //     });
+
+  //     await prisma.chat.update({
+  //       where: { id: chat.id },
+  //       data: {
+  //         lastMessageId: message.id,
+  //         updatedAt: new Date(),
+  //       },
+  //     });
+
+  //     res.status(201).json({
+  //       success: true,
+  //       message: "Message sent successfully",
+  //       data: message,
+  //     });
+  //   } catch (error) {
+  //     console.error("❌ Error sendMessage:", error);
+  //     res.status(500).json({
+  //       success: false,
+  //       message: "Failed to send message",
+  //       error: error.message,
+  //     });
+  //   }
+  // }
 }
 
 module.exports = new ChatController();
