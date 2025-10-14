@@ -475,6 +475,48 @@ class ChatController {
   // =======================================================
   // 🔹 GET MESSAGES BY CHATKEY
   // =======================================================
+  // async getMessages(req, res) {
+  //   try {
+  //     const { chatKey } = req.params;
+
+  //     const chat = await prisma.chat.findUnique({
+  //       where: { chatKey },
+  //       include: {
+  //         dates: {
+  //           orderBy: { date: "asc" },
+  //           include: {
+  //             messages: {
+  //               orderBy: { sentAt: "asc" },
+  //               select: { id, chatDateId, sender, content, sentAt },
+  //             },
+  //           },
+  //         },
+  //         user: true,
+  //         doctor: true,
+  //       },
+  //     });
+
+  //     if (!chat) {
+  //       return res.status(404).json({
+  //         success: false,
+  //         message: "Chat not found",
+  //       });
+  //     }
+
+  //     res.status(200).json({
+  //       success: true,
+  //       data: chat,
+  //     });
+  //   } catch (error) {
+  //     console.error("❌ Error getMessages:", error);
+  //     res.status(500).json({
+  //       success: false,
+  //       message: "Failed to fetch messages",
+  //       error: error.message,
+  //     });
+  //   }
+  // }
+
   async getMessages(req, res) {
     try {
       const { chatKey } = req.params;
@@ -482,12 +524,18 @@ class ChatController {
       const chat = await prisma.chat.findUnique({
         where: { chatKey },
         include: {
-          dates: {
+          chatDates: {
+            // ✅ gunakan nama relasi yang benar
             orderBy: { date: "asc" },
             include: {
               messages: {
                 orderBy: { sentAt: "asc" },
-                select: { id, chatDateId, sender, content, sentAt },
+                select: {
+                  id: true,
+                  sender: true,
+                  content: true,
+                  sentAt: true,
+                },
               },
             },
           },
@@ -515,9 +563,7 @@ class ChatController {
         error: error.message,
       });
     }
-  }
-
-  // =======================================================
+  } // =======================================================
   // 🔹 SEND MESSAGE
   // =======================================================
   async sendMessage(req, res) {
