@@ -189,9 +189,9 @@ class PaymentController {
           await prisma.chat.update({
             where: { id: existingChat.id },
             data: {
-              paymentId: updatedPayment.id,
+              payment: { connect: { id: updatedPayment.id } }, // ✅ ini kuncinya
               isActive: true,
-              expiresAt: expiryTime,
+              expiredAt: expiryTime, // ✅ pakai nama kolom yang cocok
               updatedAt: new Date(),
             },
           });
@@ -201,9 +201,9 @@ class PaymentController {
               chatKey: `CHAT-${Date.now()}`,
               userId: updatedPayment.userId,
               doctorId: updatedPayment.doctorId,
-              paymentId: updatedPayment.id,
+              payment: { connect: { id: updatedPayment.id } },
               isActive: true,
-              expiresAt: expiryTime,
+              expiredAt: expiryTime,
             },
           });
         }
