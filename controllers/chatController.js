@@ -425,7 +425,6 @@ class ChatController {
             data: {
               paymentId: recentPayment.id,
               updatedAt: new Date(),
-              isActive: true,
             },
           });
           const updatedChat = await prisma.chat.findUnique({
@@ -447,7 +446,6 @@ class ChatController {
             doctorId,
             paymentId: recentPayment.id,
             chatKey,
-            isActive: true,
           },
           include: { user: true, doctor: true, payment: true },
         });
