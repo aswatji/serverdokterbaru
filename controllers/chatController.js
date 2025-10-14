@@ -824,7 +824,7 @@ class ChatController {
       const chat = await prisma.chat.findUnique({
         where: { chatKey },
         include: {
-          chatDates: {
+          dates: {
             orderBy: { date: "asc" },
             include: {
               messages: {
@@ -854,7 +854,7 @@ class ChatController {
         chatKey: chat.chatKey,
         user: chat.user,
         doctor: chat.doctor,
-        chatDates: chat.chatDates.map((d) => ({
+        dates: chat.chatDates.map((d) => ({
           date: d.date,
           messages: d.messages,
         })),
