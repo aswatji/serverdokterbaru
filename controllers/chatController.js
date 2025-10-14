@@ -854,7 +854,7 @@ class ChatController {
         chatKey: chat.chatKey,
         user: chat.user,
         doctor: chat.doctor,
-        dates: chat.chatDates.map((d) => ({
+        dates: chat.dates.map((d) => ({
           date: d.date,
           messages: d.messages,
         })),
