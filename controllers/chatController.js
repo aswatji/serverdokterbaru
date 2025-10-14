@@ -485,7 +485,10 @@ class ChatController {
           dates: {
             orderBy: { date: "asc" },
             include: {
-              messages: { orderBy: { sentAt: "asc" } },
+              messages: {
+                orderBy: { sentAt: "asc" },
+                select: { id, chatDateId, sender, content, sentAt },
+              },
             },
           },
           user: true,
