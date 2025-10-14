@@ -524,8 +524,8 @@ class ChatController {
       const chat = await prisma.chat.findUnique({
         where: { chatKey },
         include: {
-          chatDates: {
-            // ✅ gunakan nama relasi yang benar
+          dates: {
+            // ✅ gunakan nama relasi yang benar sesuai schema
             orderBy: { date: "asc" },
             include: {
               messages: {
@@ -551,9 +551,25 @@ class ChatController {
         });
       }
 
+      // 🔹 Format output agar frontend bisa langsung konsumsi
+      const formatted = {
+        chatKey: chat.chatKey,
+        user: chat.user,
+        doctor: chat.doctor,
+        dates: chat.dates.map((d) => ({
+          date: d.date,
+          messages: d.messages.map((m) => ({
+            id: m.id,
+            sender: m.sender,
+            content: m.content,
+            sentAt: m.sentAt,
+          })),
+        })),
+      };
+
       res.status(200).json({
         success: true,
-        data: chat,
+        data: formatted,
       });
     } catch (error) {
       console.error("❌ Error getMessages:", error);
