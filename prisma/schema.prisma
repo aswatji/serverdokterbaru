@@ -99,6 +99,9 @@ model Chat {
   payment        Payment?      @relation(fields: [paymentId], references: [id]) // ✅ hanya Chat yang pegang fields/references
   lastMessage    ChatMessage?  @relation("LastMessageRelation", fields: [lastMessageId], references: [id])
   dates          ChatDate[]
+  isActive       Boolean       @default(false) // 🔥 status chat aktif atau tida
+  expiredAt      DateTime?     // 🔥 waktu kadaluarsa chat (misal 1 hari setelah payment sukses)
+  
   @@unique([userId, doctorId]) // 🔥 ini kunci utamanya
 }
 
