@@ -352,7 +352,7 @@ let doctorAvailabilityInterval;
 function initChatSocket(server) {
   io = new Server(server, {
     cors: {
-      origin: process.env.FRONTEND_URL || "*",
+      origin: process.env.FRONTEND_URL || "https://localhost:3000" || "*",
       methods: ["GET", "POST"],
     },
   });
@@ -390,8 +390,7 @@ function initChatSocket(server) {
           },
         });
 
-        if (!chat)
-          return socket.emit("error", { message: "Chat not found" });
+        if (!chat) return socket.emit("error", { message: "Chat not found" });
 
         if (!chat.isActive)
           return socket.emit("error", { message: "Chat is not active" });
@@ -427,7 +426,9 @@ function initChatSocket(server) {
                 chat: {
                   include: {
                     user: { select: { id: true, fullname: true, photo: true } },
-                    doctor: { select: { id: true, fullname: true, photo: true } },
+                    doctor: {
+                      select: { id: true, fullname: true, photo: true },
+                    },
                   },
                 },
               },
@@ -466,9 +467,7 @@ function initChatSocket(server) {
       });
     });
 
-    socket.on("disconnect", () =>
-      console.log(`🔴 Disconnected: ${socket.id}`)
-    );
+    socket.on("disconnect", () => console.log(`🔴 Disconnected: ${socket.id}`));
   });
 
   startDoctorAvailabilityNotification();
@@ -510,7 +509,9 @@ function startDoctorAvailabilityNotification() {
         }
       }
 
-      console.log(`✅ Checked doctor availability for ${activeChats.length} chats`);
+      console.log(
+        `✅ Checked doctor availability for ${activeChats.length} chats`
+      );
     } catch (e) {
       console.error("Doctor availability error:", e);
     }

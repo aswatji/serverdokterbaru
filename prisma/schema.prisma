@@ -1,161 +1,119 @@
-// ======================================================
-// ✅ FIXED FINAL SCHEMA PRISMA (VALIDATED - NO ERRORS)
-// ======================================================
+generator client {
+  provider = "prisma-client-js"
+}
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
-}
-
-// ======================================================
-// 1️⃣ USER MODEL
-// ======================================================
 model User {
-  id           String     @id @default(cuid())
-  email        String     @unique
-  password     String
-  fullname     String
-  photo        String?
-  profession   String?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-
-  chats        Chat[]     @relation("UserChats")
-  payments     Payment[]
+  id         String    @id @default(cuid())
+  email      String    @unique
+  password   String
+  createdAt  DateTime  @default(now())
+  fullname   String
+  photo      String?
+  profession String?
+  updatedAt  DateTime  @updatedAt
+  chats      Chat[]    @relation("UserChats")
+  payments   Payment[]
 }
 
-// ======================================================
-// 2️⃣ DOCTOR MODEL
-// ======================================================
 model Doctor {
-  id               String      @id @default(cuid())
+  id               String           @id @default(cuid())
+  bio              String?
+  photo            String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
   fullname         String
   category         String
   university       String
-  strNumber        String      @unique
+  strNumber        String           @unique
   gender           String
-  email            String      @unique
+  email            String           @unique
   password         String
-  bio              String?
-  photo            String?
   alamatRumahSakit String?
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-
-  chats            Chat[]      @relation("DoctorChats")
+  chats            Chat[]           @relation("DoctorChats")
   schedules        DoctorSchedule[]
   payments         Payment[]
 }
 
-// ======================================================
-// 3️⃣ DOCTOR SCHEDULE MODEL
-// ======================================================
 model DoctorSchedule {
   id        String   @id @default(cuid())
-  doctor    Doctor   @relation(fields: [doctorId], references: [id])
   doctorId  String
   dayOfWeek Int
   startTime DateTime
   endTime   DateTime
+  doctor    Doctor   @relation(fields: [doctorId], references: [id])
 }
 
-// ======================================================
-// 4️⃣ PAYMENT MODEL - Wajib sukses sebelum chat aktif
-// ======================================================
 model Payment {
-  id           String   @id @default(cuid())
-  amount       Float
-  status       String   // "pending" | "success" | "failed"
-  createdAt    DateTime @default(now())
-
-  user         User     @relation(fields: [userId], references: [id])
-  userId       String
-  doctor       Doctor   @relation(fields: [doctorId], references: [id])
-  doctorId     String
-
-  // ✅ Hanya sisi ini yang tanpa fields/references (otomatis inverse)
-  chat         Chat?
+  id        String   @id @default(cuid())
+  amount    Float
+  status    String
+  createdAt DateTime @default(now())
+  userId    String
+  doctorId  String
+  chat      Chat?
+  doctor    Doctor   @relation(fields: [doctorId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 }
 
-// ======================================================
-// 5️⃣ CHAT MODEL - Ruang chat utama
-// ======================================================
 model Chat {
-  id             String        @id @default(cuid())
-  chatKey        String        @unique
-  userId         String
-  doctorId       String
-  paymentId      String?       @unique
-  lastMessageId  String?       @unique
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @default(now()) @updatedAt
+  id            String       @id @default(cuid())
+  chatKey       String       @unique
+  createdAt     DateTime     @default(now())
+  doctorId      String
+  userId        String
+  lastMessageId String?      @unique
+  paymentId     String?      @unique
+  updatedAt     DateTime     @default(now()) @updatedAt
+  expiredAt     DateTime?
+  isActive      Boolean      @default(false)
+  doctor        Doctor       @relation("DoctorChats", fields: [doctorId], references: [id])
+  lastMessage   ChatMessage? @relation("LastMessageRelation", fields: [lastMessageId], references: [id])
+  payment       Payment?     @relation(fields: [paymentId], references: [id])
+  user          User         @relation("UserChats", fields: [userId], references: [id])
+  dates         ChatDate[]
 
-  user           User          @relation("UserChats", fields: [userId], references: [id])
-  doctor         Doctor        @relation("DoctorChats", fields: [doctorId], references: [id])
-  payment        Payment?      @relation(fields: [paymentId], references: [id]) // ✅ hanya Chat yang pegang fields/references
-  lastMessage    ChatMessage?  @relation("LastMessageRelation", fields: [lastMessageId], references: [id])
-  dates          ChatDate[]
-  isActive       Boolean       @default(false) // 🔥 status chat aktif atau tida
-  expiredAt      DateTime?     // 🔥 waktu kadaluarsa chat (misal 1 hari setelah payment sukses)
-  
-  @@unique([userId, doctorId]) // 🔥 ini kunci utamanya
+  @@unique([userId, doctorId])
 }
 
-// ======================================================
-// 6️⃣ CHAT DATE MODEL - Group chat per tanggal
-// ======================================================
 model ChatDate {
-  id        String         @id @default(cuid())
+  id        String        @id @default(cuid())
   chatId    String
   date      DateTime
-  createdAt DateTime       @default(now())
-
-  chat      Chat           @relation(fields: [chatId], references: [id])
+  createdAt DateTime      @default(now())
+  chat      Chat          @relation(fields: [chatId], references: [id])
   messages  ChatMessage[]
 }
 
-// ======================================================
-// 7️⃣ CHAT MESSAGE MODEL - Semua pesan di hari tertentu
-// ======================================================
 model ChatMessage {
-  id          String     @id @default(cuid())
-  chatDateId  String
-  sender      String
-  content     String
-  sentAt      DateTime   @default(now())
-
-  chatDate    ChatDate   @relation(fields: [chatDateId], references: [id])
-  chatLastMessage Chat?  @relation("LastMessageRelation")
+  id              String   @id @default(cuid())
+  chatDateId      String
+  sender          String
+  content         String
+  sentAt          DateTime @default(now())
+  chatLastMessage Chat?    @relation("LastMessageRelation")
+  chatDate        ChatDate @relation(fields: [chatDateId], references: [id])
 }
 
-// ======================================================
-// 8️⃣ NEWS MODEL
-// ======================================================
 model News {
   id        String   @id @default(cuid())
   title     String
   content   String
-  image     String?
   createdAt DateTime @default(now())
+  image     String?
 }
 
-// ======================================================
-// 9️⃣ CATEGORY MODEL
-// ======================================================
 model Category {
-  id     String  @id @default(cuid())
-  name   String
-  items  String?
+  id    String  @id @default(cuid())
+  name  String
+  items String?
 }
 
-// ======================================================
-// 🔟 CATEGORY DOCTOR MODEL
-// ======================================================
 model CategoryDoctor {
-  id        Int      @id @default(autoincrement())
-  category  String
+  id       Int    @id @default(autoincrement())
+  category String
 }
