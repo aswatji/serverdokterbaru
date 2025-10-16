@@ -94,11 +94,12 @@ async function startServer() {
           health: "/api/health",
           users: "/api/users",
           doctors: "/api/doctors",
-          consultations: "/api/consultations",
           messages: "/api/messages",
           payments: "/api/payments",
           news: "/api/news",
           categories: "/api/categories",
+          ratings: "/api/ratings",
+          chat: "/api/chat",
         },
         features: [
           "User & Doctor Management",
@@ -107,6 +108,7 @@ async function startServer() {
           "Payment Integration (Midtrans)",
           "Doctor Schedules",
           "News & Categories",
+          "Ratings & Reviews",
         ],
       });
     });

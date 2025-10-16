@@ -18,6 +18,7 @@ model User {
   updatedAt  DateTime  @updatedAt
   chats      Chat[]    @relation("UserChats")
   payments   Payment[]
+  ratings    DoctorRating[]  
 }
 
 model Doctor {
@@ -37,6 +38,7 @@ model Doctor {
   chats            Chat[]           @relation("DoctorChats")
   schedules        DoctorSchedule[]
   payments         Payment[]
+  ratings          DoctorRating[]
 }
 
 model DoctorSchedule {
@@ -116,4 +118,19 @@ model Category {
 model CategoryDoctor {
   id       Int    @id @default(autoincrement())
   category String
+}
+
+model DoctorRating {
+  id         String   @id @default(cuid())
+  doctorId   String
+  userId     String
+  rating     Int
+  comment    String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  doctor     Doctor    @relation(fields: [doctorId], references: [id])
+  user       User      @relation(fields: [userId], references: [id])
+
+  @@unique([doctorId, userId])
 }

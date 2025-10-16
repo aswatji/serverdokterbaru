@@ -13,6 +13,7 @@ const paymentRoutes = require("./paymentRoutes");
 const newsRoutes = require("./newsRoutes");
 const categoryRoutes = require("./categoryRoutes");
 const categoryDoctorRoutes = require("./categoryDoctorRoutes");
+const ratingRoutes = require("./ratingRoutes"); // ⬅️ Tambah baris ini
 
 const router = express.Router();
 
@@ -60,6 +61,11 @@ router.use("/users", userRoutes);
 router.use("/news", newsRoutes);
 router.use("/categories", categoryRoutes);
 router.use("/category-doctors", categoryDoctorRoutes);
+
+/* -------------------------------------------
+   ⭐ DOCTOR RATINGS
+------------------------------------------- */
+router.use("/ratings", ratingRoutes); // ⬅️ Tambahkan ini agar aktif
 
 /* -------------------------------------------
    🧭 404 HANDLER
