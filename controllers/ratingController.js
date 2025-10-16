@@ -1,5 +1,4 @@
-import { PrismaClient } from "@prisma/client";
-
+const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 /**
@@ -11,7 +10,9 @@ export const createOrUpdateRating = async (req, res) => {
     const { doctorId, userId, rating, comment } = req.body;
 
     if (!doctorId || !userId || !rating) {
-      return res.status(400).json({ message: "doctorId, userId, dan rating wajib diisi" });
+      return res
+        .status(400)
+        .json({ message: "doctorId, userId, dan rating wajib diisi" });
     }
 
     if (rating < 1 || rating > 5) {
