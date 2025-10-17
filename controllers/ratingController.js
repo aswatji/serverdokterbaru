@@ -1,7 +1,6 @@
 // controllers/ratingController.js
 // ✅ Final version — class-based, stable, and consistent with project style
-
-const { PrismaClient } = require("@prisma/client");
+import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 class RatingController {
@@ -121,4 +120,4 @@ class RatingController {
   }
 }
 
-module.exports = new RatingController();
+export default new RatingController();

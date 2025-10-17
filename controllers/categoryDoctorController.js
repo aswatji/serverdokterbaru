@@ -1,5 +1,5 @@
 // controllers/categoryDoctorController.js
-const { PrismaClient } = require("@prisma/client");
+import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 class CategoryDoctorController {
@@ -105,4 +105,4 @@ class CategoryDoctorController {
   }
 }
 
-module.exports = new CategoryDoctorController();
+export default new CategoryDoctorController();

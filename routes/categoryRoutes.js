@@ -1,10 +1,10 @@
 // routes/categoryRoutes.js
 // ✅ Final version — Category routes (for News, Articles, etc.)
 
-const express = require("express");
-const { body } = require("express-validator");
-const categoryController = require("../controllers/categoryController");
-const validateRequest = require("../middleware/validation");
+import express from "express";
+import { body } from "express-validator";
+import categoryController from "../controllers/categoryController.js";
+import validateRequest from "../middleware/validation.js";
 
 const router = express.Router();
 
@@ -20,7 +20,10 @@ const createCategoryValidation = [
 ];
 
 const updateCategoryValidation = [
-  body("name").optional().notEmpty().withMessage("Category name cannot be empty"),
+  body("name")
+    .optional()
+    .notEmpty()
+    .withMessage("Category name cannot be empty"),
   body("items")
     .optional()
     .isString()
@@ -53,4 +56,4 @@ router.put(
 // ✅ Hapus kategori
 router.delete("/:id", categoryController.delete);
 
-module.exports = router;
+export default router;

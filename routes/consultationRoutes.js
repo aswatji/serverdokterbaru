@@ -1,8 +1,8 @@
-const express = require("express");
-const { body } = require("express-validator");
-const consultationController = require("../controllers/consultationController");
-const validateRequest = require("../middleware/validation");
-const { authMiddleware } = require("../middleware/authMiddleware");
+import express from "express";
+import { body } from "express-validator";
+import consultationController from "../controllers/consultationController.js";
+import validateRequest from "../middleware/validation.js";
+import { authMiddleware } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -66,4 +66,4 @@ router.delete(
   consultationController.deleteConsultation
 );
 
-module.exports = router;
+export default router;

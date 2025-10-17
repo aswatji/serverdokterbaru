@@ -1,10 +1,10 @@
 // routes/newsRoutes.js
 // ✅ Final version — News routes (Prisma-based)
 
-const express = require("express");
-const { body } = require("express-validator");
-const newsController = require("../controllers/newsController");
-const validateRequest = require("../middleware/validation");
+import express from "express";
+import { body } from "express-validator";
+import newsController from "../controllers/newsController.js";
+import validateRequest from "../middleware/validation.js";
 
 const router = express.Router();
 
@@ -34,12 +34,7 @@ router.get("/", newsController.getAll);
 router.get("/:id", newsController.getById);
 
 // ✅ Tambah berita baru
-router.post(
-  "/",
-  createNewsValidation,
-  validateRequest,
-  newsController.create
-);
+router.post("/", createNewsValidation, validateRequest, newsController.create);
 
 // ✅ Update berita
 router.put(
@@ -52,4 +47,4 @@ router.put(
 // ✅ Hapus berita
 router.delete("/:id", newsController.delete);
 
-module.exports = router;
+export default router;

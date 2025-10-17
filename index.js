@@ -1,21 +1,23 @@
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const helmet = require("helmet");
-const compression = require("compression");
-const http = require("http");
-const routes = require("./routes");
-const errorHandler = require("./middleware/errorHandler");
-const {
+import dotenv from "dotenv";
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import compression from "compression";
+import http from "http";
+import routes from "./routes/index.js";
+import errorHandler from "./middleware/errorHandler.js";
+import {
   initChatSocket,
   stopDoctorAvailabilityNotification,
-} = require("./chatSocket");
-const prisma = require("./config/database");
+} from "./chatSocket.js";
+import prisma from "./config/database.js";
+import chatRoutes from "./routes/chatRoutes.js";
+
+dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3000;
-const chatRoutes = require("./routes/chatRoutes");
 
 console.log("🚀 Starting Dokter App Server...");
 
@@ -41,25 +43,20 @@ async function testDatabaseConnection(retries = 5) {
         );
         process.exit(1);
       }
-      // Wait before retry
       await new Promise((resolve) => setTimeout(resolve, 2000));
     }
   }
 }
 
-// Production startup delay to prevent immediate crashes
 async function startServer() {
   try {
-    // Test database connection first
     await testDatabaseConnection();
 
-    // Production environment stabilization delay
     if (process.env.NODE_ENV === "production") {
       console.log("⏳ Production startup delay (3 seconds)...");
       await new Promise((resolve) => setTimeout(resolve, 3000));
     }
 
-    // Middleware
     app.use(helmet());
     app.use(compression());
     app.use(
@@ -79,11 +76,9 @@ async function startServer() {
     app.use(express.json({ limit: "10mb" }));
     app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-    // Routes
     app.use("/api", routes);
     app.use("/api/chat", chatRoutes);
 
-    // Root endpoint
     app.get("/", (req, res) => {
       res.json({
         success: true,
@@ -100,6 +95,7 @@ async function startServer() {
           categories: "/api/categories",
           ratings: "/api/ratings",
           chat: "/api/chat",
+          upload: "/api/upload",
         },
         features: [
           "User & Doctor Management",
@@ -109,14 +105,13 @@ async function startServer() {
           "Doctor Schedules",
           "News & Categories",
           "Ratings & Reviews",
+          "Upload document",
         ],
       });
     });
 
-    // Error handling middleware
     app.use(errorHandler);
 
-    // 404 handler
     app.use("*", (req, res) => {
       res.status(404).json({
         success: false,
@@ -124,11 +119,9 @@ async function startServer() {
       });
     });
 
-    // Initialize Socket.IO
     console.log("🔌 Initializing Socket.IO...");
     initChatSocket(server);
 
-    // Start server
     server.listen(PORT, () => {
       console.log(`✅ Server is running on port ${PORT}`);
       console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
@@ -136,7 +129,6 @@ async function startServer() {
       console.log(`Chat Socket.IO server initialized for real-time messaging`);
     });
 
-    // Memory monitoring for production
     if (process.env.NODE_ENV === "production") {
       console.log("📊 Memory monitoring started");
       setInterval(() => {
@@ -148,7 +140,7 @@ async function startServer() {
             memUsage.heapUsed / 1024 / 1024
           )}MB, Heap Total: ${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`
         );
-      }, 60000); // Every 60 seconds
+      }, 60000);
     }
 
     console.log("✅ Server initialization complete");
@@ -158,13 +150,11 @@ async function startServer() {
   }
 }
 
-// Enhanced graceful shutdown
 async function gracefulShutdown(signal) {
   console.log(`Received ${signal}, shutting down gracefully...`);
 
   try {
     stopDoctorAvailabilityNotification();
-
     await prisma.$disconnect();
     console.log("Database disconnected");
 
@@ -173,7 +163,6 @@ async function gracefulShutdown(signal) {
       process.exit(0);
     });
 
-    // Force exit after 10 seconds
     setTimeout(() => {
       console.log("Force exit after timeout");
       process.exit(1);
@@ -184,11 +173,9 @@ async function gracefulShutdown(signal) {
   }
 }
 
-// Graceful shutdown handlers
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 
-// Handle uncaught exceptions
 process.on("uncaughtException", (error) => {
   console.error("Uncaught Exception:", error);
   gracefulShutdown("uncaughtException");
@@ -199,5 +186,4 @@ process.on("unhandledRejection", (reason, promise) => {
   gracefulShutdown("unhandledRejection");
 });
 
-// Start the server
 startServer();

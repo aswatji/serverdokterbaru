@@ -1,5 +1,5 @@
 // controllers/newsController.js
-const { PrismaClient } = require("@prisma/client");
+import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 class NewsController {
@@ -133,4 +133,4 @@ class NewsController {
   }
 }
 
-module.exports = new NewsController();
+export default new NewsController();

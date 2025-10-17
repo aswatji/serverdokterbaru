@@ -1,7 +1,7 @@
 // controllers/doctorController.js
-const { PrismaClient } = require("@prisma/client");
+import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
-const bcrypt = require("bcryptjs");
+import bcrypt from "bcryptjs";
 
 class DoctorController {
   // ✅ Ambil semua dokter
@@ -420,4 +420,4 @@ class DoctorController {
   }
 }
 
-module.exports = new DoctorController();
+export default new DoctorController();

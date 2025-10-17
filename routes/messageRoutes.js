@@ -1,11 +1,10 @@
 // routes/messageRoutes.js
 // ✅ Final version — Message routes (Prisma-based, synced with chat system)
-
-const express = require("express");
-const { body } = require("express-validator");
-const messageController = require("../controllers/messageController");
-const validateRequest = require("../middleware/validation");
-const { authMiddleware } = require("../middleware/authMiddleware");
+import express from "express";
+import { body } from "express-validator";
+import messageController from "../controllers/messageController.js";
+import validateRequest from "../middleware/validation.js";
+import { authMiddleware } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -61,4 +60,4 @@ router.put(
 // ✅ Hapus pesan (opsional — untuk admin)
 router.delete("/:id", authMiddleware, messageController.deleteMessage);
 
-module.exports = router;
+export default router;

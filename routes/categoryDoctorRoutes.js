@@ -1,9 +1,9 @@
 // routes/categoryDoctorRoutes.js
 // ✅ Final version — Category Doctor routes
 
-const express = require("express");
+import express from "express";
 const router = express.Router();
-const categoryDoctorController = require("../controllers/categoryDoctorController");
+import categoryDoctorController from "../controllers/categoryDoctorController.js";
 
 // ✅ Ambil semua kategori dokter
 router.get("/", categoryDoctorController.getAll);
@@ -17,4 +17,4 @@ router.put("/:id", categoryDoctorController.update);
 // ✅ Hapus kategori dokter
 router.delete("/:id", categoryDoctorController.delete);
 
-module.exports = router;
+export default router;

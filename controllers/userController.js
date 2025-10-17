@@ -1,7 +1,7 @@
 // controllers/userController.js
-const { PrismaClient } = require("@prisma/client");
+import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
-const bcrypt = require("bcryptjs");
+import bcrypt from "bcryptjs";
 
 class UserController {
   // ✅ Ambil semua user
@@ -153,4 +153,4 @@ class UserController {
   }
 }
 
-module.exports = new UserController();
+export default new UserController();

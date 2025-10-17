@@ -52,4 +52,4 @@ class EnhancedAuthController {
   }
 }
 
-module.exports = EnhancedAuthController;
+export default EnhancedAuthController;

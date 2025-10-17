@@ -2,6 +2,7 @@
   "name": "dokter-app-server",
   "version": "1.0.0",
   "description": "Dokter App Server with Prisma",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
@@ -23,8 +24,11 @@
     "helmet": "^7.0.0",
     "jsonwebtoken": "^9.0.2",
     "midtrans-client": "^1.4.3",
+    "minio": "^8.0.6",
+    "multer": "^2.0.2",
     "node-cron": "^4.2.1",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1",

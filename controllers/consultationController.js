@@ -256,4 +256,4 @@ class ConsultationController {
   }
 }
 
-module.exports = new ConsultationController();
+export default new ConsultationController();

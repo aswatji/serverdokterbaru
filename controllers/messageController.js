@@ -1,5 +1,5 @@
 // controllers/messageController.js
-const { PrismaClient } = require("@prisma/client");
+import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 class MessageController {
@@ -201,4 +201,4 @@ class MessageController {
   }
 }
 
-module.exports = new MessageController();
+export default new MessageController();

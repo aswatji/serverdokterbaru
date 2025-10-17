@@ -1,7 +1,7 @@
-const express = require("express");
-const { body } = require("express-validator");
-const ratingController = require("../controllers/ratingController");
-const validateRequest = require("../middleware/validation");
+import express from "express";
+import { body } from "express-validator";
+import ratingController from "../controllers/ratingController.js";
+import validateRequest from "../middleware/validation.js";
 
 const router = express.Router();
 
@@ -63,4 +63,4 @@ router.delete(
   ratingController.deleteRating
 );
 
-module.exports = router;
+export default router;

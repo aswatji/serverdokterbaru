@@ -1,10 +1,10 @@
 // routes/userRoutes.js
 // ✅ Final version — User routes (Prisma-based)
 
-const express = require("express");
-const { body } = require("express-validator");
-const userController = require("../controllers/userController");
-const validateRequest = require("../middleware/validation");
+import express from "express";
+import { body } from "express-validator";
+import userController from "../controllers/userController.js";
+import validateRequest from "../middleware/validation.js";
 
 const router = express.Router();
 
@@ -54,12 +54,7 @@ router.get("/", userController.getAll);
 router.get("/:id", userController.getById);
 
 // ✅ Tambah user baru (opsional, biasanya lewat /auth/register)
-router.post(
-  "/",
-  createUserValidation,
-  validateRequest,
-  userController.create
-);
+router.post("/", createUserValidation, validateRequest, userController.create);
 
 // ✅ Update data user
 router.put(
@@ -72,4 +67,4 @@ router.put(
 // ✅ Hapus user
 router.delete("/:id", userController.delete);
 
-module.exports = router;
+export default router;

@@ -1,8 +1,8 @@
-const express = require("express");
-const { body } = require("express-validator");
-const authController = require("../controllers/authController");
-const validateRequest = require("../middleware/validation");
-const { authMiddleware } = require("../middleware/authMiddleware");
+import express from "express";
+import { body } from "express-validator";
+import authController from "../controllers/authController.js";
+import validateRequest from "../middleware/validation.js";
+import { authMiddleware } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -94,4 +94,4 @@ router.post("/doctor/logout", authController.logoutDoctor);
 // =================== PROFILE (Both User & Doctor) ===================
 router.get("/profile", authMiddleware, authController.getProfile);
 
-module.exports = router;
+export default router;

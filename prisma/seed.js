@@ -1,5 +1,5 @@
-const { PrismaClient } = require("@prisma/client");
-const bcrypt = require("bcryptjs");
+import { PrismaClient } from "@prisma/client";
+import { hash } from "bcryptjs";
 
 const prisma = new PrismaClient();
 
@@ -22,7 +22,7 @@ async function main() {
     create: {
       email: "patient1@example.com",
       fullname: "John Doe",
-      password: await bcrypt.hash("password123", 12),
+      password: await hash("password123", 12),
       profession: "Software Engineer",
     },
   });
@@ -33,7 +33,7 @@ async function main() {
     create: {
       email: "patient2@example.com",
       fullname: "Jane Smith",
-      password: await bcrypt.hash("password123", 12),
+      password: await hash("password123", 12),
       profession: "Teacher",
     },
   });
@@ -47,7 +47,7 @@ async function main() {
       strNumber: "STR-0001",
       gender: "male",
       email: "doctor1@example.com",
-      password: await bcrypt.hash("password123", 12),
+      password: await hash("password123", 12),
       bio: "Spesialis jantung dengan pengalaman 15 tahun",
     },
   });
@@ -60,7 +60,7 @@ async function main() {
       strNumber: "STR-0002",
       gender: "female",
       email: "doctor2@example.com",
-      password: await bcrypt.hash("password123", 12),
+      password: await hash("password123", 12),
       bio: "Spesialis kulit dan kelamin berpengalaman",
     },
   });

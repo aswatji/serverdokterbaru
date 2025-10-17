@@ -1,11 +1,11 @@
 // ======================================================
 // ✅ PAYMENT ROUTES — Prisma + Midtrans + Validation
 // ======================================================
-const express = require("express");
-const { body, param } = require("express-validator");
-const paymentController = require("../controllers/paymentController");
-const validateRequest = require("../middleware/validation");
-const { authMiddleware } = require("../middleware/authMiddleware");
+import express from "express";
+import { body, param } from "express-validator";
+import paymentController from "../controllers/paymentController.js";
+import validateRequest from "../middleware/validation.js";
+import { authMiddleware } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -92,4 +92,4 @@ router.delete(
   paymentController.deletePayment
 );
 
-module.exports = router;
+export default router;

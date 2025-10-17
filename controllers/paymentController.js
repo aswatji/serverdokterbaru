@@ -1,9 +1,9 @@
 // controllers/paymentController.js
 // ✅ Final version — works with Prisma schema and paymentRoutes.js
 
-const { PrismaClient } = require("@prisma/client");
+import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
-const midtransClient = require("midtrans-client");
+import midtransClient from "midtrans-client";
 
 class PaymentController {
   constructor() {
@@ -345,7 +345,7 @@ class PaymentController {
   }
 }
 
-module.exports = new PaymentController();
+export default new PaymentController();
 
 // controllers/paymentController.js
 // ✅ Versi stabil — aman dari error this.snap undefined

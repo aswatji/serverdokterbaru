@@ -8,17 +8,17 @@ datasource db {
 }
 
 model User {
-  id         String    @id @default(cuid())
-  email      String    @unique
+  id         String         @id @default(cuid())
+  email      String         @unique
   password   String
-  createdAt  DateTime  @default(now())
+  createdAt  DateTime       @default(now())
   fullname   String
   photo      String?
   profession String?
-  updatedAt  DateTime  @updatedAt
-  chats      Chat[]    @relation("UserChats")
+  updatedAt  DateTime       @updatedAt
+  chats      Chat[]         @relation("UserChats")
+  ratings    DoctorRating[]
   payments   Payment[]
-  ratings    DoctorRating[]  
 }
 
 model Doctor {
@@ -36,9 +36,9 @@ model Doctor {
   password         String
   alamatRumahSakit String?
   chats            Chat[]           @relation("DoctorChats")
+  ratings          DoctorRating[]
   schedules        DoctorSchedule[]
   payments         Payment[]
-  ratings          DoctorRating[]
 }
 
 model DoctorSchedule {
@@ -97,6 +97,7 @@ model ChatMessage {
   sender          String
   content         String
   sentAt          DateTime @default(now())
+  type            String   @default("text")
   chatLastMessage Chat?    @relation("LastMessageRelation")
   chatDate        ChatDate @relation(fields: [chatDateId], references: [id])
 }
@@ -121,16 +122,15 @@ model CategoryDoctor {
 }
 
 model DoctorRating {
-  id         String   @id @default(cuid())
-  doctorId   String
-  userId     String
-  rating     Int
-  comment    String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-
-  doctor     Doctor    @relation(fields: [doctorId], references: [id])
-  user       User      @relation(fields: [userId], references: [id])
+  id        String   @id @default(cuid())
+  doctorId  String
+  userId    String
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  doctor    Doctor   @relation(fields: [doctorId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 
   @@unique([doctorId, userId])
 }

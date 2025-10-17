@@ -1,4 +1,4 @@
-﻿const cron = require("node-cron");
+﻿import cron from "node-cron";
 
 class ConsultationScheduler {
   constructor(prismaInstance = null) {
@@ -271,4 +271,4 @@ class ConsultationScheduler {
   }
 }
 
-module.exports = ConsultationScheduler;
+export default ConsultationScheduler;

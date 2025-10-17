@@ -1,14 +1,11 @@
 // routes/doctorRoutes.js
 // ✅ Final version — Doctor routes (with validation and Prisma structure)
 
-const express = require("express");
-const { body } = require("express-validator");
-const doctorController = require("../controllers/doctorController");
-const validateRequest = require("../middleware/validation");
-const {
-  authMiddleware,
-  requireDoctor,
-} = require("../middleware/authMiddleware");
+import express from "express";
+import { body } from "express-validator";
+import doctorController from "../controllers/doctorController.js";
+import validateRequest from "../middleware/validation.js";
+import { authMiddleware, requireDoctor } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -157,4 +154,4 @@ router.get(
   doctorController.getDoctorChatById
 );
 
-module.exports = router;
+export default router;

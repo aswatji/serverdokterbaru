@@ -1,19 +1,20 @@
 // routes/index.js
 // ✅ Final version — route aggregator for DokterApp API
 
-const express = require("express");
+import express from "express";
 
 // Import all route modules
-const authRoutes = require("./authRoutes");
-const userRoutes = require("./userRoutes");
-const doctorRoutes = require("./doctorRoutes");
-const messageRoutes = require("./messageRoutes");
-const chatRoutes = require("./chatRoutes");
-const paymentRoutes = require("./paymentRoutes");
-const newsRoutes = require("./newsRoutes");
-const categoryRoutes = require("./categoryRoutes");
-const categoryDoctorRoutes = require("./categoryDoctorRoutes");
-const ratingRoutes = require("./ratingRoutes"); // ⬅️ Tambah baris ini
+import authRoutes from "./authRoutes.js";
+import userRoutes from "./userRoutes.js";
+import doctorRoutes from "./doctorRoutes.js";
+import messageRoutes from "./messageRoutes.js";
+import chatRoutes from "./chatRoutes.js";
+import paymentRoutes from "./paymentRoutes.js";
+import newsRoutes from "./newsRoutes.js";
+import categoryRoutes from "./categoryRoutes.js";
+import categoryDoctorRoutes from "./categoryDoctorRoutes.js";
+import ratingRoutes from "./ratingRoutes.js";
+import uploadRoutes from "./uploadRoutes.js";
 
 const router = express.Router();
 
@@ -65,7 +66,12 @@ router.use("/category-doctors", categoryDoctorRoutes);
 /* -------------------------------------------
    ⭐ DOCTOR RATINGS
 ------------------------------------------- */
-router.use("/ratings", ratingRoutes); // ⬅️ Tambahkan ini agar aktif
+router.use("/ratings", ratingRoutes);
+
+/* -------------------------------------------
+   📤 UPLOADS
+------------------------------------------- */
+router.use("/upload", uploadRoutes);
 
 /* -------------------------------------------
    🧭 404 HANDLER
@@ -77,4 +83,4 @@ router.use((req, res) => {
   });
 });
 
-module.exports = router;
+export default router;
