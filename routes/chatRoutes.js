@@ -22,7 +22,7 @@ const sendMessageValidation = [
    💬 ROUTES
 ------------------------------------------- */
 function chatRoutes(io) {
-  const controller = new ChatController(io);
+  const controller = ChatController(io);
 
   router.get("/", authMiddleware, (req, res) =>
     controller.getAllChats(req, res)
