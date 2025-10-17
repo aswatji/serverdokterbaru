@@ -201,4 +201,4 @@ class MessageController {
   }
 }
 
-export default new MessageController();
+export default MessageController();

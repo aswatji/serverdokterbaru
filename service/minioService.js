@@ -36,4 +36,4 @@ export class MinioService {
     return fileUrl;
   }
 }
-export default new MinioService();
+export default MinioService();

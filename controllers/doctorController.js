@@ -420,4 +420,4 @@ class DoctorController {
   }
 }
 
-export default new DoctorController();
+export default DoctorController();

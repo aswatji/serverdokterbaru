@@ -1,4 +1,3 @@
-
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 import bcrypt from "bcryptjs";
@@ -299,4 +298,4 @@ class AuthController {
   }
 }
 
-export default new AuthController();
+export default AuthController();

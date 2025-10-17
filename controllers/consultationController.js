@@ -256,4 +256,4 @@ class ConsultationController {
   }
 }
 
-export default new ConsultationController();
+export default ConsultationController();

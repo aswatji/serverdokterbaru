@@ -246,4 +246,4 @@ class ChatController {
   }
 }
 
-export default new ChatController();
+export default ChatController();

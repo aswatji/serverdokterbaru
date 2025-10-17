@@ -282,7 +282,7 @@ class PaymentController {
   }
 }
 
-export default new PaymentController();
+export default PaymentController();
 
 // controllers/paymentController.js
 // ✅ Versi stabil — aman dari error this.snap undefined
