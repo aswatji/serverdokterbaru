@@ -105,4 +105,4 @@ class CategoryDoctorController {
   }
 }
 
-export default CategoryDoctorController();
+export default new CategoryDoctorController();

@@ -120,4 +120,4 @@ class RatingController {
   }
 }
 
-export default RatingController();
+export default new RatingController();
