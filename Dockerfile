@@ -19,6 +19,9 @@ RUN npm ci --only=production && npm cache clean --force
 # Copy the rest of the application code
 COPY . .
 
+# Buat folder uploads dan beri izin akses
+RUN mkdir -p /app/uploads && chown -R nodejs:nodejs /app/uploads
+
 # Make entrypoint script executable
 RUN chmod +x entrypoint.sh
 
