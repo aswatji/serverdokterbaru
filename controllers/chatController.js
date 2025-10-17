@@ -8,6 +8,7 @@ class ChatController {
   // 🔹 GET ALL CHATS
   // =======================================================
   async getAllChats(req, res) {
+    console.log("🧩 ChatController.getAllChats called by:", req.user);
     try {
       if (!req.user) {
         return res
