@@ -1,9 +1,11 @@
 // controllers/paymentController.js
 // ✅ Final version — works with Prisma schema and paymentRoutes.js
 
+import crypto from "crypto";
 import { PrismaClient } from "@prisma/client";
-const prisma = new PrismaClient();
 import midtransClient from "midtrans-client";
+
+const prisma = new PrismaClient();
 
 class PaymentController {
   constructor() {
@@ -75,74 +77,9 @@ class PaymentController {
     }
   }
 
-  // ✅ 2. Callback dari Midtrans
-  // ✅ Fixed Midtrans callback with signature verification and logging
-  // async midtransCallback(req, res) {
-  //   try {
-  //     const payload = req.body;
-
-  //     // Verifikasi signature key
-  //     const crypto = require("crypto");
-  //     const signatureKey = crypto
-  //       .createHash("sha512")
-  //       .update(
-  //         payload.order_id +
-  //           payload.status_code +
-  //           payload.gross_amount +
-  //           process.env.MIDTRANS_SERVER_KEY
-  //       )
-  //       .digest("hex");
-
-  //     if (signatureKey !== payload.signature_key) {
-  //       console.warn("🚫 Invalid signature, ignored");
-  //       return res
-  //         .status(403)
-  //         .json({ success: false, message: "Invalid signature" });
-  //     }
-
-  //     // Mapping status
-  //     const transactionStatus = payload.transaction_status;
-  //     let status = "pending";
-  //     if (["capture", "settlement"].includes(transactionStatus))
-  //       status = "success";
-  //     if (["cancel", "deny", "expire"].includes(transactionStatus))
-  //       status = "failed";
-
-  //     const updatedPayment = await prisma.payment.update({
-  //       where: { id: payload.order_id },
-  //       data: { status },
-  //     });
-
-  //     if (status === "success") {
-  //       await prisma.chat.create({
-  //         data: {
-  //           chatKey: `CHAT-${Date.now()}`,
-  //           userId: updatedPayment.userId,
-  //           doctorId: updatedPayment.doctorId,
-  //           paymentId: updatedPayment.id,
-  //         },
-  //       });
-  //     }
-
-  //     console.log(`✅ Payment ${payload.order_id} updated to ${status}`);
-  //     res.status(200).json({ success: true, status });
-  //   } catch (error) {
-  //     console.error("❌ midtransCallback error:", error);
-  //     res.status(500).json({
-  //       success: false,
-  //       message: "Failed to process callback",
-  //       error: error.message,
-  //     });
-  //   }
-  // }
-
-  // ✅ 3. Cek status pembayaran
-
   async midtransCallback(req, res) {
     try {
       const payload = req.body;
-
-      const crypto = require("crypto");
       const signatureKey = crypto
         .createHash("sha512")
         .update(
