@@ -83,14 +83,14 @@ async function startServer() {
     // ✅ Serve static files (HTML test clients)
     app.use(express.static("."));
 
-    // ✅ Serve uploaded files with CORS (fallback from MinIO)
-    app.use("/uploads", (req, res, next) => {
-      res.setHeader("Access-Control-Allow-Origin", "*");
-      res.setHeader("Access-Control-Allow-Methods", "GET");
-      res.setHeader("Cache-Control", "public, max-age=86400"); // Cache 24 hours
-      next();
-    });
-    app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+    // ✅ Serve uploaded files with CORS and cache (fallback from MinIO)
+    app.use("/uploads", express.static(path.join(__dirname, "uploads"), {
+      setHeaders: (res, filePath) => {
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        res.setHeader("Access-Control-Allow-Methods", "GET");
+        res.setHeader("Cache-Control", "public, max-age=31536000"); // Cache 1 year
+      }
+    }));
 
     // ✅ Database health check middleware - ONLY for /api routes (not for socket.io)
     app.use("/api", ensureDbConnection);
