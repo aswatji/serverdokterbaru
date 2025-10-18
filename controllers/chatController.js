@@ -163,7 +163,7 @@ class ChatController {
   }
 
   // =======================================================
-  // 💬 SEND TEXT MESSAGE — integrated with socket.io
+  // 💬 SEND TEXT MESSAGE — OPTIMIZED with upsert & parallel queries
   // =======================================================
   async sendMessage(req, res) {
     try {
@@ -178,7 +178,12 @@ class ChatController {
         });
       }
 
-      const chat = await prisma.chat.findUnique({ where: { chatKey } });
+      // ✅ OPTIMASI 1: Ambil hanya field yang dibutuhkan
+      const chat = await prisma.chat.findUnique({ 
+        where: { chatKey },
+        select: { id: true }
+      });
+      
       if (!chat) {
         return res.status(404).json({
           success: false,
@@ -186,51 +191,75 @@ class ChatController {
         });
       }
 
-      // Cari / buat ChatDate (hari ini)
+      // ✅ OPTIMASI 2: Gunakan UPSERT untuk chatDate (1 query instead of 2-3)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      let chatDate = await prisma.chatDate.findFirst({
-        where: { chatId: chat.id, date: today },
-      });
-
-      if (!chatDate) {
-        chatDate = await prisma.chatDate.create({
-          data: { chatId: chat.id, date: today },
-        });
-      }
-
-      // Buat pesan baru
-      const message = await prisma.chatMessage.create({
-        data: {
-          chatDateId: chatDate.id,
-          sender: type,
-          content,
-          type: "text",
+      
+      const chatDate = await prisma.chatDate.upsert({
+        where: {
+          chatId_date: {
+            chatId: chat.id,
+            date: today,
+          },
         },
-      });
-
-      await prisma.chat.update({
-        where: { id: chat.id },
-        data: { lastMessageId: message.id, updatedAt: new Date() },
-      });
-
-      // 🔥 Broadcast ke room socket-mu: `chat:<chat.id>`
-      try {
-        const io = getIO();
-        const roomName = `chat:${chat.id}`;
-        io.to(roomName).emit("new_message", {
-          messageId: message.id,
+        update: {},
+        create: {
           chatId: chat.id,
-          sender: message.sender,
-          content: message.content,
-          type: message.type,
-          sentAt: message.sentAt,
-        });
-        console.log(`📢 Socket broadcast -> ${roomName}`);
-      } catch (socketErr) {
-        console.warn("⚠️ Socket.IO not ready:", socketErr.message);
-      }
+          date: today,
+        },
+        select: { id: true }
+      });
 
+      // ✅ OPTIMASI 3: Buat message & update chat PARALLEL (jalankan bersamaan)
+      const [message] = await Promise.all([
+        prisma.chatMessage.create({
+          data: {
+            chatDateId: chatDate.id,
+            sender: type,
+            content,
+            type: "text",
+          },
+          select: {
+            id: true,
+            sender: true,
+            content: true,
+            type: true,
+            sentAt: true,
+          }
+        }),
+        // Update chat lastMessage (non-blocking)
+        prisma.chat.update({
+          where: { id: chat.id },
+          data: { updatedAt: new Date() },
+        }).catch(err => console.warn("⚠️ Update chat failed:", err.message))
+      ]);
+
+      // Update lastMessageId setelah message created
+      prisma.chat.update({
+        where: { id: chat.id },
+        data: { lastMessageId: message.id },
+      }).catch(err => console.warn("⚠️ Update lastMessageId failed:", err.message));
+
+      // ✅ OPTIMASI 4: Broadcast socket tanpa await (non-blocking)
+      setImmediate(() => {
+        try {
+          const io = getIO();
+          const roomName = `chat:${chat.id}`;
+          io.to(roomName).emit("new_message", {
+            messageId: message.id,
+            chatId: chat.id,
+            sender: message.sender,
+            content: message.content,
+            type: message.type,
+            sentAt: message.sentAt,
+          });
+          console.log(`📢 Socket broadcast -> ${roomName}`);
+        } catch (socketErr) {
+          console.warn("⚠️ Socket.IO not ready:", socketErr.message);
+        }
+      });
+
+      // ✅ Response langsung tanpa tunggu update selesai
       return res.status(201).json({
         success: true,
         message: "Pesan terkirim",
@@ -279,7 +308,12 @@ class ChatController {
         });
       }
 
-      const chat = await prisma.chat.findUnique({ where: { chatKey } });
+      // ✅ OPTIMASI: Ambil hanya field yang dibutuhkan
+      const chat = await prisma.chat.findUnique({ 
+        where: { chatKey },
+        select: { id: true }
+      });
+      
       if (!chat) {
         return res.status(404).json({
           success: false,
@@ -287,28 +321,35 @@ class ChatController {
         });
       }
 
-      // Upload file ke MinIO
+      // Tentukan tipe message (image atau file)
+      const messageType = file.mimetype.startsWith("image/") ? "image" : "file";
+
+      // Upload file ke MinIO & upsert chatDate PARALLEL
       const timestamp = Date.now();
       const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, "_");
       const fileName = `chat/${chat.id}/${timestamp}-${sanitizedName}`;
 
-      const fileUrl = await uploadToMinio(file.buffer, fileName, file.mimetype);
-
-      // Tentukan tipe message (image atau file)
-      const messageType = file.mimetype.startsWith("image/") ? "image" : "file";
-
-      // Cari atau buat ChatDate (hari ini)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      let chatDate = await prisma.chatDate.findFirst({
-        where: { chatId: chat.id, date: today },
-      });
 
-      if (!chatDate) {
-        chatDate = await prisma.chatDate.create({
-          data: { chatId: chat.id, date: today },
-        });
-      }
+      // ✅ OPTIMASI: Jalankan upload dan upsert bersamaan
+      const [fileUrl, chatDate] = await Promise.all([
+        uploadToMinio(file.buffer, fileName, file.mimetype),
+        prisma.chatDate.upsert({
+          where: {
+            chatId_date: {
+              chatId: chat.id,
+              date: today,
+            },
+          },
+          update: {},
+          create: {
+            chatId: chat.id,
+            date: today,
+          },
+          select: { id: true }
+        })
+      ]);
 
       // Buat message dengan file URL dari MinIO
       const message = await prisma.chatMessage.create({
@@ -318,32 +359,41 @@ class ChatController {
           content: fileUrl, // URL dari MinIO
           type: messageType,
         },
+        select: {
+          id: true,
+          sender: true,
+          content: true,
+          type: true,
+          sentAt: true,
+        }
       });
 
-      // Update lastMessage
-      await prisma.chat.update({
+      // ✅ OPTIMASI: Update lastMessage non-blocking
+      prisma.chat.update({
         where: { id: chat.id },
         data: { lastMessageId: message.id, updatedAt: new Date() },
-      });
+      }).catch(err => console.warn("⚠️ Update chat failed:", err.message));
 
-      // Broadcast via Socket.IO
-      try {
-        const io = getIO();
-        const roomName = `chat:${chat.id}`;
-        io.to(roomName).emit("new_message", {
-          messageId: message.id,
-          chatId: chat.id,
-          sender: message.sender,
-          content: message.content,
-          type: message.type,
-          sentAt: message.sentAt,
-          fileName: file.originalname,
-          fileSize: file.size,
-        });
-        console.log(`📢 File message broadcast -> ${roomName}`);
-      } catch (socketErr) {
-        console.warn("⚠️ Socket.IO not ready:", socketErr.message);
-      }
+      // ✅ OPTIMASI: Broadcast socket non-blocking
+      setImmediate(() => {
+        try {
+          const io = getIO();
+          const roomName = `chat:${chat.id}`;
+          io.to(roomName).emit("new_message", {
+            messageId: message.id,
+            chatId: chat.id,
+            sender: message.sender,
+            content: message.content,
+            type: message.type,
+            sentAt: message.sentAt,
+            fileName: file.originalname,
+            fileSize: file.size,
+          });
+          console.log(`📢 File message broadcast -> ${roomName}`);
+        } catch (socketErr) {
+          console.warn("⚠️ Socket.IO not ready:", socketErr.message);
+        }
+      });
 
       return res.status(201).json({
         success: true,

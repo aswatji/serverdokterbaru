@@ -93,6 +93,10 @@ model ChatDate {
   createdAt DateTime      @default(now())
   chat      Chat          @relation(fields: [chatId], references: [id])
   messages  ChatMessage[]
+
+  @@unique([chatId, date])
+  @@index([chatId])
+  @@index([date])
 }
 
 model ChatMessage {
@@ -104,6 +108,9 @@ model ChatMessage {
   type            String   @default("text")
   chatLastMessage Chat?    @relation("LastMessageRelation")
   chatDate        ChatDate @relation(fields: [chatDateId], references: [id])
+
+  @@index([chatDateId])
+  @@index([sentAt])
 }
 
 model News {
