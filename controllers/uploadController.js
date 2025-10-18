@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { PrismaClient } from "@prisma/client";
-import { uploadToMinio } from "../service/minioService.js"; // pastikan .js di akhir
+import { uploadToMinio } from "../utils/minioUpload.js";
 
 const prisma = new PrismaClient();
 
