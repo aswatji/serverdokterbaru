@@ -44,15 +44,15 @@ export async function withTiming(label, fn) {
  */
 export function requestTimingMiddleware(req, res, next) {
   const start = Date.now();
-  
-  res.on('finish', () => {
+
+  res.on("finish", () => {
     const duration = Date.now() - start;
-    const color = duration > 1000 ? '🔴' : duration > 500 ? '🟡' : '🟢';
+    const color = duration > 1000 ? "🔴" : duration > 500 ? "🟡" : "🟢";
     console.log(
       `${color} ${req.method} ${req.path} - ${res.statusCode} - ${duration}ms`
     );
   });
-  
+
   next();
 }
 
@@ -130,38 +130,38 @@ async sendMessage(req, res) {
  */
 export async function benchmarkSendMessage(iterations = 100) {
   console.log(`\n🏁 Starting benchmark (${iterations} iterations)...`);
-  
+
   const times = [];
-  
+
   for (let i = 0; i < iterations; i++) {
     const start = Date.now();
-    
+
     // Simulate sendMessage operation
-    await fetch('http://localhost:3000/api/chat/{chatKey}/send', {
-      method: 'POST',
+    await fetch("http://localhost:3000/api/chat/{chatKey}/send", {
+      method: "POST",
       headers: {
-        'Authorization': 'Bearer YOUR_TOKEN',
-        'Content-Type': 'application/json',
+        Authorization: "Bearer YOUR_TOKEN",
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ content: `Benchmark test ${i}` }),
     });
-    
+
     const duration = Date.now() - start;
     times.push(duration);
   }
-  
+
   const avg = times.reduce((a, b) => a + b, 0) / times.length;
   const min = Math.min(...times);
   const max = Math.max(...times);
   const p95 = times.sort((a, b) => a - b)[Math.floor(times.length * 0.95)];
-  
-  console.log('\n📊 Benchmark Results:');
+
+  console.log("\n📊 Benchmark Results:");
   console.log(`   Average: ${avg.toFixed(2)}ms`);
   console.log(`   Min: ${min}ms`);
   console.log(`   Max: ${max}ms`);
   console.log(`   P95: ${p95}ms`);
   console.log(`   Total: ${times.reduce((a, b) => a + b, 0)}ms\n`);
-  
+
   return { avg, min, max, p95 };
 }
 
@@ -175,12 +175,12 @@ export async function benchmarkSendMessage(iterations = 100) {
  */
 export const prismaWithLogging = new PrismaClient({
   log: [
-    { level: 'query', emit: 'event' },
-    { level: 'error', emit: 'stdout' },
+    { level: "query", emit: "event" },
+    { level: "error", emit: "stdout" },
   ],
 });
 
-prismaWithLogging.$on('query', (e) => {
+prismaWithLogging.$on("query", (e) => {
   console.log(`⚡ Query: ${e.query}`);
   console.log(`   Params: ${e.params}`);
   console.log(`   Duration: ${e.duration}ms`);
@@ -196,7 +196,7 @@ export const log = {
   warn: (msg) => console.warn(`⚠️ ${msg}`),
   info: (msg) => console.info(`ℹ️ ${msg}`),
   perf: (label, duration) => {
-    const color = duration > 1000 ? '🔴' : duration > 500 ? '🟡' : '🟢';
+    const color = duration > 1000 ? "🔴" : duration > 500 ? "🟡" : "🟢";
     console.log(`${color} ${label}: ${duration}ms`);
   },
 };

@@ -250,13 +250,17 @@ export function initChatSocket(server) {
       });
     });
 
-    // 💬 Send message (text / image / pdf)
-    socket.on("send_message", async (payload) => {
+    // 💬 Send message (text / image / pdf) - with callback support
+    socket.on("send_message", async (payload, callback) => {
       try {
         const { chatId, sender, content, type = "text", fileData } = payload;
 
-        if (!chatId || !sender || (!content && !fileData))
-          return socket.emit("error", { message: "Missing required fields" });
+        if (!chatId || !sender || (!content && !fileData)) {
+          const error = { message: "Missing required fields" };
+          socket.emit("error", error);
+          if (callback) callback({ success: false, error: error.message });
+          return;
+        }
 
         const chat = await prisma.chat.findUnique({
           where: { id: chatId },
@@ -269,35 +273,56 @@ export function initChatSocket(server) {
           },
         });
 
-        if (!chat) return socket.emit("error", { message: "Chat not found" });
-        if (!chat.isActive)
-          return socket.emit("error", { message: "Chat is not active" });
-        if (chat.expiredAt && new Date() > chat.expiredAt)
-          return socket.emit("error", { message: "Chat expired" });
+        if (!chat) {
+          const error = { message: "Chat not found" };
+          socket.emit("error", error);
+          if (callback) callback({ success: false, error: error.message });
+          return;
+        }
+        if (!chat.isActive) {
+          const error = { message: "Chat is not active" };
+          socket.emit("error", error);
+          if (callback) callback({ success: false, error: error.message });
+          return;
+        }
+        if (chat.expiredAt && new Date() > chat.expiredAt) {
+          const error = { message: "Chat expired" };
+          socket.emit("error", error);
+          if (callback) callback({ success: false, error: error.message });
+          return;
+        }
 
-        // ✅ Find or create ChatDate (today)
+        // ✅ Upsert ChatDate (optimized)
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        let chatDate = await prisma.chatDate.findFirst({
-          where: { chatId: chat.id, date: today },
+        
+        const chatDate = await prisma.chatDate.upsert({
+          where: {
+            chatId_date: {
+              chatId: chat.id,
+              date: today,
+            },
+          },
+          update: {},
+          create: {
+            chatId: chat.id,
+            date: today,
+          },
           select: { id: true },
         });
 
-        if (!chatDate) {
-          chatDate = await prisma.chatDate.create({
-            data: { chatId: chat.id, date: today },
-            select: { id: true },
-          });
-        }
-
         // 🖼️ Upload file jika ada
         let finalContent = content;
-        if (fileData && (type === "image" || type === "pdf")) {
+        if (fileData && (type === "image" || type === "file" || type === "pdf")) {
           try {
             finalContent = await minioService.uploadBase64(fileData, type);
+            console.log(`✅ File uploaded to MinIO: ${finalContent}`);
           } catch (uploadErr) {
             console.error("❌ MinIO upload failed:", uploadErr);
-            return socket.emit("error", { message: "File upload failed" });
+            const error = { message: "File upload failed" };
+            socket.emit("error", error);
+            if (callback) callback({ success: false, error: error.message });
+            return;
           }
         }
 
@@ -316,22 +341,32 @@ export function initChatSocket(server) {
           data: { lastMessageId: savedMessage.id, updatedAt: new Date() },
         });
 
-        // 📢 Broadcast message
+        // 📢 Broadcast message to all clients in room
         const messagePayload = {
           messageId: savedMessage.id,
           chatId,
           sender,
           type,
           content: finalContent,
-          sentAt: new Date(),
+          sentAt: savedMessage.sentAt,
         };
 
         const roomName = `chat:${chatId}`;
         io.to(roomName).emit("new_message", messagePayload);
-        console.log(`📩 Broadcast new_message to ${roomName}`);
+        console.log(`📩 Broadcast new_message to ${roomName}:`, messagePayload);
+
+        // ✅ Send success callback to sender
+        if (callback) {
+          callback({
+            success: true,
+            data: messagePayload,
+          });
+        }
       } catch (err) {
         console.error("❌ Error send_message:", err);
-        socket.emit("error", { message: "Internal server error" });
+        const error = { message: "Internal server error" };
+        socket.emit("error", error);
+        if (callback) callback({ success: false, error: error.message });
       }
     });
 

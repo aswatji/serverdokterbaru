@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Real-time Chat Test Client</title>
+    <title>Real-time Chat Test Client (Updated)</title>
     <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
     <style>
       body {
@@ -40,6 +40,10 @@
       }
       .controls button:hover {
         background: #0056b3;
+      }
+      .controls button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
       }
       .status {
         padding: 10px;

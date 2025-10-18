@@ -23,16 +23,36 @@ export async function uploadToMinio(bucket, fileName, buffer, mimeType) {
  */
 export class MinioService {
   async uploadBase64(base64Data, type = "image") {
-    const buffer = Buffer.from(base64Data, "base64");
-    const ext = type === "pdf" ? ".pdf" : ".jpg";
-    const fileName = `${uuidv4()}${ext}`;
+    // Remove data URI prefix if exists (e.g., "data:image/png;base64,")
+    const base64Clean = base64Data.replace(/^data:.*;base64,/, "");
+    const buffer = Buffer.from(base64Clean, "base64");
+    
+    // Determine extension and mime type
+    let ext = ".jpg";
+    let mimeType = "image/jpeg";
+    
+    if (type === "pdf" || type === "file") {
+      ext = ".pdf";
+      mimeType = "application/pdf";
+    } else if (type === "image") {
+      // Detect image type from base64 header
+      if (base64Data.includes("data:image/png")) {
+        ext = ".png";
+        mimeType = "image/png";
+      } else if (base64Data.includes("data:image/jpeg") || base64Data.includes("data:image/jpg")) {
+        ext = ".jpg";
+        mimeType = "image/jpeg";
+      }
+    }
+    
+    const fileName = `chat/${uuidv4()}${ext}`;
 
-    const meta = {
-      "Content-Type": type === "pdf" ? "application/pdf" : "image/jpeg",
-    };
+    const meta = { "Content-Type": mimeType };
 
     await minioClient.putObject(bucketName, fileName, buffer, meta);
     const fileUrl = `https://${process.env.MINIO_ENDPOINT}/${bucketName}/${fileName}`;
+    
+    console.log(`✅ MinIO upload successful: ${fileUrl}`);
     return fileUrl;
   }
 }

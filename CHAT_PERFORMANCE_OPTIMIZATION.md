@@ -1,10 +1,13 @@
 # 🚀 Chat Performance Optimization
 
 ## Masalah
+
 Pengiriman pesan chat sangat lambat (beberapa detik delay).
 
 ## Root Cause Analysis
+
 1. **Sequential Database Queries** - 5 query berjalan satu per satu:
+
    - `findUnique` untuk cari chat
    - `findFirst` untuk cek chatDate
    - `create` chatDate (jika belum ada)
@@ -20,6 +23,7 @@ Pengiriman pesan chat sangat lambat (beberapa detik delay).
 ### 1. Database Query Optimization
 
 #### Before (Sequential - 5 queries):
+
 ```javascript
 const chat = await prisma.chat.findUnique({ where: { chatKey } });
 
@@ -39,9 +43,10 @@ await prisma.chat.update({...});
 ```
 
 #### After (Parallel + Upsert - 3 queries):
+
 ```javascript
 // Query 1: Get chat (select only ID)
-const chat = await prisma.chat.findUnique({ 
+const chat = await prisma.chat.findUnique({
   where: { chatKey },
   select: { id: true }
 });
@@ -66,6 +71,7 @@ const [message] = await Promise.all([
 ### 2. Non-Blocking Socket Broadcast
 
 #### Before:
+
 ```javascript
 try {
   const io = getIO();
@@ -76,6 +82,7 @@ return res.status(201).json({...}); // Wait for socket
 ```
 
 #### After:
+
 ```javascript
 setImmediate(() => {
   try {
@@ -109,16 +116,18 @@ model ChatMessage {
 ### 4. Select Only Required Fields
 
 #### Before:
+
 ```javascript
 const chat = await prisma.chat.findUnique({ where: { chatKey } });
 // Returns: id, chatKey, createdAt, updatedAt, doctorId, userId, etc.
 ```
 
 #### After:
+
 ```javascript
-const chat = await prisma.chat.findUnique({ 
+const chat = await prisma.chat.findUnique({
   where: { chatKey },
-  select: { id: true }  // Only get ID
+  select: { id: true }, // Only get ID
 });
 ```
 
@@ -127,18 +136,21 @@ const chat = await prisma.chat.findUnique({
 ## Performance Metrics
 
 ### Before Optimization:
+
 - **Average Response Time:** 2-5 seconds
 - **Database Queries:** 5 sequential
 - **Network Overhead:** High (over-fetching)
 - **Blocking Operations:** 2 (DB + Socket)
 
 ### After Optimization:
+
 - **Average Response Time:** 100-300ms (10x faster) ⚡
 - **Database Queries:** 3 parallel/optimized
 - **Network Overhead:** Minimal (select only needed)
 - **Blocking Operations:** 0 (all async/non-blocking)
 
 ## Applied To:
+
 - ✅ `sendMessage()` - Text messages
 - ✅ `sendFileMessage()` - File/image uploads
 - ✅ Database schema (indexes)
@@ -155,7 +167,7 @@ curl -X POST http://localhost:3000/api/chat/{chatKey}/send \
   -d '{"content": "Test message"}'
 
 # Measure response time
-Measure-Command { 
+Measure-Command {
   Invoke-WebRequest -Uri "http://localhost:3000/api/chat/{chatKey}/send" `
     -Method POST `
     -Headers @{"Authorization"="Bearer {token}"} `
@@ -178,12 +190,13 @@ Measure-Command {
 Monitor performance dengan:
 
 ```javascript
-console.time('sendMessage');
+console.time("sendMessage");
 // ... your code ...
-console.timeEnd('sendMessage');
+console.timeEnd("sendMessage");
 ```
 
 Expected output:
+
 ```
 sendMessage: 150ms ✅ (sebelumnya: 3000ms)
 ```

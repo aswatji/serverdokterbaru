@@ -179,11 +179,11 @@ class ChatController {
       }
 
       // ✅ OPTIMASI 1: Ambil hanya field yang dibutuhkan
-      const chat = await prisma.chat.findUnique({ 
+      const chat = await prisma.chat.findUnique({
         where: { chatKey },
-        select: { id: true }
+        select: { id: true },
       });
-      
+
       if (!chat) {
         return res.status(404).json({
           success: false,
@@ -194,7 +194,7 @@ class ChatController {
       // ✅ OPTIMASI 2: Gunakan UPSERT untuk chatDate (1 query instead of 2-3)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       const chatDate = await prisma.chatDate.upsert({
         where: {
           chatId_date: {
@@ -207,7 +207,7 @@ class ChatController {
           chatId: chat.id,
           date: today,
         },
-        select: { id: true }
+        select: { id: true },
       });
 
       // ✅ OPTIMASI 3: Buat message & update chat PARALLEL (jalankan bersamaan)
@@ -225,20 +225,26 @@ class ChatController {
             content: true,
             type: true,
             sentAt: true,
-          }
+          },
         }),
         // Update chat lastMessage (non-blocking)
-        prisma.chat.update({
-          where: { id: chat.id },
-          data: { updatedAt: new Date() },
-        }).catch(err => console.warn("⚠️ Update chat failed:", err.message))
+        prisma.chat
+          .update({
+            where: { id: chat.id },
+            data: { updatedAt: new Date() },
+          })
+          .catch((err) => console.warn("⚠️ Update chat failed:", err.message)),
       ]);
 
       // Update lastMessageId setelah message created
-      prisma.chat.update({
-        where: { id: chat.id },
-        data: { lastMessageId: message.id },
-      }).catch(err => console.warn("⚠️ Update lastMessageId failed:", err.message));
+      prisma.chat
+        .update({
+          where: { id: chat.id },
+          data: { lastMessageId: message.id },
+        })
+        .catch((err) =>
+          console.warn("⚠️ Update lastMessageId failed:", err.message)
+        );
 
       // ✅ OPTIMASI 4: Broadcast socket tanpa await (non-blocking)
       setImmediate(() => {
@@ -309,11 +315,11 @@ class ChatController {
       }
 
       // ✅ OPTIMASI: Ambil hanya field yang dibutuhkan
-      const chat = await prisma.chat.findUnique({ 
+      const chat = await prisma.chat.findUnique({
         where: { chatKey },
-        select: { id: true }
+        select: { id: true },
       });
-      
+
       if (!chat) {
         return res.status(404).json({
           success: false,
@@ -347,8 +353,8 @@ class ChatController {
             chatId: chat.id,
             date: today,
           },
-          select: { id: true }
-        })
+          select: { id: true },
+        }),
       ]);
 
       // Buat message dengan file URL dari MinIO
@@ -365,14 +371,16 @@ class ChatController {
           content: true,
           type: true,
           sentAt: true,
-        }
+        },
       });
 
       // ✅ OPTIMASI: Update lastMessage non-blocking
-      prisma.chat.update({
-        where: { id: chat.id },
-        data: { lastMessageId: message.id, updatedAt: new Date() },
-      }).catch(err => console.warn("⚠️ Update chat failed:", err.message));
+      prisma.chat
+        .update({
+          where: { id: chat.id },
+          data: { lastMessageId: message.id, updatedAt: new Date() },
+        })
+        .catch((err) => console.warn("⚠️ Update chat failed:", err.message));
 
       // ✅ OPTIMASI: Broadcast socket non-blocking
       setImmediate(() => {
