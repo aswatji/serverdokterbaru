@@ -4,7 +4,13 @@ import cors from "cors";
 import helmet from "helmet";
 import compression from "compression";
 import http from "http";
+import path from "path";
+import { fileURLToPath } from "url";
 import { Server } from "socket.io";
+
+// ES module dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import routes from "./routes/index.js";
 import errorHandler from "./middleware/errorHandler.js";
 import {
@@ -77,8 +83,14 @@ async function startServer() {
     // ✅ Serve static files (HTML test clients)
     app.use(express.static("."));
 
-    // ✅ Serve uploaded files (fallback from MinIO)
-    app.use("/uploads", express.static("uploads"));
+    // ✅ Serve uploaded files with CORS (fallback from MinIO)
+    app.use("/uploads", (req, res, next) => {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET");
+      res.setHeader("Cache-Control", "public, max-age=86400"); // Cache 24 hours
+      next();
+    });
+    app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
     // ✅ Database health check middleware - ONLY for /api routes (not for socket.io)
     app.use("/api", ensureDbConnection);
