@@ -1,119 +1,99 @@
-
 import jwt from "jsonwebtoken";
-import { PrismaClient } from "@prisma/client";
-const prisma = new PrismaClient();
+import prisma from "../config/database.js";
+import ApiResponse from "../utils/ApiResponse.js";
+import MESSAGES from "../constants/messages.js";
 
 /**
- * Express middleware:
- * 1️⃣ Baca token dari header Authorization ("Bearer <token>")
- * 2️⃣ Verifikasi JWT pakai process.env.JWT_SECRET
- * 3️⃣ Cek di database apakah user/doctor masih ada
- * 4️⃣ Jika valid, attach data user ke req.user
- * 5️⃣ Jika tidak valid → kirim 401
+ * Authentication Middleware
+ * Verifies JWT token and attaches user info to request
  */
-const authMiddleware = async (req, res, next) => {
+export const authMiddleware = async (req, res, next) => {
   try {
+    // Extract token from header
     const authHeader = req.header("Authorization");
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({
-        success: false,
-        message: "Access denied. No valid token provided.",
-      });
+    if (!authHeader?.startsWith("Bearer ")) {
+      return ApiResponse.unauthorized(res, "No valid token provided");
     }
 
-    const token = authHeader.replace("Bearer ", "");
+    const token = authHeader.replace("Bearer ", "").trim();
+
     if (!token) {
-      return res.status(401).json({
-        success: false,
-        message: "Access denied. No token provided.",
-      });
+      return ApiResponse.unauthorized(res, MESSAGES.UNAUTHORIZED);
     }
 
-    // 🔑 Verifikasi JWT
+    // Verify JWT
     const decoded = jwt.verify(
       token,
       process.env.JWT_SECRET || "your-secret-key"
     );
 
-    // 🔍 Cek apakah user masih ada di DB (User atau Doctor)
-    const user =
-      (await prisma.user.findUnique({ where: { id: decoded.id } })) ||
-      (await prisma.doctor.findUnique({ where: { id: decoded.id } }));
+    // Check if user exists (parallel query for performance)
+    const [user, doctor] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: decoded.id },
+        select: { id: true, email: true, fullname: true },
+      }),
+      prisma.doctor.findUnique({
+        where: { id: decoded.id },
+        select: { id: true, email: true, fullname: true },
+      }),
+    ]);
 
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found or deleted.",
-      });
+    const foundUser = user || doctor;
+
+    if (!foundUser) {
+      return ApiResponse.notFound(res, MESSAGES.USER_NOT_FOUND);
     }
 
-    // 🧩 Attach user info ke req.user
+    // Attach user to request
     req.user = {
-      id: user.id,
-      email: user.email,
-      fullname: user.fullname,
-      type: user.strNumber ? "doctor" : "user", // otomatis deteksi role
+      id: foundUser.id,
+      email: foundUser.email,
+      fullname: foundUser.fullname,
+      type: doctor ? "doctor" : "user",
     };
 
     next();
   } catch (error) {
-    console.error("Auth middleware error:", error.message);
-
     if (error.name === "JsonWebTokenError") {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid token.",
-      });
+      return ApiResponse.unauthorized(res, MESSAGES.TOKEN_INVALID);
     }
 
     if (error.name === "TokenExpiredError") {
-      return res.status(401).json({
-        success: false,
-        message: "Token expired.",
-      });
+      return ApiResponse.unauthorized(res, MESSAGES.TOKEN_EXPIRED);
     }
 
-    return res.status(401).json({
-      success: false,
-      message: "Token verification failed.",
-    });
+    console.error("Auth middleware error:", error);
+    return ApiResponse.serverError(res, "Authentication failed");
   }
 };
 
-// ======================================================
-// 🔐 ROLE-BASED MIDDLEWARE (Opsional)
-// ======================================================
-const requireRole = (role) => {
+/**
+ * Role-based authorization middleware
+ */
+export const requireRole = (role) => {
   return (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        message: "Authentication required.",
-      });
+      return ApiResponse.unauthorized(res, "Authentication required");
     }
 
     if (req.user.type !== role) {
-      return res.status(403).json({
-        success: false,
-        message: `Access denied. ${role} role required.`,
-      });
+      return ApiResponse.forbidden(res, `Access denied. ${role} role required`);
     }
 
     next();
   };
 };
 
-// Untuk route khusus doctor
-const requireDoctor = requireRole("doctor");
+// Shortcuts for common roles
+export const requireDoctor = requireRole("doctor");
+export const requireUser = requireRole("user");
 
-// Untuk route khusus user
-const requireUser = requireRole("user");
-
-// ======================================================
-// 🧠 SOCKET.IO AUTH MIDDLEWARE
-// ======================================================
-const socketAuthMiddleware = async (socket, next) => {
+/**
+ * Socket.IO authentication middleware
+ */
+export const socketAuthMiddleware = async (socket, next) => {
   try {
     const token =
       socket.handshake.auth.token ||
@@ -128,35 +108,30 @@ const socketAuthMiddleware = async (socket, next) => {
       process.env.JWT_SECRET || "your-secret-key"
     );
 
-    const user =
-      (await prisma.user.findUnique({ where: { id: decoded.id } })) ||
-      (await prisma.doctor.findUnique({ where: { id: decoded.id } }));
+    // Check if user exists
+    const [user, doctor] = await Promise.all([
+      prisma.user.findUnique({ where: { id: decoded.id } }),
+      prisma.doctor.findUnique({ where: { id: decoded.id } }),
+    ]);
 
-    if (!user) {
+    const foundUser = user || doctor;
+
+    if (!foundUser) {
       return next(new Error("User not found"));
     }
 
+    // Attach user to socket
     socket.user = {
-      id: user.id,
-      email: user.email,
-      fullname: user.fullname,
-      type: user.strNumber ? "doctor" : "user",
+      id: foundUser.id,
+      email: foundUser.email,
+      fullname: foundUser.fullname,
+      type: doctor ? "doctor" : "user",
     };
 
     next();
   } catch (error) {
-    console.error("Socket auth error:", error.message);
-    next(new Error("Invalid or expired authentication token"));
+    next(new Error("Authentication failed"));
   }
 };
 
-// ======================================================
-// ✅ EXPORT
-// ======================================================
-export {
-  authMiddleware,
-  requireRole,
-  requireDoctor,
-  requireUser,
-  socketAuthMiddleware,
-};
+export default authMiddleware;

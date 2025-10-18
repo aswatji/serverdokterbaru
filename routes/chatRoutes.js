@@ -3,6 +3,7 @@ import { body } from "express-validator";
 import validateRequest from "../middleware/validation.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import ChatController from "../controllers/chatController.js";
+import { upload } from "../middleware/uploadMiddleware.js";
 
 const router = express.Router();
 
@@ -22,7 +23,7 @@ const sendMessageValidation = [
    💬 ROUTES
 ------------------------------------------- */
 function chatRoutes(io) {
-  const controller = ChatController;
+  const controller = new ChatController();
 
   router.get("/", authMiddleware, (req, res) =>
     controller.getAllChats(req, res)
@@ -39,6 +40,19 @@ function chatRoutes(io) {
     sendMessageValidation,
     validateRequest,
     (req, res) => controller.sendMessage(req, res)
+  );
+
+  // 📤 Upload file (image/pdf)
+  router.post(
+    "/:chatKey/send/file",
+    authMiddleware,
+    upload.single("file"), // Multer middleware
+    (req, res) => controller.sendFileMessage(req, res)
+  );
+
+  // 🗑️ Delete message
+  router.delete("/message/:messageId", authMiddleware, (req, res) =>
+    controller.deleteMessage(req, res)
   );
 
   return router;

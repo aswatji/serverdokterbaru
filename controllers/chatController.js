@@ -1,7 +1,7 @@
-import { PrismaClient } from "@prisma/client";
-const prisma = new PrismaClient();
+import prisma from "../config/database.js";
 import { getIO, initChatSocket } from "../chatSocket.js";
-// 🔥 Import dari socket.js
+import { uploadToMinio, deleteFromMinio } from "../utils/minioUpload.js";
+import { bucketName } from "../config/minio.js";
 
 class ChatController {
   // =======================================================
@@ -245,6 +245,229 @@ class ChatController {
       });
     }
   }
+  async sendFileMessage(req, res) {
+    try {
+      const { chatKey } = req.params;
+      const { type: userType } = req.user;
+      const file = req.file; // dari multer middleware
+
+      if (!file) {
+        return res.status(400).json({
+          success: false,
+          message: "File tidak ditemukan",
+        });
+      }
+
+      const allowedTypes = [
+        "image/jpeg",
+        "image/png",
+        "image/jpg",
+        "application/pdf",
+      ];
+      if (!allowedTypes.includes(file.mimetype)) {
+        return res.status(400).json({
+          success: false,
+          message: "Tipe file tidak didukung. Hanya jpg, png, pdf",
+        });
+      }
+
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        return res.status(400).json({
+          success: false,
+          message: "Ukuran file maksimal 5MB",
+        });
+      }
+
+      const chat = await prisma.chat.findUnique({ where: { chatKey } });
+      if (!chat) {
+        return res.status(404).json({
+          success: false,
+          message: "Chat tidak ditemukan",
+        });
+      }
+
+      // Upload file ke MinIO
+      const timestamp = Date.now();
+      const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, "_");
+      const fileName = `chat/${chat.id}/${timestamp}-${sanitizedName}`;
+
+      const fileUrl = await uploadToMinio(file.buffer, fileName, file.mimetype);
+
+      // Tentukan tipe message (image atau file)
+      const messageType = file.mimetype.startsWith("image/") ? "image" : "file";
+
+      // Cari atau buat ChatDate (hari ini)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      let chatDate = await prisma.chatDate.findFirst({
+        where: { chatId: chat.id, date: today },
+      });
+
+      if (!chatDate) {
+        chatDate = await prisma.chatDate.create({
+          data: { chatId: chat.id, date: today },
+        });
+      }
+
+      // Buat message dengan file URL dari MinIO
+      const message = await prisma.chatMessage.create({
+        data: {
+          chatDateId: chatDate.id,
+          sender: userType,
+          content: fileUrl, // URL dari MinIO
+          type: messageType,
+        },
+      });
+
+      // Update lastMessage
+      await prisma.chat.update({
+        where: { id: chat.id },
+        data: { lastMessageId: message.id, updatedAt: new Date() },
+      });
+
+      // Broadcast via Socket.IO
+      try {
+        const io = getIO();
+        const roomName = `chat:${chat.id}`;
+        io.to(roomName).emit("new_message", {
+          messageId: message.id,
+          chatId: chat.id,
+          sender: message.sender,
+          content: message.content,
+          type: message.type,
+          sentAt: message.sentAt,
+          fileName: file.originalname,
+          fileSize: file.size,
+        });
+        console.log(`📢 File message broadcast -> ${roomName}`);
+      } catch (socketErr) {
+        console.warn("⚠️ Socket.IO not ready:", socketErr.message);
+      }
+
+      return res.status(201).json({
+        success: true,
+        message: "File berhasil dikirim",
+        data: {
+          id: message.id,
+          sender: message.sender,
+          content: message.content,
+          type: message.type,
+          sentAt: message.sentAt,
+          fileName: file.originalname,
+          fileSize: file.size,
+        },
+      });
+    } catch (error) {
+      console.error("❌ Error sendFileMessage:", error);
+      res.status(500).json({
+        success: false,
+        message: "Gagal mengirim file",
+        error: error.message,
+      });
+    }
+  }
+
+  // 🗑️ DELETE MESSAGE (dengan cleanup file dari MinIO)
+  async deleteMessage(req, res) {
+    try {
+      const { messageId } = req.params;
+      const { id: userId, type: userType } = req.user;
+
+      const message = await prisma.chatMessage.findUnique({
+        where: { id: messageId },
+        include: {
+          chatDate: {
+            include: {
+              chat: true,
+            },
+          },
+        },
+      });
+
+      if (!message) {
+        return res.status(404).json({
+          success: false,
+          message: "Pesan tidak ditemukan",
+        });
+      }
+
+      // Validasi: hanya sender yang bisa delete
+      const chat = message.chatDate.chat;
+      const isSender =
+        (userType === "user" && message.sender === "user") ||
+        (userType === "doctor" && message.sender === "doctor");
+
+      if (!isSender) {
+        return res.status(403).json({
+          success: false,
+          message: "Anda tidak berhak menghapus pesan ini",
+        });
+      }
+
+      // Jika message berisi file, hapus dari MinIO
+      if (message.type === "image" || message.type === "file") {
+        try {
+          // Extract filename from URL
+          const urlParts = message.content.split("/");
+          const bucketIndex = urlParts.indexOf(bucketName);
+          if (bucketIndex !== -1) {
+            const fileName = urlParts.slice(bucketIndex + 1).join("/");
+            await deleteFromMinio(fileName);
+            console.log(`🗑️ File deleted from MinIO: ${fileName}`);
+          }
+        } catch (minioErr) {
+          console.warn("⚠️ Failed to delete from MinIO:", minioErr.message);
+        }
+      }
+
+      // Delete message from database
+      await prisma.chatMessage.delete({
+        where: { id: messageId },
+      });
+
+      // Update lastMessage jika ini adalah last message
+      if (chat.lastMessageId === messageId) {
+        const latestMessage = await prisma.chatMessage.findFirst({
+          where: { chatDate: { chatId: chat.id } },
+          orderBy: { sentAt: "desc" },
+        });
+
+        await prisma.chat.update({
+          where: { id: chat.id },
+          data: {
+            lastMessageId: latestMessage?.id || null,
+            updatedAt: new Date(),
+          },
+        });
+      }
+
+      // Broadcast delete event
+      try {
+        const io = getIO();
+        const roomName = `chat:${chat.id}`;
+        io.to(roomName).emit("message_deleted", {
+          messageId: message.id,
+          chatId: chat.id,
+        });
+        console.log(`📢 Delete broadcast -> ${roomName}`);
+      } catch (socketErr) {
+        console.warn("⚠️ Socket.IO not ready:", socketErr.message);
+      }
+
+      return res.json({
+        success: true,
+        message: "Pesan berhasil dihapus",
+      });
+    } catch (error) {
+      console.error("❌ Error deleteMessage:", error);
+      res.status(500).json({
+        success: false,
+        message: "Gagal menghapus pesan",
+        error: error.message,
+      });
+    }
+  }
 }
 
-export default new ChatController();
+export default ChatController;

@@ -66,11 +66,11 @@ model Chat {
   id            String       @id @default(cuid())
   chatKey       String       @unique
   createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @default(now()) @updatedAt
   doctorId      String
   userId        String
   lastMessageId String?      @unique
   paymentId     String?      @unique
-  updatedAt     DateTime     @default(now()) @updatedAt
   expiredAt     DateTime?
   isActive      Boolean      @default(false)
   doctor        Doctor       @relation("DoctorChats", fields: [doctorId], references: [id])
@@ -80,7 +80,11 @@ model Chat {
   dates         ChatDate[]
 
   @@unique([userId, doctorId])
+  @@index([userId])
+  @@index([doctorId])
+  @@index([updatedAt])
 }
+
 
 model ChatDate {
   id        String        @id @default(cuid())
