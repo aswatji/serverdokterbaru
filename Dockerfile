@@ -19,20 +19,19 @@ RUN npm ci --only=production && npm cache clean --force
 # Copy the rest of the application code
 COPY . .
 
-# Buat folder uploads dan beri izin akses
-RUN mkdir -p /app/uploads && chown -R nodejs:nodejs /app/uploads
-
-# Make entrypoint script executable
-RUN chmod +x entrypoint.sh
-
 # Generate Prisma client
 RUN npx prisma generate
 
 # Create a non-root user to run the application
 RUN groupadd -r nodejs && useradd -r -g nodejs nodejs
 
-# Change ownership of the app directory to the nodejs user
-RUN chown -R nodejs:nodejs /app
+# Create uploads folder and change ownership of the app directory
+RUN mkdir -p /app/uploads && chown -R nodejs:nodejs /app
+
+# Make entrypoint script executable
+RUN chmod +x entrypoint.sh
+
+# Switch to non-root user
 USER nodejs
 
 # Expose the port the app runs on
