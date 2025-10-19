@@ -19,7 +19,7 @@ export function initChatSocket(socketIo) {
 
     // 🧩 Join chat room
     socket.on("join_chat", (chatId) => {
-      const roomName = `chat:${chatId}`;
+      const roomName = `${chatId}`;
       socket.join(roomName);
       console.log(`👋 ${socket.id} joined room ${roomName}`);
       socket.to(roomName).emit("user_joined", {
@@ -50,14 +50,13 @@ export function initChatSocket(socketIo) {
           return;
         }
 
-        // Try to find chat by ID or chatKey
-        let chat = await prisma.chat.findFirst({
+        // Find chat by ID
+        let chat = await prisma.chat.findUnique({
           where: {
-            OR: [{ id: chatId }, { chatKey: chatId }],
+            id: chatId,
           },
           select: {
             id: true,
-            chatKey: true,
             isActive: true,
             expiredAt: true,
             userId: true,
@@ -163,7 +162,7 @@ export function initChatSocket(socketIo) {
           sentAt: savedMessage.sentAt,
         };
 
-        const roomName = `${chat.id}`; // Use chat.id (UUID) not chatId from payload
+        const roomName = `chat:${chat.id}`; // Use chat.id (UUID) not chatId from payload
         ioInstance.to(roomName).emit("new_message", messagePayload);
         console.log(`✅ Broadcast new_message to ${roomName}`);
 
@@ -188,7 +187,7 @@ export function initChatSocket(socketIo) {
 
     // 🚪 Leave room
     socket.on("leave_chat", (chatId) => {
-      const roomName = `chat:${chatId}`;
+      const roomName = `${chatId}`;
       socket.leave(roomName);
       console.log(`🚪 ${socket.id} left ${roomName}`);
       socket.to(roomName).emit("user_left", {
