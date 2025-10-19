@@ -5,31 +5,39 @@ import prisma from "../config/database.js";
  * Will attempt to reconnect if connection is lost
  */
 export const ensureDbConnection = async (req, res, next) => {
-  try {
-    // Quick health check
-    await prisma.$queryRaw`SELECT 1`;
-    next();
-  } catch (error) {
-    console.error("❌ Database connection lost:", error.message);
+  const maxRetries = 3;
+  let lastError = null;
 
-    // Try to reconnect
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      await prisma.$disconnect();
-      await prisma.$connect();
-      console.log("✅ Database reconnected successfully");
-      next();
-    } catch (reconnectError) {
-      console.error(
-        "❌ Failed to reconnect to database:",
-        reconnectError.message
-      );
-      return res.status(503).json({
-        success: false,
-        message: "Database connection unavailable",
-        error: "Service temporarily unavailable. Please try again later.",
-      });
+      // Quick health check
+      await prisma.$queryRaw`SELECT 1`;
+      return next();
+    } catch (error) {
+      lastError = error;
+      console.error(`❌ Database connection check failed (attempt ${attempt}/${maxRetries}):`, error.message);
+
+      if (attempt < maxRetries) {
+        // Try to reconnect before next attempt
+        try {
+          await prisma.$disconnect();
+          await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms
+          await prisma.$connect();
+          console.log(`✅ Database reconnected on attempt ${attempt}`);
+        } catch (reconnectError) {
+          console.error(`⚠️ Reconnect attempt ${attempt} failed:`, reconnectError.message);
+        }
+      }
     }
   }
+
+  // All retries failed
+  console.error("❌ All database reconnection attempts failed");
+  return res.status(503).json({
+    success: false,
+    message: "Database connection unavailable",
+    error: "Service temporarily unavailable. Please try again later.",
+  });
 };
 
 /**

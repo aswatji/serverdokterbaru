@@ -25,7 +25,6 @@ dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
-import { testDoctorAvailability } from "./scheduler/consultationScheduler.js";
 
 // Environment configuration
 const PORT = process.env.PORT || 80; // CapRover uses port 80 internally

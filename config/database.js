@@ -19,6 +19,18 @@ class DatabaseConnection {
           url: process.env.DATABASE_URL,
         },
       },
+
+      // Connection pool settings to prevent disconnections
+      __internal: {
+        engine: {
+          // Set connection_limit higher for production
+          connection_limit: process.env.NODE_ENV === "production" ? 20 : 10,
+          // Keep connections alive longer
+          pool_timeout: 20,
+          // Reconnect on connection loss
+          connect_timeout: 10,
+        },
+      },
     });
 
     // Auto-reconnect on connection loss
@@ -28,15 +40,24 @@ class DatabaseConnection {
   }
 
   setupHealthCheck() {
-    // Ping database every 30 seconds to keep connection alive
+    // Ping database every 15 seconds to keep connection alive (more frequent in production)
+    const intervalMs = process.env.NODE_ENV === "production" ? 15000 : 30000;
+    
     this.healthCheckInterval = setInterval(async () => {
       try {
         await this.prisma.$queryRaw`SELECT 1`;
       } catch (error) {
         console.error("⚠️ Database health check failed:", error.message);
-        // Connection will auto-reconnect on next query
+        // Try to reconnect
+        try {
+          await this.prisma.$disconnect();
+          await this.prisma.$connect();
+          console.log("✅ Database reconnected");
+        } catch (reconnectError) {
+          console.error("❌ Failed to reconnect:", reconnectError.message);
+        }
       }
-    }, 30000); // 30 seconds
+    }, intervalMs);
   }
 
   async testConnection(retries = 5) {
