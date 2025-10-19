@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat Test - Image & PDF Upload</title>
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        width: 100%;
+        max-width: 800px;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        height: 90vh;
+      }
+
+      .header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        text-align: center;
+        font-size: 20px;
+        font-weight: bold;
+      }
+
+      .status {
+        padding: 12px 20px;
+        text-align: center;
+        font-weight: 600;
+        font-size: 14px;
+        border-bottom: 2px solid #f0f0f0;
+      }
+
+      .status.connected {
+        background: #d4edda;
+        color: #155724;
+      }
+
+      .status.disconnected {
+        background: #f8d7da;
+        color: #721c24;
+      }
+
+      .controls {
+        padding: 15px 20px;
+        background: #f8f9fa;
+        border-bottom: 2px solid #e9ecef;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .controls input,
+      .controls select,
+      .controls button {
+        padding: 10px 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 14px;
+      }
+
+      .controls input {
+        flex: 1;
+        min-width: 150px;
+      }
+
+      .controls select {
+        min-width: 120px;
+      }
+
+      .controls button {
+        background: #667eea;
+        color: white;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s;
+      }
+
+      .controls button:hover {
+        background: #5568d3;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+      }
+
+      .controls button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .messages {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        background: #f8f9fa;
+      }
+
+      .message {
+        margin-bottom: 15px;
+        padding: 12px 15px;
+        border-radius: 12px;
+        max-width: 70%;
+        word-wrap: break-word;
+        animation: slideIn 0.3s ease;
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .message.user {
+        background: #667eea;
+        color: white;
+        margin-left: auto;
+        border-bottom-right-radius: 4px;
+      }
+
+      .message.doctor {
+        background: white;
+        color: #333;
+        margin-right: auto;
+        border-bottom-left-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      .message.sending {
+        opacity: 0.6;
+        position: relative;
+      }
+
+      .message.sending::after {
+        content: "⏳ Sending...";
+        position: absolute;
+        bottom: -20px;
+        right: 10px;
+        font-size: 11px;
+        color: #999;
+      }
+
+      .message img {
+        max-width: 100%;
+        border-radius: 8px;
+        margin-top: 8px;
+        cursor: pointer;
+        transition: transform 0.3s;
+      }
+
+      .message img:hover {
+        transform: scale(1.02);
+      }
+
+      .message a {
+        color: inherit;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        background: rgba(0, 0, 0, 0.1);
+        border-radius: 6px;
+        margin-top: 8px;
+        transition: all 0.3s;
+      }
+
+      .message a:hover {
+        background: rgba(0, 0, 0, 0.2);
+        transform: translateX(4px);
+      }
+
+      .time {
+        display: block;
+        font-size: 11px;
+        margin-top: 5px;
+        opacity: 0.7;
+      }
+
+      .input-area {
+        padding: 15px 20px;
+        background: white;
+        border-top: 2px solid #e9ecef;
+        display: flex;
+        gap: 10px;
+      }
+
+      .input-area input {
+        flex: 1;
+        padding: 12px 15px;
+        border: 2px solid #e9ecef;
+        border-radius: 25px;
+        font-size: 14px;
+        transition: border-color 0.3s;
+      }
+
+      .input-area input:focus {
+        outline: none;
+        border-color: #667eea;
+      }
+
+      .input-area button {
+        padding: 12px 24px;
+        background: #667eea;
+        color: white;
+        border: none;
+        border-radius: 25px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s;
+      }
+
+      .input-area button:hover:not(:disabled) {
+        background: #5568d3;
+        transform: scale(1.05);
+      }
+
+      .input-area button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .file-upload {
+        display: flex;
+        gap: 10px;
+      }
+
+      .file-input-label {
+        padding: 12px 20px;
+        background: #28a745;
+        color: white;
+        border-radius: 25px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s;
+        text-align: center;
+        white-space: nowrap;
+      }
+
+      .file-input-label:hover {
+        background: #218838;
+        transform: scale(1.05);
+      }
+
+      .file-input-label.disabled {
+        background: #ccc;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      input[type="file"] {
+        display: none;
+      }
+
+      .upload-progress {
+        padding: 10px 20px;
+        background: #fff3cd;
+        color: #856404;
+        text-align: center;
+        font-weight: 600;
+        animation: pulse 1s infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.7;
+        }
+      }
+
+      /* Scrollbar styling */
+      .messages::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      .messages::-webkit-scrollbar-track {
+        background: #f1f1f1;
+      }
+
+      .messages::-webkit-scrollbar-thumb {
+        background: #667eea;
+        border-radius: 4px;
+      }
+
+      .messages::-webkit-scrollbar-thumb:hover {
+        background: #5568d3;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">💬 Chat Test Client - Socket.IO</div>
+
+      <div class="status disconnected" id="status">🔴 Disconnected</div>
+
+      <div class="controls">
+        <input type="text" id="chatId" placeholder="Chat ID" value="chat123" />
+        <select id="senderType">
+          <option value="user">User</option>
+          <option value="doctor">Doctor</option>
+        </select>
+        <button onclick="joinChat()">📡 Join Chat</button>
+      </div>
+
+      <div class="messages" id="messages">
+        <p style="text-align: center; color: #999; padding: 20px">
+          👆 Enter Chat ID and click "Join Chat" to start
+        </p>
+      </div>
+
+      <div id="uploadProgress" style="display: none" class="upload-progress">
+        📤 Uploading...
+      </div>
+
+      <div class="input-area">
+        <input
+          type="text"
+          id="messageInput"
+          placeholder="Type a message..."
+          onkeypress="handleKeyPress(event)"
+        />
+        <button onclick="sendText()" id="sendBtn">Send</button>
+
+        <input
+          type="file"
+          id="fileInput"
+          accept="image/jpeg,image/png,image/jpg,application/pdf"
+          onchange="sendFile()"
+        />
+        <label for="fileInput" class="file-input-label" id="fileLabel">
+          📎 File
+        </label>
+      </div>
+    </div>
+
+    <script>
+      // Socket.IO connection
+      const socket = io("http://localhost:3000", {
+        transports: ["websocket", "polling"],
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionAttempts: 5,
+      });
+
+      let currentChatId = null;
+      let isSending = false;
+
+      // Connection events
+      socket.on("connect", () => {
+        console.log("✅ Connected to server! Socket ID:", socket.id);
+        document.getElementById("status").innerHTML =
+          "🟢 Connected: " + socket.id;
+        document.getElementById("status").className = "status connected";
+      });
+
+      socket.on("disconnect", (reason) => {
+        console.log("🔴 Disconnected. Reason:", reason);
+        document.getElementById("status").innerHTML = "🔴 Disconnected";
+        document.getElementById("status").className = "status disconnected";
+      });
+
+      socket.on("connect_error", (error) => {
+        console.error("❌ Connection error:", error.message);
+      });
+
+      // Chat events
+      socket.on("new_message", (data) => {
+        console.log("📩 New message received:", data);
+        displayMessage(data, false);
+      });
+
+      socket.on("error", (error) => {
+        console.error("❌ Socket error:", error);
+        alert("Error: " + error.message);
+        isSending = false;
+        updateUI();
+      });
+
+      // Join chat room
+      function joinChat() {
+        currentChatId = document.getElementById("chatId").value.trim();
+        if (!currentChatId) {
+          alert("Please enter Chat ID");
+          return;
+        }
+
+        if (!socket.connected) {
+          alert("Not connected to server. Please wait...");
+          return;
+        }
+
+        socket.emit("join_chat", currentChatId);
+        console.log("👋 Joined chat:", currentChatId);
+
+        // Clear messages
+        document.getElementById("messages").innerHTML = `
+                <p style="text-align:center; color:#999;">
+                    Joined chat: <strong>${currentChatId}</strong>
+                </p>
+            `;
+      }
+
+      // Send text message
+      function sendText() {
+        const content = document.getElementById("messageInput").value.trim();
+        if (!content) {
+          alert("Please type a message");
+          return;
+        }
+
+        if (!currentChatId) {
+          alert("Please join a chat first");
+          return;
+        }
+
+        if (isSending) return;
+
+        isSending = true;
+        updateUI();
+
+        const sender = document.getElementById("senderType").value;
+        const tempId = "temp-" + Date.now();
+
+        // Show temporary message
+        const tempMessage = {
+          messageId: tempId,
+          sender: sender,
+          content: content,
+          type: "text",
+          sentAt: new Date().toISOString(),
+        };
+        displayMessage(tempMessage, true);
+
+        // Send via socket
+        socket.emit(
+          "send_message",
+          {
+            chatId: currentChatId,
+            sender: sender,
+            content: content,
+            type: "text",
+          },
+          (response) => {
+            isSending = false;
+            updateUI();
+
+            if (response.success) {
+              console.log("✅ Message sent successfully!");
+              document.getElementById("messageInput").value = "";
+
+              // Remove temp message
+              const tempEl = document.querySelector(
+                `[data-msg-id="${tempId}"]`
+              );
+              if (tempEl) tempEl.remove();
+            } else {
+              console.error("❌ Failed to send:", response.error);
+              alert("Failed to send: " + response.error);
+
+              // Mark as failed
+              const tempEl = document.querySelector(
+                `[data-msg-id="${tempId}"]`
+              );
+              if (tempEl) {
+                tempEl.style.background = "#ffcccc";
+                tempEl.innerHTML +=
+                  '<div style="margin-top:5px; font-size:11px;">❌ Failed</div>';
+              }
+            }
+          }
+        );
+      }
+
+      // Send file (image or PDF)
+      function sendFile() {
+        const file = document.getElementById("fileInput").files[0];
+        if (!file) return;
+
+        if (!currentChatId) {
+          alert("Please join a chat first");
+          document.getElementById("fileInput").value = "";
+          return;
+        }
+
+        // Validasi tipe file
+        const allowedTypes = [
+          "image/jpeg",
+          "image/png",
+          "image/jpg",
+          "application/pdf",
+        ];
+        if (!allowedTypes.includes(file.type)) {
+          alert("Only JPG, PNG, and PDF files are allowed!");
+          document.getElementById("fileInput").value = "";
+          return;
+        }
+
+        // Validasi ukuran (5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          alert("File size must be less than 5MB!");
+          document.getElementById("fileInput").value = "";
+          return;
+        }
+
+        isSending = true;
+        updateUI();
+        document.getElementById("uploadProgress").style.display = "block";
+
+        const sender = document.getElementById("senderType").value;
+        const reader = new FileReader();
+
+        reader.onload = (e) => {
+          const base64Data = e.target.result;
+          const tempId = "temp-" + Date.now();
+
+          // Determine type
+          const isImage = file.type.startsWith("image/");
+          const messageType = isImage ? "image" : "file";
+
+          // Show temporary message
+          const tempMessage = {
+            messageId: tempId,
+            sender: sender,
+            content: base64Data,
+            type: messageType,
+            sentAt: new Date().toISOString(),
+          };
+          displayMessage(tempMessage, true);
+
+          // Send via socket
+          socket.emit(
+            "send_message",
+            {
+              chatId: currentChatId,
+              sender: sender,
+              type: messageType,
+              fileData: base64Data,
+            },
+            (response) => {
+              isSending = false;
+              updateUI();
+              document.getElementById("uploadProgress").style.display = "none";
+              document.getElementById("fileInput").value = "";
+
+              if (response.success) {
+                console.log("✅ File uploaded successfully!");
+                console.log("URL:", response.data.content);
+
+                // Remove temp message
+                const tempEl = document.querySelector(
+                  `[data-msg-id="${tempId}"]`
+                );
+                if (tempEl) tempEl.remove();
+              } else {
+                console.error("❌ Failed to upload:", response.error);
+                alert("Failed to upload: " + response.error);
+
+                // Mark as failed
+                const tempEl = document.querySelector(
+                  `[data-msg-id="${tempId}"]`
+                );
+                if (tempEl) {
+                  tempEl.style.background = "#ffcccc";
+                  tempEl.innerHTML +=
+                    '<div style="margin-top:5px; font-size:11px;">❌ Upload Failed</div>';
+                }
+              }
+            }
+          );
+        };
+
+        reader.onerror = () => {
+          alert("Failed to read file");
+          isSending = false;
+          updateUI();
+          document.getElementById("uploadProgress").style.display = "none";
+          document.getElementById("fileInput").value = "";
+        };
+
+        reader.readAsDataURL(file);
+      }
+
+      // Display message in UI
+      function displayMessage(data, isSending) {
+        const msgDiv = document.getElementById("messages");
+        const msgEl = document.createElement("div");
+        msgEl.className = `message ${data.sender}`;
+        msgEl.setAttribute("data-msg-id", data.messageId);
+
+        if (isSending) {
+          msgEl.classList.add("sending");
+        }
+
+        let content = "";
+        if (data.type === "text") {
+          content = `<div>${data.content}</div>`;
+        } else if (data.type === "image") {
+          content = `<img src="${data.content}" alt="Image" onclick="window.open('${data.content}', '_blank')" />`;
+        } else if (data.type === "file") {
+          const filename = data.content.split("/").pop();
+          content = `<a href="${data.content}" target="_blank">📄 ${filename}</a>`;
+        }
+
+        const time = new Date(data.sentAt).toLocaleTimeString();
+        msgEl.innerHTML = `
+                ${content}
+                <span class="time">${time}</span>
+            `;
+
+        msgDiv.appendChild(msgEl);
+        msgDiv.scrollTop = msgDiv.scrollHeight;
+      }
+
+      // Update UI state
+      function updateUI() {
+        const sendBtn = document.getElementById("sendBtn");
+        const fileLabel = document.getElementById("fileLabel");
+
+        sendBtn.disabled = isSending;
+        sendBtn.textContent = isSending ? "Sending..." : "Send";
+
+        if (isSending) {
+          fileLabel.classList.add("disabled");
+        } else {
+          fileLabel.classList.remove("disabled");
+        }
+      }
+
+      // Handle Enter key
+      function handleKeyPress(event) {
+        if (event.key === "Enter" && !isSending) {
+          sendText();
+        }
+      }
+
+      console.log("🚀 Chat client ready!");
+    </script>
+  </body>
+</html>

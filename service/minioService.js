@@ -65,8 +65,7 @@ export class MinioService {
         );
 
         // Generate public URL
-        const endpoint =
-          process.env.MINIO_ENDPOINT || "databasedokter-api.dokterapp.my.id";
+        const endpoint = process.env.MINIO_ENDPOINT;
         const fileUrl = `https://${endpoint}/${bucketName}/${fileName}`;
 
         console.log(`✅ MinIO upload successful: ${fileUrl}`);

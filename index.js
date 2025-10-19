@@ -25,7 +25,11 @@ dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
-const PORT = process.env.PORT || 3000;
+import { testDoctorAvailability } from "./scheduler/consultationScheduler.js";
+
+// Environment configuration
+const PORT = process.env.PORT || 80; // CapRover uses port 80 internally
+const isDevelopment = process.env.NODE_ENV !== "production";
 
 // ✅ Buat instance Socket.IO
 const io = new Server(server, {
@@ -84,18 +88,30 @@ async function startServer() {
     app.use(express.static("."));
 
     // ✅ Serve uploaded files with CORS and cache (fallback from MinIO)
-    app.use("/uploads", express.static(path.join(__dirname, "uploads"), {
-      setHeaders: (res, filePath) => {
-        res.setHeader("Access-Control-Allow-Origin", "*");
-        res.setHeader("Access-Control-Allow-Methods", "GET");
-        res.setHeader("Cache-Control", "public, max-age=31536000"); // Cache 1 year
-      }
-    }));
+    app.use(
+      "/uploads",
+      express.static(path.join(__dirname, "uploads"), {
+        setHeaders: (res, filePath) => {
+          res.setHeader("Access-Control-Allow-Origin", "*");
+          res.setHeader("Access-Control-Allow-Methods", "GET");
+          res.setHeader("Cache-Control", "public, max-age=31536000"); // Cache 1 year
+        },
+      })
+    );
 
     // ✅ Database health check middleware - ONLY for /api routes (not for socket.io)
     app.use("/api", ensureDbConnection);
 
-    // ✅ Health check endpoint
+    // ✅ Health check endpoint - WITHOUT /api prefix for CapRover
+    app.get("/health", (req, res) => {
+      res.status(200).json({ 
+        status: "ok", 
+        timestamp: new Date().toISOString(),
+        port: PORT 
+      });
+    });
+
+    // ✅ Health check endpoint - WITH /api prefix
     app.get("/api/health", healthCheck);
 
     // ✅ Request timeout middleware - 15 detik max
@@ -141,11 +157,12 @@ async function startServer() {
       });
     });
 
-    // ✅ Jalankan server HTTP + Socket.IO
-    server.listen(PORT, () => {
+    // ✅ Jalankan server HTTP + Socket.IO - Bind to 0.0.0.0 for Docker
+    server.listen(PORT, "0.0.0.0", () => {
       console.log(`✅ Server is running on port ${PORT}`);
       console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
-      console.log(`Health check: http://localhost:${PORT}/api/health`);
+      console.log(`Health check (CapRover): http://localhost:${PORT}/health`);
+      console.log(`Health check (API): http://localhost:${PORT}/api/health`);
       console.log(`Chat Socket.IO server initialized for real-time messaging`);
     });
 

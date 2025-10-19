@@ -75,6 +75,8 @@ class ChatController {
     try {
       const { userId, doctorId } = req.body;
 
+      console.log("🔍 createChat called with:", { userId, doctorId });
+
       if (!userId || !doctorId) {
         return res.status(400).json({
           success: false,
@@ -82,18 +84,52 @@ class ChatController {
         });
       }
 
+      // Cari chat yang sudah ada
       let chat = await prisma.chat.findFirst({
         where: { userId, doctorId },
-        include: { user: true, doctor: true },
+        include: {
+          user: { select: { id: true, fullname: true, photo: true } },
+          doctor: { select: { id: true, fullname: true, photo: true } },
+        },
       });
 
-      if (!chat) {
+      if (chat) {
+        console.log("✅ Existing chat found:", {
+          id: chat.id,
+          chatKey: chat.chatKey,
+          userId: chat.userId,
+          doctorId: chat.doctorId,
+        });
+      } else {
+        // Generate chatKey yang unik
         const chatKey = `${userId}-${doctorId}`;
+        console.log("🆕 Creating new chat with chatKey:", chatKey);
+
         chat = await prisma.chat.create({
-          data: { userId, doctorId, chatKey },
-          include: { user: true, doctor: true },
+          data: {
+            userId,
+            doctorId,
+            chatKey,
+          },
+          include: {
+            user: { select: { id: true, fullname: true, photo: true } },
+            doctor: { select: { id: true, fullname: true, photo: true } },
+          },
+        });
+
+        console.log("✅ New chat created:", {
+          id: chat.id,
+          chatKey: chat.chatKey,
+          userId: chat.userId,
+          doctorId: chat.doctorId,
         });
       }
+
+      // Return response dengan logging
+      console.log("📤 Returning chat data:", {
+        chatId: chat.id,
+        chatKey: chat.chatKey,
+      });
 
       res.status(200).json({ success: true, data: chat });
     } catch (error) {
