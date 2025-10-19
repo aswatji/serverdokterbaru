@@ -163,7 +163,7 @@ export function initChatSocket(socketIo) {
           sentAt: savedMessage.sentAt,
         };
 
-        const roomName = `chat:${chat.id}`; // Use chat.id (UUID) not chatId from payload
+        const roomName = `${chat.id}`; // Use chat.id (UUID) not chatId from payload
         ioInstance.to(roomName).emit("new_message", messagePayload);
         console.log(`✅ Broadcast new_message to ${roomName}`);
 

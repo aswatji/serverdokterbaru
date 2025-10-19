@@ -3,24 +3,30 @@
 ## 🔍 Masalah yang Diperbaiki
 
 ### 1. **NGINX 502 Bad Gateway**
+
 **Penyebab:** Server tidak respond ke health check CapRover
 
 **Solusi:** ✅ FIXED
+
 - Added `/health` endpoint (tanpa `/api` prefix)
 - Server bind ke `0.0.0.0` (bukan `localhost`)
 - Port changed to 80 (CapRover default)
 
 ### 2. **SIGTERM Signal**
+
 **Penyebab:** CapRover kill process karena health check gagal
 
 **Solusi:** ✅ FIXED
+
 - Graceful shutdown handler sudah ada
 - Health check responds immediately (no database check)
 
 ### 3. **Port Mismatch**
+
 **Penyebab:** Server running di port 3000, CapRover expect port 80
 
 **Solusi:** ✅ FIXED
+
 ```javascript
 const PORT = process.env.PORT || 80;
 server.listen(PORT, "0.0.0.0", () => { ... });
@@ -66,17 +72,20 @@ git push origin main
 ### 3. Deploy ke CapRover
 
 **Option A: Via Git**
+
 ```bash
 # CapRover will auto-deploy dari Git (jika sudah setup)
 ```
 
 **Option B: Via CLI**
+
 ```bash
 npm install -g caprover
 caprover deploy
 ```
 
 **Option C: Via CapRover Dashboard**
+
 1. Buka CapRover Dashboard
 2. Pilih app Anda
 3. Tab **"Deployment"**
@@ -87,6 +96,7 @@ caprover deploy
 ## 🔍 Verify Deployment
 
 ### 1. Check Logs
+
 ```bash
 # Via CapRover Dashboard
 Apps → Your App → Logs
@@ -97,6 +107,7 @@ Health check (CapRover): http://localhost:80/health
 ```
 
 ### 2. Test Health Check
+
 ```bash
 curl https://your-app.caprover.domain/health
 
@@ -109,6 +120,7 @@ curl https://your-app.caprover.domain/health
 ```
 
 ### 3. Test API
+
 ```bash
 curl https://your-app.caprover.domain/api/health
 
@@ -121,10 +133,11 @@ curl https://your-app.caprover.domain/api/health
 ```
 
 ### 4. Test Socket.IO
+
 ```javascript
 const socket = io("https://your-app.caprover.domain", {
   path: "/socket.io/",
-  transports: ["websocket", "polling"]
+  transports: ["websocket", "polling"],
 });
 
 socket.on("connect", () => {
@@ -137,12 +150,15 @@ socket.on("connect", () => {
 ## 🐛 Troubleshooting
 
 ### Issue: Still getting 502
+
 **Check:**
+
 1. Database connection string benar?
 2. Environment variables sudah set?
 3. Port 80 tidak digunakan process lain?
 
 **Solution:**
+
 ```bash
 # Check logs di CapRover
 Apps → Your App → Logs
@@ -154,7 +170,9 @@ Apps → Your App → Logs
 ```
 
 ### Issue: Health check failed
+
 **Check:**
+
 ```bash
 # Test from inside container
 docker exec -it $(docker ps | grep your-app | awk '{print $1}') sh
@@ -162,17 +180,21 @@ wget -O- http://localhost:80/health
 ```
 
 **Solution:**
+
 - Pastikan endpoint `/health` returns 200 OK
 - Pastikan server bind ke `0.0.0.0` (bukan `localhost`)
 
 ### Issue: Database not connecting
+
 **Check:**
+
 ```bash
 # Test database connection
 npx prisma db push --accept-data-loss
 ```
 
 **Solution:**
+
 - Verify `DATABASE_URL` format
 - Check if database host accessible from CapRover
 - Check firewall rules
@@ -182,6 +204,7 @@ npx prisma db push --accept-data-loss
 ## 📊 Expected Log Output
 
 ### Successful Deployment
+
 ```
 🚀 Starting production deployment setup...
 ⏳ Waiting for database connection...
@@ -206,6 +229,7 @@ Chat Socket.IO server initialized for real-time messaging
 ```
 
 ### Failed Deployment (502)
+
 ```
 npm error signal SIGTERM
 npm error command failed
@@ -217,6 +241,7 @@ NGINX 502 Bad Gateway
 ## 🎯 Quick Fixes
 
 ### If server keeps crashing:
+
 ```bash
 # 1. Check if DATABASE_URL is set
 echo $DATABASE_URL
@@ -232,12 +257,13 @@ Apps → Your App → "Force Rebuild" button
 ```
 
 ### If Socket.IO not connecting:
+
 ```javascript
 // React Native client
 const socket = io("https://serverbaru.dokterapp.my.id", {
-  path: "/socket.io/",  // Important!
+  path: "/socket.io/", // Important!
   transports: ["websocket", "polling"],
-  reconnection: true
+  reconnection: true,
 });
 ```
 
@@ -274,6 +300,7 @@ const socket = io("https://serverbaru.dokterapp.my.id", {
 ## 🆘 Need Help?
 
 Jika masih error, kirim:
+
 1. Screenshot logs dari CapRover Dashboard
 2. Output dari `curl https://your-app.caprover.domain/health`
 3. Environment variables (censor sensitive data)

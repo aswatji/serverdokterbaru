@@ -8,18 +8,21 @@
 ## 🔴 **Masalah yang Terjadi**
 
 ### 1. NGINX 502 Bad Gateway
+
 ```
 ERROR: NGINX 502 Bad Gateway :/
 Server crashed dengan SIGTERM signal
 ```
 
 **Root Cause:**
+
 - Server running di port **3000** (CapRover expect port **80**)
 - Health check endpoint `/api/health` tidak accessible
 - Server tidak bind ke `0.0.0.0` (bind ke `localhost` saja)
 - CapRover gagal verify health check → kill process → 502 error
 
 ### 2. Logs dari CapRover
+
 ```
 ✅ Server is running on port 3000  ← WRONG PORT!
 npm error signal SIGTERM            ← CapRover killed the process
@@ -31,6 +34,7 @@ npm error command failed
 ## ✅ **Solusi yang Diterapkan**
 
 ### 1. **Port Changed: 3000 → 80**
+
 ```javascript
 // ❌ BEFORE
 const PORT = process.env.PORT || 3000;
@@ -40,13 +44,14 @@ const PORT = process.env.PORT || 80; // CapRover uses port 80
 ```
 
 ### 2. **Health Check Endpoint Added**
+
 ```javascript
 // ✅ NEW - For CapRover (no /api prefix, fast response)
 app.get("/health", (req, res) => {
-  res.status(200).json({ 
-    status: "ok", 
+  res.status(200).json({
+    status: "ok",
     timestamp: new Date().toISOString(),
-    port: PORT 
+    port: PORT,
   });
 });
 
@@ -55,6 +60,7 @@ app.get("/api/health", healthCheck);
 ```
 
 ### 3. **Server Bind Address Fixed**
+
 ```javascript
 // ❌ BEFORE (implicit localhost)
 server.listen(PORT, () => { ... });
@@ -64,13 +70,16 @@ server.listen(PORT, "0.0.0.0", () => { ... });
 ```
 
 ### 4. **Graceful Shutdown** (Already Implemented ✅)
+
 ```javascript
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 ```
 
 ### 5. **CapRover Definition File**
+
 Created `captain-definition` with:
+
 - Dockerfile that exposes port 80
 - Health check using `/health` endpoint
 - Proper environment variables
@@ -80,6 +89,7 @@ Created `captain-definition` with:
 ## 📋 **Deployment Checklist**
 
 ### Pre-Deployment
+
 - [x] Port changed to 80
 - [x] `/health` endpoint added
 - [x] Server binds to `0.0.0.0`
@@ -88,29 +98,35 @@ Created `captain-definition` with:
 - [ ] Verify environment variables in CapRover
 
 ### Deploy
+
 1. **Login ke CapRover Dashboard**
+
    ```
    https://captain.your-domain.com
    ```
 
 2. **Check Environment Variables**
+
    - Apps → Your App → App Configs → Environment Variables
    - Required: `DATABASE_URL`, `JWT_SECRET`, MinIO credentials
 
 3. **Deploy**
+
    - Apps → Your App → Deployment
    - Connect to GitHub repo or manual deploy
    - Wait for build & deployment
 
 4. **Verify Deployment**
+
    ```bash
    # Test health check
    curl https://serverbaru.dokterapp.my.id/health
-   
+
    # Expected: {"status":"ok","timestamp":"...","port":80}
    ```
 
 ### Post-Deployment
+
 - [ ] Test `/health` endpoint → should return 200 OK
 - [ ] Test `/api/health` endpoint → should show database status
 - [ ] Test Socket.IO connection from React Native app
@@ -122,6 +138,7 @@ Created `captain-definition` with:
 ## 🧪 **Testing Commands**
 
 ### 1. Test Health Check (CapRover)
+
 ```bash
 curl https://serverbaru.dokterapp.my.id/health
 
@@ -134,6 +151,7 @@ curl https://serverbaru.dokterapp.my.id/health
 ```
 
 ### 2. Test API Health (Full Check)
+
 ```bash
 curl https://serverbaru.dokterapp.my.id/api/health
 
@@ -146,12 +164,13 @@ curl https://serverbaru.dokterapp.my.id/api/health
 ```
 
 ### 3. Test Socket.IO Connection
+
 ```javascript
 // React Native Client
 const socket = io("https://serverbaru.dokterapp.my.id", {
   path: "/socket.io/",
   transports: ["websocket", "polling"],
-  reconnection: true
+  reconnection: true,
 });
 
 socket.on("connect", () => {
@@ -164,6 +183,7 @@ socket.on("connect_error", (error) => {
 ```
 
 ### 4. Test File Upload
+
 ```bash
 curl -X POST https://serverbaru.dokterapp.my.id/api/chat/send \
   -H "Authorization: Bearer YOUR_TOKEN" \
@@ -177,6 +197,7 @@ curl -X POST https://serverbaru.dokterapp.my.id/api/chat/send \
 ## 📊 **Expected Results**
 
 ### Successful Deployment Logs
+
 ```
 🚀 Starting production deployment setup...
 ✅ Database connected!
@@ -199,6 +220,7 @@ Chat Socket.IO server initialized for real-time messaging
 ```
 
 ### No More Errors
+
 ```
 ❌ BEFORE:
 npm error signal SIGTERM
@@ -215,17 +237,21 @@ No SIGTERM signals
 ## 🐛 **Troubleshooting**
 
 ### If still getting 502:
+
 1. **Check CapRover Logs**
+
    ```
    Apps → Your App → Logs
    ```
 
 2. **Verify Environment Variables**
+
    ```
    DATABASE_URL, JWT_SECRET, MINIO_* variables
    ```
 
 3. **Test Database Connection**
+
    ```bash
    # From CapRover terminal
    npx prisma db push
@@ -237,20 +263,25 @@ No SIGTERM signals
    ```
 
 ### If Socket.IO not connecting:
+
 1. **Check path in client**
+
    ```javascript
-   path: "/socket.io/"  // Must include trailing slash
+   path: "/socket.io/"; // Must include trailing slash
    ```
 
 2. **Check CORS settings**
+
    ```javascript
    // Server allows all origins by default
-   cors: { origin: "*" }
+   cors: {
+     origin: "*";
+   }
    ```
 
 3. **Try polling first**
    ```javascript
-   transports: ["polling", "websocket"]  // Polling first
+   transports: ["polling", "websocket"]; // Polling first
    ```
 
 ---
@@ -305,4 +336,4 @@ No SIGTERM signals
 
 ---
 
-*Last Updated: October 19, 2025*
+_Last Updated: October 19, 2025_

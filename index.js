@@ -36,6 +36,8 @@ const io = new Server(server, {
     origin: "*",
     methods: ["GET", "POST"],
   },
+  path: "/socket.io/", // ⬅️ tambahkan ini
+  transports: ["websocket"], // pastikan langsung websocket
 });
 
 // ✅ Inisialisasi Socket.IO
@@ -103,10 +105,10 @@ async function startServer() {
 
     // ✅ Health check endpoint - WITHOUT /api prefix for CapRover
     app.get("/health", (req, res) => {
-      res.status(200).json({ 
-        status: "ok", 
+      res.status(200).json({
+        status: "ok",
         timestamp: new Date().toISOString(),
-        port: PORT 
+        port: PORT,
       });
     });
 

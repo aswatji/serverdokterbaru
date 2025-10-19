@@ -15,17 +15,23 @@ export const ensureDbConnection = async (req, res, next) => {
       return next();
     } catch (error) {
       lastError = error;
-      console.error(`❌ Database connection check failed (attempt ${attempt}/${maxRetries}):`, error.message);
+      console.error(
+        `❌ Database connection check failed (attempt ${attempt}/${maxRetries}):`,
+        error.message
+      );
 
       if (attempt < maxRetries) {
         // Try to reconnect before next attempt
         try {
           await prisma.$disconnect();
-          await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms
+          await new Promise((resolve) => setTimeout(resolve, 500)); // Wait 500ms
           await prisma.$connect();
           console.log(`✅ Database reconnected on attempt ${attempt}`);
         } catch (reconnectError) {
-          console.error(`⚠️ Reconnect attempt ${attempt} failed:`, reconnectError.message);
+          console.error(
+            `⚠️ Reconnect attempt ${attempt} failed:`,
+            reconnectError.message
+          );
         }
       }
     }

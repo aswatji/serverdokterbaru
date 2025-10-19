@@ -42,7 +42,7 @@ class DatabaseConnection {
   setupHealthCheck() {
     // Ping database every 15 seconds to keep connection alive (more frequent in production)
     const intervalMs = process.env.NODE_ENV === "production" ? 15000 : 30000;
-    
+
     this.healthCheckInterval = setInterval(async () => {
       try {
         await this.prisma.$queryRaw`SELECT 1`;

@@ -2,18 +2,19 @@
 
 ## ✅ Changes Made (Just Now)
 
-| What | Before | After |
-|------|--------|-------|
-| **Port** | 3000 | 80 |
+| What             | Before             | After                     |
+| ---------------- | ------------------ | ------------------------- |
+| **Port**         | 3000               | 80                        |
 | **Health Check** | `/api/health` only | `/health` + `/api/health` |
-| **Bind Address** | `localhost` | `0.0.0.0` |
-| **Status** | 502 Error | ✅ Ready |
+| **Bind Address** | `localhost`        | `0.0.0.0`                 |
+| **Status**       | 502 Error          | ✅ Ready                  |
 
 ---
 
 ## 🎯 Next Steps (Do This Now!)
 
 ### 1. Deploy ke CapRover
+
 ```bash
 # Option A: Auto-deploy (jika GitHub connected)
 # Just wait, CapRover will auto-deploy from GitHub
@@ -26,6 +27,7 @@ caprover deploy
 ```
 
 ### 2. Verify (After Deploy)
+
 ```bash
 # Test health check
 curl https://serverbaru.dokterapp.my.id/health
@@ -35,13 +37,14 @@ curl https://serverbaru.dokterapp.my.id/health
 ```
 
 ### 3. Update React Native Client
+
 ```javascript
 // Change Socket.IO URL
 const SERVER_URL = "https://serverbaru.dokterapp.my.id";
 
 const socket = io(SERVER_URL, {
   path: "/socket.io/",
-  transports: ["websocket", "polling"]
+  transports: ["websocket", "polling"],
 });
 ```
 
@@ -52,6 +55,7 @@ const socket = io(SERVER_URL, {
 Go to CapRover Dashboard → Your App → Logs
 
 **Look for:**
+
 ```
 ✅ Server is running on port 80              ← MUST be 80!
 Health check (CapRover): .../health          ← NEW endpoint
@@ -60,6 +64,7 @@ Chat Socket.IO server initialized
 ```
 
 **Should NOT see:**
+
 ```
 ❌ npm error signal SIGTERM
 ❌ NGINX 502 Bad Gateway
@@ -70,15 +75,19 @@ Chat Socket.IO server initialized
 ## 🐛 If Still 502 Error
 
 ### Quick Fixes:
+
 1. **Check Environment Variables** in CapRover
+
    - `DATABASE_URL` must be correct
    - `JWT_SECRET` must be set
    - `PORT=80` (or remove, default is 80)
 
 2. **Force Rebuild**
+
    - CapRover Dashboard → Your App → "Force Rebuild"
 
 3. **Check Database Connection**
+
    - Make sure PostgreSQL accepts connections from CapRover IP
    - Test: `npx prisma db push` from CapRover terminal
 
@@ -125,6 +134,7 @@ After successful deployment, you should see:
 ## 📞 Need Help?
 
 If deployment still fails:
+
 1. Screenshot CapRover logs
 2. Copy error messages
 3. Check `DEPLOYMENT-SUMMARY.md` for detailed troubleshooting
@@ -137,4 +147,4 @@ If deployment still fails:
 
 ---
 
-*Quick Reference - October 19, 2025*
+_Quick Reference - October 19, 2025_
