@@ -29,6 +29,18 @@ export function initChatSocket(socketIo) {
       });
     });
 
+    // ✏️ User sedang mengetik
+    socket.on("typing", ({ chatId, sender }) => {
+      const roomName = `chat:${chatId}`;
+      socket.to(roomName).emit("typing", { chatId, sender });
+    });
+
+    // ✅ User berhenti mengetik
+    socket.on("stop_typing", ({ chatId, sender }) => {
+      const roomName = `chat:${chatId}`;
+      socket.to(roomName).emit("stop_typing", { chatId, sender });
+    });
+
     // 💬 Send message (text / image / pdf) - with callback support
     socket.on("send_message", async (payload, callback) => {
       try {
@@ -85,15 +97,85 @@ export function initChatSocket(socketIo) {
           if (callback) callback({ success: false, error: error.message });
           return;
         }
-        if (chat.expiredAt && new Date() > chat.expiredAt) {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("⚠️ Bypass chat expired check for development");
+        } else if (chat.expiredAt && new Date() > chat.expiredAt) {
           const error = { message: "Chat expired" };
           console.error("❌ Chat expired:", chat.expiredAt);
           socket.emit("error", error);
           if (callback) callback({ success: false, error: error.message });
           return;
         }
+        socket.on("mark_as_read", async ({ chatId, userId, doctorId }) => {
+          try {
+            console.log(`👁️ Mark messages as read: chatId=${chatId}`);
 
-        // ✅ Upsert ChatDate (optimized)
+            await prisma.chatUnread.updateMany({
+              where: { chatId, OR: [{ userId }, { doctorId }] },
+              data: { unreadCount: 0 },
+            });
+
+            ioInstance.to(`chat:${chatId}`).emit("update_unread", {
+              chatId,
+              userId,
+              doctorId,
+              unreadCount: 0,
+            });
+
+            console.log(`✅ Unread reset for chat ${chatId}`);
+          } catch (err) {
+            console.error("❌ Error mark_as_read:", err);
+          }
+        });
+        try {
+          if (sender === chat.userId) {
+            // User kirim pesan → dokter penerima
+            const unread = await prisma.chatUnread.upsert({
+              where: {
+                chatId_doctorId_userId: {
+                  chatId: chat.id,
+                  doctorId: chat.doctorId,
+                  userId: null,
+                },
+              },
+              update: { unreadCount: { increment: 1 } },
+              create: {
+                chatId: chat.id,
+                doctorId: chat.doctorId,
+                unreadCount: 1,
+              },
+              select: { unreadCount: true },
+            });
+
+            ioInstance.to(`chat:${chat.id}`).emit("update_unread", {
+              chatId: chat.id,
+              doctorId: chat.doctorId,
+              unreadCount: unread.unreadCount,
+            });
+          } else if (sender === chat.doctorId) {
+            // Dokter kirim pesan → user penerima
+            const unread = await prisma.chatUnread.upsert({
+              where: {
+                chatId_userId_doctorId: {
+                  chatId: chat.id,
+                  userId: chat.userId,
+                  doctorId: null,
+                },
+              },
+              update: { unreadCount: { increment: 1 } },
+              create: { chatId: chat.id, userId: chat.userId, unreadCount: 1 },
+              select: { unreadCount: true },
+            });
+
+            ioInstance.to(`chat:${chat.id}`).emit("update_unread", {
+              chatId: chat.id,
+              userId: chat.userId,
+              unreadCount: unread.unreadCount,
+            });
+          }
+        } catch (unreadErr) {
+          console.error("❌ Failed to update unread count:", unreadErr);
+        } // ✅ Upsert ChatDate (optimized)
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
@@ -165,6 +247,50 @@ export function initChatSocket(socketIo) {
         const roomName = `chat:${chat.id}`; // Use chat.id (UUID) not chatId from payload
         ioInstance.to(roomName).emit("new_message", messagePayload);
         console.log(`✅ Broadcast new_message to ${roomName}`);
+
+        try {
+          let newUnread;
+
+          if (sender === chat.userId) {
+            // user kirim pesan → dokter penerima
+            newUnread = await prisma.chatUnread.upsert({
+              where: {
+                chatId_doctorId: { chatId: chat.id, doctorId: chat.doctorId },
+              },
+              update: { unreadCount: { increment: 1 } },
+              create: {
+                chatId: chat.id,
+                doctorId: chat.doctorId,
+                unreadCount: 1,
+              },
+              select: { unreadCount: true },
+            });
+
+            ioInstance.to(`chat:${chat.id}`).emit("update_unread", {
+              chatId: chat.id,
+              doctorId: chat.doctorId,
+              unreadCount: newUnread.unreadCount,
+            });
+          } else if (sender === chat.doctorId) {
+            // dokter kirim pesan → user penerima
+            newUnread = await prisma.chatUnread.upsert({
+              where: {
+                chatId_userId: { chatId: chat.id, userId: chat.userId },
+              },
+              update: { unreadCount: { increment: 1 } },
+              create: { chatId: chat.id, userId: chat.userId, unreadCount: 1 },
+              select: { unreadCount: true },
+            });
+
+            ioInstance.to(`chat:${chat.id}`).emit("update_unread", {
+              chatId: chat.id,
+              userId: chat.userId,
+              unreadCount: newUnread.unreadCount,
+            });
+          }
+        } catch (unreadErr) {
+          console.error("❌ Failed to update unread count:", unreadErr);
+        }
 
         // ✅ Send success callback to sender
         console.log(`✅ Sending callback to client...`);

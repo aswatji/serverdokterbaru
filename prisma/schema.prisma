@@ -19,6 +19,7 @@ model User {
   chats      Chat[]         @relation("UserChats")
   ratings    DoctorRating[]
   payments   Payment[]
+  unreads    ChatUnread[]   @relation("UserToUnread")
 }
 
 model Doctor {
@@ -39,6 +40,7 @@ model Doctor {
   ratings          DoctorRating[]
   schedules        DoctorSchedule[]
   payments         Payment[]
+  unreads          ChatUnread[]     @relation("DoctorToUnread")
 }
 
 model DoctorSchedule {
@@ -78,13 +80,13 @@ model Chat {
   payment       Payment?     @relation(fields: [paymentId], references: [id])
   user          User         @relation("UserChats", fields: [userId], references: [id])
   dates         ChatDate[]
+  unreads       ChatUnread[] @relation("ChatToUnread")
 
   @@unique([userId, doctorId])
   @@index([userId])
   @@index([doctorId])
   @@index([updatedAt])
 }
-
 
 model ChatDate {
   id        String        @id @default(cuid())
@@ -144,4 +146,21 @@ model DoctorRating {
   user      User     @relation(fields: [userId], references: [id])
 
   @@unique([doctorId, userId])
+}
+
+model ChatUnread {
+  id          String  @id @default(cuid())
+  chatId      String
+  userId      String?
+  doctorId    String?
+  unreadCount Int     @default(0)
+
+  chat   Chat    @relation(fields: [chatId], references: [id], name: "ChatToUnread")
+  user   User?   @relation(fields: [userId], references: [id], name: "UserToUnread")
+  doctor Doctor? @relation(fields: [doctorId], references: [id], name: "DoctorToUnread")
+
+  @@unique([chatId, userId])
+  @@unique([chatId, doctorId])
+  @@index([userId])
+  @@index([doctorId])
 }
