@@ -5,7 +5,7 @@ echo "🚀 Starting production deployment setup..."
 
 # Wait for database to be ready (using Prisma instead of pg_isready)
 echo "⏳ Waiting for database connection..."
-max_retries=30
+max_retries=60  # Increased from 30 to 60 seconds
 retry_count=0
 
 until npx prisma db execute --stdin <<< "SELECT 1" > /dev/null 2>&1 || [ $retry_count -eq $max_retries ]; do
@@ -15,14 +15,15 @@ until npx prisma db execute --stdin <<< "SELECT 1" > /dev/null 2>&1 || [ $retry_
 done
 
 if [ $retry_count -eq $max_retries ]; then
-  echo "❌ Database connection timeout. Starting anyway..."
+  echo "⚠️  Database connection timeout. Starting server anyway (will retry in app)..."
+  # Don't fail - let the app handle reconnection
 else
   echo "✅ Database connected!"
+  
+  # Run database migrations only if DB is connected
+  echo "🔄 Running database migrations..."
+  npx prisma migrate deploy || echo "⚠️  Migration warning (continuing...)"
 fi
-
-# Run database migrations
-echo "🔄 Running database migrations..."
-npx prisma migrate deploy
 
 echo "✅ Database setup completed!"
 

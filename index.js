@@ -50,8 +50,16 @@ console.log("🚀 Starting Dokter App Server...");
 // ==================================================
 async function startServer() {
   try {
-    // ✅ Gunakan testConnection dari DatabaseConnection class
-    await dbConnection.testConnection();
+    // ✅ Try to connect to database, but don't block server startup
+    console.log("🔌 Testing database connection...");
+    const dbConnected = await dbConnection.testConnection().catch((err) => {
+      console.error("⚠️  Database connection failed (will retry):", err.message);
+      return false;
+    });
+
+    if (!dbConnected) {
+      console.log("⚠️  Starting server without database (will reconnect automatically)");
+    }
 
     if (process.env.NODE_ENV === "production") {
       console.log("⏳ Production startup delay (3 seconds)...");
