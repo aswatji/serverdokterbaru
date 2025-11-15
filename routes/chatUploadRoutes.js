@@ -86,11 +86,6 @@ router.post("/upload", authMiddleware, upload.single("file"), async (req, res) =
 
     // Save message to database
     console.log("💾 Saving message to database...");
-    
-    if (!prisma || !prisma.message) {
-      console.error("❌ Prisma client not initialized!");
-      throw new Error("Database connection not available");
-    }
 
     const message = await prisma.message.create({
       data: {
@@ -152,14 +147,8 @@ router.post("/upload", authMiddleware, upload.single("file"), async (req, res) =
       },
     });
   } catch (error) {
-    console.error("❌ Upload error:", error);
+    console.error("❌ Upload error:", error.message);
     console.error("Error stack:", error.stack);
-    console.error("Error details:", {
-      message: error.message,
-      name: error.name,
-      prismaAvailable: !!prisma,
-      prismaMessageAvailable: !!(prisma && prisma.message),
-    });
     res.status(500).json({
       success: false,
       message: error.message || "Gagal upload file",
