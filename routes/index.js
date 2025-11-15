@@ -46,8 +46,8 @@ export default function routes(io) {
   /* -------------------------------------------
      💬 CHAT & MESSAGES - pass io ke chatRoutes!
   ------------------------------------------- */
+  router.use("/chat", chatUploadRoutes); // WhatsApp-style upload (must be first!)
   router.use("/chat", chatRoutes(io));
-  router.use("/chat", chatUploadRoutes); // WhatsApp-style upload
   router.use("/messages", messageRoutes);
 
   /* -------------------------------------------

@@ -2,7 +2,7 @@ import express from "express";
 import { upload } from "../middleware/uploadMiddleware.js";
 import minioService from "../service/minioService.js";
 import prisma from "../config/database.js";
-import { verifyToken } from "../middleware/authMiddleware.js";
+import { authMiddleware } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -11,7 +11,7 @@ const router = express.Router();
  * POST /api/chat/upload
  * Body: FormData dengan field "file" dan "chatId"
  */
-router.post("/upload", verifyToken, upload.single("file"), async (req, res) => {
+router.post("/upload", authMiddleware, upload.single("file"), async (req, res) => {
   try {
     const { chatId, sender } = req.body;
     const file = req.file;
@@ -159,7 +159,7 @@ router.post("/upload", verifyToken, upload.single("file"), async (req, res) => {
  */
 router.post(
   "/upload/multiple",
-  verifyToken,
+  authMiddleware,
   upload.array("files", 10), // Max 10 files
   async (req, res) => {
     try {
