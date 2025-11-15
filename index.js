@@ -137,6 +137,9 @@ async function startServer() {
       next();
     });
 
+    // ✅ Make io instance available to routes
+    app.set("io", io);
+
     // ✅ Routes - pass io to routes
     app.use("/api", routes(io));
 

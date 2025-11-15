@@ -15,6 +15,7 @@ import categoryRoutes from "./categoryRoutes.js";
 import categoryDoctorRoutes from "./categoryDoctorRoutes.js";
 import ratingRoutes from "./ratingRoutes.js";
 import uploadRoutes from "./uploadRoutes.js";
+import chatUploadRoutes from "./chatUploadRoutes.js";
 
 // Export function yang nerima io parameter
 export default function routes(io) {
@@ -46,6 +47,7 @@ export default function routes(io) {
      💬 CHAT & MESSAGES - pass io ke chatRoutes!
   ------------------------------------------- */
   router.use("/chat", chatRoutes(io));
+  router.use("/chat", chatUploadRoutes); // WhatsApp-style upload
   router.use("/messages", messageRoutes);
 
   /* -------------------------------------------
