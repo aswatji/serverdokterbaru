@@ -22,6 +22,9 @@
     "# Copy application code",
     "COPY . .",
     "",
+    "# Make entrypoint executable",
+    "RUN chmod +x /app/entrypoint.sh",
+    "",
     "# Create uploads directory",
     "RUN mkdir -p uploads",
     "",
@@ -32,11 +35,11 @@
     "ENV NODE_ENV=production",
     "ENV PORT=80",
     "",
-    "# Health check for CapRover - More generous timings for database connection",
-    "HEALTHCHECK --interval=15s --timeout=10s --start-period=60s --retries=5 \\",
-    "  CMD node -e \"require('http').get('http://localhost:80/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))\"",
+    "# Health check - Simplified timings",
+    "HEALTHCHECK --interval=10s --timeout=5s --start-period=40s --retries=3 \\",
+    "  CMD node -e \"require('http').get('http://localhost:80/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))\"",
     "",
-    "# Start application",
-    "CMD [\"npm\", \"start\"]"
+    "# Use entrypoint script",
+    "ENTRYPOINT [\"/app/entrypoint.sh\"]"
   ]
 }
