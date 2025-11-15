@@ -11,6 +11,66 @@ const __dirname = path.dirname(__filename);
  * Service untuk upload file ke MinIO dengan fallback ke local storage
  */
 export class MinioService {
+  /**
+   * Upload file buffer (dari Multer) ke MinIO
+   * @param {Buffer} buffer - File buffer dari Multer
+   * @param {string} fileName - Nama file dengan path (e.g., "chat/chatId/filename.jpg")
+   * @param {string} mimeType - MIME type (e.g., "image/jpeg")
+   * @returns {Promise<{url: string}>}
+   */
+  async uploadFile(buffer, fileName, mimeType) {
+    try {
+      console.log(`📤 Starting MinIO upload - File: ${fileName}, Type: ${mimeType}, Size: ${buffer.length} bytes`);
+
+      const meta = {
+        "Content-Type": mimeType,
+        "x-amz-acl": "public-read",
+      };
+
+      try {
+        // Upload to MinIO
+        await minioClient.putObject(
+          bucketName,
+          fileName,
+          buffer,
+          buffer.length,
+          meta
+        );
+
+        // Generate public URL
+        const endpoint = process.env.MINIO_ENDPOINT;
+        const fileUrl = `https://${endpoint}/${bucketName}/${fileName}`;
+
+        console.log(`✅ MinIO upload successful: ${fileUrl}`);
+        return { url: fileUrl };
+      } catch (minioError) {
+        console.warn("⚠️ MinIO upload failed, falling back to local storage:", minioError.message);
+
+        // Fallback: Save to local filesystem
+        const uploadsDir = path.join(__dirname, "..", "uploads");
+        const filePath = path.join(uploadsDir, fileName);
+        const fileDir = path.dirname(filePath);
+
+        // Create directory if it doesn't exist
+        if (!fs.existsSync(fileDir)) {
+          fs.mkdirSync(fileDir, { recursive: true });
+        }
+
+        // Write file to disk
+        fs.writeFileSync(filePath, buffer);
+
+        // Return local URL
+        const localUrl = `/uploads/${fileName}`;
+        console.log(`✅ Saved to local storage: ${localUrl}`);
+
+        return { url: localUrl };
+      }
+    } catch (error) {
+      console.error("❌ Upload failed completely:", error);
+      throw new Error(`Upload failed: ${error.message}`);
+    }
+  }
+
   async uploadBase64(base64Data, type = "image") {
     try {
       console.log(

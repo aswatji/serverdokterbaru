@@ -1,8 +1,13 @@
 import express from "express";
 import { upload } from "../middleware/uploadMiddleware.js";
-import minioService from "../service/minioService.js";
 import prisma from "../config/database.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
@@ -73,16 +78,24 @@ router.post("/upload", authMiddleware, upload.single("file"), async (req, res) =
     const isPDF = file.mimetype === "application/pdf";
     const messageType = isImage ? "image" : isPDF ? "pdf" : "file";
 
-    // Upload to MinIO
-    console.log("☁️ Uploading to MinIO...");
-    const fileName = `chat/${chatId}/${Date.now()}-${file.originalname}`;
-    const uploadResult = await minioService.uploadFile(
-      file.buffer,
-      fileName,
-      file.mimetype
-    );
+    // Save to local storage
+    console.log("💾 Saving to local storage...");
+    const uploadsDir = path.join(__dirname, "..", "uploads", "chat", chatId);
+    
+    // Create directory if not exists
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
 
-    console.log("✅ File uploaded to MinIO:", uploadResult.url);
+    const fileName = `${Date.now()}-${file.originalname}`;
+    const filePath = path.join(uploadsDir, fileName);
+    
+    // Write file to disk
+    fs.writeFileSync(filePath, file.buffer);
+    
+    // Generate URL
+    const fileUrl = `/uploads/chat/${chatId}/${fileName}`;
+    console.log(`✅ File saved: ${fileUrl}`);
 
     // Save message to database
     const message = await prisma.message.create({
@@ -91,7 +104,7 @@ router.post("/upload", authMiddleware, upload.single("file"), async (req, res) =
         sender: sender || "user",
         content: file.originalname, // File name as content
         type: messageType,
-        fileUrl: uploadResult.url,
+        fileUrl: fileUrl,
         fileName: file.originalname,
         fileSize: file.size,
         mimeType: file.mimetype,
@@ -201,13 +214,19 @@ router.post(
         const isPDF = file.mimetype === "application/pdf";
         const messageType = isImage ? "image" : isPDF ? "pdf" : "file";
 
-        // Upload to MinIO
-        const fileName = `chat/${chatId}/${Date.now()}-${file.originalname}`;
-        const uploadResult = await minioService.uploadFile(
-          file.buffer,
-          fileName,
-          file.mimetype
-        );
+        // Save to local storage
+        const uploadsDir = path.join(__dirname, "..", "uploads", "chat", chatId);
+        
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+
+        const fileName = `${Date.now()}-${file.originalname}`;
+        const filePath = path.join(uploadsDir, fileName);
+        
+        fs.writeFileSync(filePath, file.buffer);
+        
+        const fileUrl = `/uploads/chat/${chatId}/${fileName}`;
 
         // Save to database
         const message = await prisma.message.create({
@@ -216,7 +235,7 @@ router.post(
             sender: sender || "user",
             content: file.originalname,
             type: messageType,
-            fileUrl: uploadResult.url,
+            fileUrl: fileUrl,
             fileName: file.originalname,
             fileSize: file.size,
             mimeType: file.mimetype,
