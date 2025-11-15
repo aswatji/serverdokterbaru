@@ -117,6 +117,9 @@ if (process.env.NODE_ENV !== "production") {
 
 const prisma = dbConnection.getInstance();
 
+console.log("🔧 Prisma instance created:", !!prisma);
+console.log("🔧 Prisma.message available:", !!(prisma && prisma.message));
+
 // Graceful shutdown
 const gracefulShutdown = async (signal) => {
   console.log(`\n⚠️ ${signal} received. Closing database connection...`);

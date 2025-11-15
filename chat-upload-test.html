@@ -272,7 +272,11 @@
 
       <div class="chat-input">
         <div class="input-wrapper">
-          <button class="btn btn-attach" onclick="document.getElementById('fileInput').click()" title="Attach file">
+          <button
+            class="btn btn-attach"
+            onclick="document.getElementById('fileInput').click()"
+            title="Attach file"
+          >
             📎
           </button>
           <input
@@ -320,7 +324,7 @@
         console.log("✅ Connected to server");
         document.getElementById("connectionStatus").textContent = "Connected";
         document.getElementById("connectionStatus").style.color = "#25d366";
-        
+
         // Join chat room
         socket.emit("join_chat", CHAT_ID);
       });
@@ -366,7 +370,7 @@
       let typingTimeout;
       document.getElementById("messageInput").addEventListener("input", (e) => {
         socket.emit("typing", { chatId: CHAT_ID, sender: SENDER });
-        
+
         clearTimeout(typingTimeout);
         typingTimeout = setTimeout(() => {
           socket.emit("stop_typing", { chatId: CHAT_ID, sender: SENDER });
@@ -374,11 +378,13 @@
       });
 
       // Send message on Enter
-      document.getElementById("messageInput").addEventListener("keypress", (e) => {
-        if (e.key === "Enter") {
-          sendMessage();
-        }
-      });
+      document
+        .getElementById("messageInput")
+        .addEventListener("keypress", (e) => {
+          if (e.key === "Enter") {
+            sendMessage();
+          }
+        });
 
       // Send text message
       function sendMessage() {
@@ -388,18 +394,22 @@
         if (!content) return;
 
         // Send via Socket.IO
-        socket.emit("send_message", {
-          chatId: CHAT_ID,
-          sender: SENDER,
-          content: content,
-          type: "text",
-        }, (response) => {
-          if (response.success) {
-            console.log("✅ Message sent successfully");
-          } else {
-            showStatus("Error: " + response.error, "error");
+        socket.emit(
+          "send_message",
+          {
+            chatId: CHAT_ID,
+            sender: SENDER,
+            content: content,
+            type: "text",
+          },
+          (response) => {
+            if (response.success) {
+              console.log("✅ Message sent successfully");
+            } else {
+              showStatus("Error: " + response.error, "error");
+            }
           }
-        });
+        );
 
         // Clear input
         input.value = "";
@@ -449,7 +459,9 @@
       function addMessageToUI(message) {
         const messagesDiv = document.getElementById("chatMessages");
         const messageDiv = document.createElement("div");
-        messageDiv.className = `message ${message.sender === SENDER ? "sent" : "received"}`;
+        messageDiv.className = `message ${
+          message.sender === SENDER ? "sent" : "received"
+        }`;
 
         const bubbleDiv = document.createElement("div");
         bubbleDiv.className = "message-bubble";
@@ -471,7 +483,9 @@
             <div class="message-file-icon">📄</div>
             <div class="message-file-info">
               <div class="message-file-name">${message.fileName}</div>
-              <div class="message-file-size">${formatFileSize(message.fileSize)}</div>
+              <div class="message-file-size">${formatFileSize(
+                message.fileSize
+              )}</div>
             </div>
           `;
           bubbleDiv.appendChild(fileDiv);
@@ -500,10 +514,10 @@
         const statusDiv = document.createElement("div");
         statusDiv.className = `status ${type}`;
         statusDiv.textContent = message;
-        
+
         const chatMessages = document.getElementById("chatMessages");
         chatMessages.appendChild(statusDiv);
-        
+
         setTimeout(() => {
           statusDiv.remove();
         }, 3000);

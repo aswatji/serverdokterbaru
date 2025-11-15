@@ -20,7 +20,9 @@ export class MinioService {
    */
   async uploadFile(buffer, fileName, mimeType) {
     try {
-      console.log(`📤 Starting MinIO upload - File: ${fileName}, Type: ${mimeType}, Size: ${buffer.length} bytes`);
+      console.log(
+        `📤 Starting MinIO upload - File: ${fileName}, Type: ${mimeType}, Size: ${buffer.length} bytes`
+      );
 
       const meta = {
         "Content-Type": mimeType,
@@ -44,7 +46,10 @@ export class MinioService {
         console.log(`✅ MinIO upload successful: ${fileUrl}`);
         return { url: fileUrl };
       } catch (minioError) {
-        console.warn("⚠️ MinIO upload failed, falling back to local storage:", minioError.message);
+        console.warn(
+          "⚠️ MinIO upload failed, falling back to local storage:",
+          minioError.message
+        );
 
         // Fallback: Save to local filesystem
         const uploadsDir = path.join(__dirname, "..", "uploads");

@@ -3,13 +3,16 @@
 ## 📝 Yang Sudah Dibuat:
 
 ### 1. **Backend Routes** ✅
+
 - `POST /api/chat/upload` - Single file upload
 - `POST /api/chat/upload/multiple` - Multiple files upload
 
 ### 2. **Frontend HTML** ✅
+
 - `chat-upload-test.html` - Full WhatsApp-style chat UI
 
 ### 3. **Features** ✅
+
 - ✅ Upload gambar (JPG, PNG)
 - ✅ Upload PDF
 - ✅ Real-time Socket.IO notification
@@ -27,6 +30,7 @@
 
 1. Buka file `chat-upload-test.html` di VS Code
 2. Edit baris ini (line 253-256):
+
    ```javascript
    const API_URL = "https://serverbaru.dokterapp.my.id"; // ✅ Sudah benar
    const CHAT_ID = "test-chat-001"; // ⚠️ Ganti dengan chat ID yang valid
@@ -42,16 +46,19 @@
 ### 2. **Test dengan Postman**
 
 **Request:**
+
 ```
 POST https://serverbaru.dokterapp.my.id/api/chat/upload
 ```
 
 **Headers:**
+
 ```
 Authorization: Bearer YOUR_JWT_TOKEN
 ```
 
 **Body** (form-data):
+
 ```
 file: [Select File]
 chatId: chat-123
@@ -86,6 +93,7 @@ curl -X POST https://serverbaru.dokterapp.my.id/api/auth/login \
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -95,6 +103,7 @@ curl -X POST https://serverbaru.dokterapp.my.id/api/auth/login \
 ```
 
 ### 2. **Copy token** dan paste ke:
+
 - Postman → Headers → `Authorization: Bearer <TOKEN>`
 - HTML file → `const TOKEN = "<TOKEN>"`
 - cURL → `-H "Authorization: Bearer <TOKEN>"`
@@ -116,6 +125,7 @@ curl -X POST https://serverbaru.dokterapp.my.id/api/chat \
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -155,16 +165,16 @@ curl -X GET https://serverbaru.dokterapp.my.id/api/chat \
 
 ## 📂 API Endpoints Summary:
 
-| Method | Endpoint | Function |
-|--------|----------|----------|
-| POST | `/api/auth/login` | Login & get JWT token |
-| POST | `/api/auth/register` | Register new user |
-| POST | `/api/chat` | Create new chat |
-| GET | `/api/chat` | Get all chats |
-| GET | `/api/chat/:id` | Get specific chat |
-| POST | `/api/chat/upload` | **Upload single file** ⭐ |
-| POST | `/api/chat/upload/multiple` | **Upload multiple files** ⭐ |
-| GET | `/api/messages/:chatId` | Get chat messages |
+| Method | Endpoint                    | Function                     |
+| ------ | --------------------------- | ---------------------------- |
+| POST   | `/api/auth/login`           | Login & get JWT token        |
+| POST   | `/api/auth/register`        | Register new user            |
+| POST   | `/api/chat`                 | Create new chat              |
+| GET    | `/api/chat`                 | Get all chats                |
+| GET    | `/api/chat/:id`             | Get specific chat            |
+| POST   | `/api/chat/upload`          | **Upload single file** ⭐    |
+| POST   | `/api/chat/upload/multiple` | **Upload multiple files** ⭐ |
+| GET    | `/api/messages/:chatId`     | Get chat messages            |
 
 ---
 
@@ -173,6 +183,7 @@ curl -X GET https://serverbaru.dokterapp.my.id/api/chat \
 Edit `chat-upload-test.html`:
 
 ### 1. **Ganti warna bubble:**
+
 ```css
 .message.sent .message-bubble {
   background: #dcf8c6; /* ← Ganti warna ini */
@@ -180,16 +191,20 @@ Edit `chat-upload-test.html`:
 ```
 
 ### 2. **Ganti icon:**
+
 ```html
 <button class="btn btn-attach">
-  📎 <!-- ← Ganti emoji ini -->
+  📎
+  <!-- ← Ganti emoji ini -->
 </button>
 ```
 
 ### 3. **Ganti title:**
+
 ```html
 <div class="chat-header">
-  <div>💬 Chat Dokter</div> <!-- ← Ganti text ini -->
+  <div>💬 Chat Dokter</div>
+  <!-- ← Ganti text ini -->
 </div>
 ```
 
@@ -198,24 +213,30 @@ Edit `chat-upload-test.html`:
 ## ⚠️ Troubleshooting:
 
 ### ❌ "File too large"
+
 **Fix:** File > 5MB. Compress dulu atau resize.
 
 ### ❌ "Unauthorized"
+
 **Fix:** JWT token salah atau expired. Login ulang.
 
 ### ❌ "Chat not found"
+
 **Fix:** Chat ID salah. Cek dengan `GET /api/chat`.
 
 ### ❌ Socket.IO tidak connect
+
 **Fix:** Check browser console. Pastikan URL dan path benar:
+
 ```javascript
 const socket = io("https://serverbaru.dokterapp.my.id", {
   path: "/socket.io/", // ← WAJIB!
-  transports: ["websocket"]
+  transports: ["websocket"],
 });
 ```
 
 ### ❌ CORS error
+
 **Fix:** Server harus allow origin frontend Anda. Contact backend dev.
 
 ---
@@ -259,6 +280,7 @@ servertest/
 **Selamat mencoba!** 🚀📤💬
 
 Jika ada masalah, cek:
+
 1. Browser console (F12)
 2. Network tab (lihat request/response)
 3. Server logs di CapRover

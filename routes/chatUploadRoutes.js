@@ -6,155 +6,163 @@ import { authMiddleware } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
+console.log("🔍 ChatUploadRoutes - Prisma loaded:", !!prisma);
+console.log("🔍 ChatUploadRoutes - Prisma type:", typeof prisma);
+
 /**
  * 📤 Upload gambar/file untuk chat (seperti WhatsApp)
  * POST /api/chat/upload
  * Body: FormData dengan field "file" dan "chatId"
  */
-router.post("/upload", authMiddleware, upload.single("file"), async (req, res) => {
-  try {
-    const { chatId, sender } = req.body;
-    const file = req.file;
+router.post(
+  "/upload",
+  authMiddleware,
+  upload.single("file"),
+  async (req, res) => {
+    try {
+      const { chatId, sender } = req.body;
+      const file = req.file;
 
-    console.log("📤 Upload request:", {
-      chatId,
-      sender,
-      file: file
-        ? {
-            originalName: file.originalname,
-            mimetype: file.mimetype,
-            size: file.size,
-          }
-        : null,
-    });
-
-    // Validasi
-    if (!file) {
-      return res.status(400).json({
-        success: false,
-        message: "File tidak ditemukan",
+      console.log("📤 Upload request:", {
+        chatId,
+        sender,
+        file: file
+          ? {
+              originalName: file.originalname,
+              mimetype: file.mimetype,
+              size: file.size,
+            }
+          : null,
       });
-    }
 
-    if (!chatId) {
-      return res.status(400).json({
-        success: false,
-        message: "chatId diperlukan",
+      // Validasi
+      if (!file) {
+        return res.status(400).json({
+          success: false,
+          message: "File tidak ditemukan",
+        });
+      }
+
+      if (!chatId) {
+        return res.status(400).json({
+          success: false,
+          message: "chatId diperlukan",
+        });
+      }
+
+      // Verify chat exists and active
+      const chat = await prisma.chat.findUnique({
+        where: { id: chatId },
+        select: {
+          id: true,
+          isActive: true,
+          userId: true,
+          doctorId: true,
+        },
       });
-    }
 
-    // Verify chat exists and active
-    const chat = await prisma.chat.findUnique({
-      where: { id: chatId },
-      select: {
-        id: true,
-        isActive: true,
-        userId: true,
-        doctorId: true,
-      },
-    });
+      if (!chat) {
+        return res.status(404).json({
+          success: false,
+          message: "Chat tidak ditemukan",
+        });
+      }
 
-    if (!chat) {
-      return res.status(404).json({
-        success: false,
-        message: "Chat tidak ditemukan",
-      });
-    }
+      if (!chat.isActive) {
+        return res.status(400).json({
+          success: false,
+          message: "Chat sudah tidak aktif",
+        });
+      }
 
-    if (!chat.isActive) {
-      return res.status(400).json({
-        success: false,
-        message: "Chat sudah tidak aktif",
-      });
-    }
+      // Determine file type
+      const isImage = file.mimetype.startsWith("image/");
+      const isPDF = file.mimetype === "application/pdf";
+      const messageType = isImage ? "image" : isPDF ? "pdf" : "file";
 
-    // Determine file type
-    const isImage = file.mimetype.startsWith("image/");
-    const isPDF = file.mimetype === "application/pdf";
-    const messageType = isImage ? "image" : isPDF ? "pdf" : "file";
+      // Upload to MinIO
+      console.log("☁️ Uploading to MinIO...");
+      const fileName = `chat/${chatId}/${Date.now()}-${file.originalname}`;
+      const uploadResult = await minioService.uploadFile(
+        file.buffer,
+        fileName,
+        file.mimetype
+      );
 
-    // Upload to MinIO
-    console.log("☁️ Uploading to MinIO...");
-    const fileName = `chat/${chatId}/${Date.now()}-${file.originalname}`;
-    const uploadResult = await minioService.uploadFile(
-      file.buffer,
-      fileName,
-      file.mimetype
-    );
+      console.log(`✅ File uploaded: ${uploadResult.url}`);
 
-    console.log(`✅ File uploaded: ${uploadResult.url}`);
+      // Save message to database
+      console.log("💾 Saving message to database...");
 
-    // Save message to database
-    console.log("💾 Saving message to database...");
-
-    const message = await prisma.message.create({
-      data: {
-        chatId: chatId,
-        sender: sender || "user",
-        content: file.originalname, // File name as content
-        type: messageType,
-        fileUrl: uploadResult.url,
-        fileName: file.originalname,
-        fileSize: file.size,
-        mimeType: file.mimetype,
-        read: false,
-      },
-      include: {
-        chat: {
-          select: {
-            userId: true,
-            doctorId: true,
+      const message = await prisma.message.create({
+        data: {
+          chatId: chatId,
+          sender: sender || "user",
+          content: file.originalname, // File name as content
+          type: messageType,
+          fileUrl: uploadResult.url,
+          fileName: file.originalname,
+          fileSize: file.size,
+          mimeType: file.mimetype,
+          read: false,
+        },
+        include: {
+          chat: {
+            select: {
+              userId: true,
+              doctorId: true,
+            },
           },
         },
-      },
-    });
-
-    console.log("✅ Message saved to database:", message.id);
-
-    // Emit real-time notification via Socket.IO
-    const io = req.app.get("io");
-    if (io) {
-      const roomName = `${chatId}`;
-      io.to(roomName).emit("new_message", {
-        id: message.id,
-        chatId: message.chatId,
-        sender: message.sender,
-        content: message.content,
-        type: message.type,
-        fileUrl: message.fileUrl,
-        fileName: message.fileName,
-        fileSize: message.fileSize,
-        mimeType: message.mimeType,
-        read: message.read,
-        createdAt: message.createdAt,
       });
-      console.log(`🔔 Socket.IO notification sent to room: ${roomName}`);
-    }
 
-    res.status(200).json({
-      success: true,
-      message: "File berhasil diupload",
-      data: {
-        id: message.id,
-        chatId: message.chatId,
-        sender: message.sender,
-        type: message.type,
-        fileUrl: message.fileUrl,
-        fileName: message.fileName,
-        fileSize: message.fileSize,
-        mimeType: message.mimeType,
-        createdAt: message.createdAt,
-      },
-    });
-  } catch (error) {
-    console.error("❌ Upload error:", error.message);
-    console.error("Error stack:", error.stack);
-    res.status(500).json({
-      success: false,
-      message: error.message || "Gagal upload file",
-    });
+      console.log("✅ Message saved to database:", message.id);
+
+      // Emit real-time notification via Socket.IO
+      const io = req.app.get("io");
+      if (io) {
+        const roomName = `${chatId}`;
+        io.to(roomName).emit("new_message", {
+          id: message.id,
+          chatId: message.chatId,
+          sender: message.sender,
+          content: message.content,
+          type: message.type,
+          fileUrl: message.fileUrl,
+          fileName: message.fileName,
+          fileSize: message.fileSize,
+          mimeType: message.mimeType,
+          read: message.read,
+          createdAt: message.createdAt,
+        });
+        console.log(`🔔 Socket.IO notification sent to room: ${roomName}`);
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "File berhasil diupload",
+        data: {
+          id: message.id,
+          chatId: message.chatId,
+          sender: message.sender,
+          type: message.type,
+          fileUrl: message.fileUrl,
+          fileName: message.fileName,
+          fileSize: message.fileSize,
+          mimeType: message.mimeType,
+          createdAt: message.createdAt,
+        },
+      });
+    } catch (error) {
+      console.error("❌ Upload error:", error.message);
+      console.error("Error stack:", error.stack);
+      res.status(500).json({
+        success: false,
+        message: error.message || "Gagal upload file",
+      });
+    }
   }
-});
+);
 
 /**
  * 📤 Upload multiple files (batch upload)

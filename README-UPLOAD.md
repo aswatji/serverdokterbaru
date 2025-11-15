@@ -55,12 +55,14 @@ PORT=80
 **POST** `/api/chat/upload`
 
 Headers:
+
 ```
 Authorization: Bearer <JWT_TOKEN>
 Content-Type: multipart/form-data
 ```
 
 Body (FormData):
+
 ```
 file: [File] (required)
 chatId: string (required)
@@ -68,6 +70,7 @@ sender: "user" | "doctor" (required)
 ```
 
 Response:
+
 ```json
 {
   "success": true,
@@ -91,12 +94,14 @@ Response:
 **POST** `/api/chat/upload/multiple`
 
 Headers:
+
 ```
 Authorization: Bearer <JWT_TOKEN>
 Content-Type: multipart/form-data
 ```
 
 Body (FormData):
+
 ```
 files: [File, File, ...] (max 10 files)
 chatId: string (required)
@@ -104,6 +109,7 @@ sender: "user" | "doctor" (required)
 ```
 
 Response:
+
 ```json
 {
   "success": true,
@@ -126,40 +132,48 @@ Response:
 ### Client → Server
 
 #### 1. Join Chat Room
+
 ```javascript
 socket.emit("join_chat", chatId);
 ```
 
 #### 2. Typing Indicator
+
 ```javascript
 socket.emit("typing", {
   chatId: "chat-001",
-  sender: "user"
+  sender: "user",
 });
 
 socket.emit("stop_typing", {
   chatId: "chat-001",
-  sender: "user"
+  sender: "user",
 });
 ```
 
 #### 3. Send Text Message
+
 ```javascript
-socket.emit("send_message", {
-  chatId: "chat-001",
-  sender: "user",
-  content: "Hello!",
-  type: "text"
-}, (response) => {
-  if (response.success) {
-    console.log("Message sent!");
+socket.emit(
+  "send_message",
+  {
+    chatId: "chat-001",
+    sender: "user",
+    content: "Hello!",
+    type: "text",
+  },
+  (response) => {
+    if (response.success) {
+      console.log("Message sent!");
+    }
   }
-});
+);
 ```
 
 ### Server → Client
 
 #### 1. New Message (including uploaded files)
+
 ```javascript
 socket.on("new_message", (message) => {
   console.log("New message:", message);
@@ -169,6 +183,7 @@ socket.on("new_message", (message) => {
 ```
 
 #### 2. Typing Indicators
+
 ```javascript
 socket.on("typing", ({ chatId, sender }) => {
   // Show "Sedang mengetik..."
@@ -180,6 +195,7 @@ socket.on("stop_typing", ({ chatId, sender }) => {
 ```
 
 #### 3. User Joined
+
 ```javascript
 socket.on("user_joined", ({ socketId, chatId, timestamp }) => {
   console.log("User joined:", socketId);
@@ -208,7 +224,7 @@ Kemudian buka file di browser untuk testing.
 const socket = io("https://serverbaru.dokterapp.my.id", {
   path: "/socket.io/",
   transports: ["websocket"],
-  auth: { token: "your-jwt-token" }
+  auth: { token: "your-jwt-token" },
 });
 
 // Join chat room
@@ -235,9 +251,9 @@ async function uploadFile(file, chatId, sender) {
   const response = await fetch(`${API_URL}/api/chat/upload`, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${TOKEN}`
+      Authorization: `Bearer ${TOKEN}`,
     },
-    body: formData
+    body: formData,
   });
 
   const result = await response.json();
@@ -249,8 +265,8 @@ async function uploadFile(file, chatId, sender) {
 
 ```jsx
 // React Example
-import { useEffect, useState } from 'react';
-import io from 'socket.io-client';
+import { useEffect, useState } from "react";
+import io from "socket.io-client";
 
 function ChatComponent({ chatId, token }) {
   const [messages, setMessages] = useState([]);
@@ -259,13 +275,13 @@ function ChatComponent({ chatId, token }) {
   useEffect(() => {
     const newSocket = io("https://serverbaru.dokterapp.my.id", {
       path: "/socket.io/",
-      auth: { token }
+      auth: { token },
     });
 
     newSocket.emit("join_chat", chatId);
 
     newSocket.on("new_message", (message) => {
-      setMessages(prev => [...prev, message]);
+      setMessages((prev) => [...prev, message]);
     });
 
     setSocket(newSocket);
@@ -281,8 +297,8 @@ function ChatComponent({ chatId, token }) {
 
     const response = await fetch("/api/chat/upload", {
       method: "POST",
-      headers: { "Authorization": `Bearer ${token}` },
-      body: formData
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
     });
 
     return await response.json();
@@ -290,10 +306,13 @@ function ChatComponent({ chatId, token }) {
 
   return (
     <div>
-      {messages.map(msg => (
+      {messages.map((msg) => (
         <Message key={msg.id} message={msg} />
       ))}
-      <input type="file" onChange={e => handleFileUpload(e.target.files[0])} />
+      <input
+        type="file"
+        onChange={(e) => handleFileUpload(e.target.files[0])}
+      />
     </div>
   );
 }
@@ -360,11 +379,11 @@ router.post("/upload", verifyToken, upload.single("file"), ...);
 const fileFilter = (req, file, cb) => {
   const allowedTypes = [
     "image/jpeg",
-    "image/jpg", 
+    "image/jpg",
     "image/png",
-    "application/pdf"
+    "application/pdf",
   ];
-  
+
   if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
@@ -376,6 +395,7 @@ const fileFilter = (req, file, cb) => {
 ### 3. Chat Validation
 
 Setiap upload memverifikasi:
+
 - ✅ Chat exists
 - ✅ Chat is active
 - ✅ User is authorized
@@ -397,9 +417,9 @@ model Message {
   mimeType  String?  // MIME type
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
-  
+
   chat      Chat     @relation(fields: [chatId], references: [id])
-  
+
   @@index([chatId])
   @@index([createdAt])
 }
@@ -414,33 +434,39 @@ model Message {
 ### 2. Socket.IO tidak connect
 
 **Solusi:**
+
 ```javascript
 // Pastikan path dan transports correct
 const socket = io(API_URL, {
-  path: "/socket.io/",  // WAJIB ada!
-  transports: ["websocket"]
+  path: "/socket.io/", // WAJIB ada!
+  transports: ["websocket"],
 });
 ```
 
 ### 3. 404 Not Found pada endpoint upload
 
 **Solusi:**
+
 - Pastikan route sudah didaftarkan di `routes/index.js`
 - Pastikan URL correct: `/api/chat/upload` (bukan `/api/upload`)
 
 ### 4. CORS error
 
 **Solusi:** Update CORS config di `index.js`:
+
 ```javascript
-app.use(cors({
-  origin: ["https://your-frontend-domain.com"],
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: ["https://your-frontend-domain.com"],
+    credentials: true,
+  })
+);
 ```
 
 ### 5. MinIO upload gagal
 
 **Solusi:** Check environment variables:
+
 ```env
 MINIO_ENDPOINT=your-minio-endpoint
 MINIO_ACCESS_KEY=your-access-key
@@ -453,6 +479,7 @@ MINIO_BUCKET=uploads
 ### 1. Ubah file size limit
 
 Edit `middleware/uploadMiddleware.js`:
+
 ```javascript
 export const upload = multer({
   storage: storage,
@@ -465,19 +492,21 @@ export const upload = multer({
 ### 2. Tambah tipe file baru
 
 Edit `middleware/uploadMiddleware.js`:
+
 ```javascript
 const allowedTypes = [
   "image/jpeg",
   "image/png",
   "application/pdf",
-  "video/mp4",  // Tambahkan video
-  "audio/mpeg"  // Tambahkan audio
+  "video/mp4", // Tambahkan video
+  "audio/mpeg", // Tambahkan audio
 ];
 ```
 
 ### 3. Custom UI
 
 Edit `chat-upload-test.html` sesuai design Anda:
+
 - CSS styling di `<style>` tag
 - Chat bubble colors
 - File icons
