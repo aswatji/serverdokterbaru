@@ -53,12 +53,19 @@ async function startServer() {
     // ✅ Try to connect to database, but don't block server startup
     console.log("🔌 Testing database connection...");
     const dbConnected = await dbConnection.testConnection().catch((err) => {
-      console.error("⚠️  Database connection failed (will retry):", err.message);
+      console.error(
+        "⚠️  Database connection failed (will retry):",
+        err.message
+      );
       return false;
     });
 
     if (!dbConnected) {
-      console.log("⚠️  Starting server without database (will reconnect automatically)");
+      console.log(
+        "⚠️  Starting server without database (will reconnect automatically)"
+      );
+    } else {
+      console.log("✅ Database connected successfully!");
     }
 
     if (process.env.NODE_ENV === "production") {
