@@ -1,10 +1,11 @@
 import express from "express";
 import { upload } from "../middleware/uploadMiddleware.js";
 import minioService from "../service/minioService.js";
-import prisma from "../config/database.js";
+import { dbConnection } from "../config/database.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
+const prisma = dbConnection.getInstance();
 
 console.log("🔍 ChatUploadRoutes - Prisma loaded:", !!prisma);
 console.log("🔍 ChatUploadRoutes - Prisma type:", typeof prisma);
