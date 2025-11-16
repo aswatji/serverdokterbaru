@@ -120,15 +120,12 @@ class PaymentController {
           },
         });
 
-        const expiryTime = new Date(Date.now() + 15 * 60 * 1000);
-
         if (existingChat) {
           await prisma.chat.update({
             where: { id: existingChat.id },
             data: {
-              payment: { connect: { id: updatedPayment.id } }, // ✅ ini kuncinya
+              payment: { connect: { id: updatedPayment.id } },
               isActive: true,
-              expiredAt: expiryTime, // ✅ pakai nama kolom yang cocok
               updatedAt: new Date(),
             },
           });
@@ -140,7 +137,6 @@ class PaymentController {
               doctorId: updatedPayment.doctorId,
               payment: { connect: { id: updatedPayment.id } },
               isActive: true,
-              expiredAt: expiryTime,
             },
           });
         }
