@@ -52,6 +52,15 @@ router.post(
 
       // Verify chat exists and is active
       const prisma = getPrisma();
+
+      console.log("🔍 Debug Prisma:", {
+        prismaExists: !!prisma,
+        prismaType: typeof prisma,
+        hasMessage: !!prisma?.message,
+        hasChat: !!prisma?.chat,
+        prismaKeys: prisma ? Object.keys(prisma).slice(0, 10) : [],
+      });
+
       const chat = await prisma.chat.findUnique({
         where: { id: chatId },
         select: {
@@ -95,29 +104,55 @@ router.post(
       // Save message to database
       console.log("💾 Saving message to database...");
 
-      const message = await prisma.message.create({
-        data: {
-          chatId: chatId,
-          sender: sender || "user",
-          content: file.originalname, // File name as content
-          type: messageType,
-          fileUrl: uploadResult.url,
-          fileName: file.originalname,
-          fileSize: file.size,
-          mimeType: file.mimetype,
-          read: false,
-        },
-        include: {
-          chat: {
-            select: {
-              userId: true,
-              doctorId: true,
-            },
+      // Get or create ChatDate for today
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      let chatDate = await prisma.chatDate.findUnique({
+        where: {
+          chatId_date: {
+            chatId: chatId,
+            date: today,
           },
         },
       });
 
+      if (!chatDate) {
+        chatDate = await prisma.chatDate.create({
+          data: {
+            chatId: chatId,
+            date: today,
+          },
+        });
+      }
+
+      // Create message with file info
+      const message = await prisma.chatMessage.create({
+        data: {
+          chatDateId: chatDate.id,
+          sender: sender || "user",
+          content: file.originalname,
+          type: messageType,
+        },
+        select: {
+          id: true,
+          sender: true,
+          content: true,
+          type: true,
+          sentAt: true,
+        },
+      });
+
       console.log("✅ Message saved to database:", message.id);
+
+      // Update chat lastMessageId and updatedAt
+      await prisma.chat.update({
+        where: { id: chatId },
+        data: { 
+          lastMessageId: message.id,
+          updatedAt: new Date() 
+        },
+      });
 
       // Emit real-time notification via Socket.IO
       const io = req.app.get("io");
@@ -125,16 +160,12 @@ router.post(
         const roomName = `${chatId}`;
         io.to(roomName).emit("new_message", {
           id: message.id,
-          chatId: message.chatId,
+          chatDateId: chatDate.id,
           sender: message.sender,
           content: message.content,
           type: message.type,
-          fileUrl: message.fileUrl,
-          fileName: message.fileName,
-          fileSize: message.fileSize,
-          mimeType: message.mimeType,
-          read: message.read,
-          createdAt: message.createdAt,
+          fileUrl: uploadResult.url,
+          sentAt: message.sentAt,
         });
         console.log(`🔔 Socket.IO notification sent to room: ${roomName}`);
       }
@@ -144,14 +175,12 @@ router.post(
         message: "File berhasil diupload",
         data: {
           id: message.id,
-          chatId: message.chatId,
+          chatDateId: chatDate.id,
           sender: message.sender,
+          content: message.content,
           type: message.type,
-          fileUrl: message.fileUrl,
-          fileName: message.fileName,
-          fileSize: message.fileSize,
-          mimeType: message.mimeType,
-          createdAt: message.createdAt,
+          fileUrl: uploadResult.url,
+          sentAt: message.sentAt,
         },
       });
     } catch (error) {
@@ -208,6 +237,28 @@ router.post(
 
       const uploadedMessages = [];
 
+      // Get or create ChatDate for today
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      let chatDate = await prisma.chatDate.findUnique({
+        where: {
+          chatId_date: {
+            chatId: chatId,
+            date: today,
+          },
+        },
+      });
+
+      if (!chatDate) {
+        chatDate = await prisma.chatDate.create({
+          data: {
+            chatId: chatId,
+            date: today,
+          },
+        });
+      }
+
       // Upload each file
       for (const file of files) {
         const isImage = file.mimetype.startsWith("image/");
@@ -223,37 +274,47 @@ router.post(
         );
 
         // Save to database
-        const message = await prisma.message.create({
+        const message = await prisma.chatMessage.create({
           data: {
-            chatId: chatId,
+            chatDateId: chatDate.id,
             sender: sender || "user",
             content: file.originalname,
             type: messageType,
-            fileUrl: uploadResult.url,
-            fileName: file.originalname,
-            fileSize: file.size,
-            mimeType: file.mimetype,
-            read: false,
+          },
+          select: {
+            id: true,
+            sender: true,
+            content: true,
+            type: true,
+            sentAt: true,
           },
         });
 
-        uploadedMessages.push(message);
+        uploadedMessages.push({
+          ...message,
+          fileUrl: uploadResult.url,
+        });
+
+        // Update chat lastMessageId
+        await prisma.chat.update({
+          where: { id: chatId },
+          data: { 
+            lastMessageId: message.id,
+            updatedAt: new Date() 
+          },
+        });
 
         // Emit Socket.IO event
         const io = req.app.get("io");
         if (io) {
           io.to(`${chatId}`).emit("new_message", {
             id: message.id,
-            chatId: message.chatId,
+            chatDateId: chatDate.id,
             sender: message.sender,
             content: message.content,
             type: message.type,
-            fileUrl: message.fileUrl,
-            fileName: message.fileName,
-            fileSize: message.fileSize,
-            mimeType: message.mimeType,
-            read: message.read,
-            createdAt: message.createdAt,
+            fileUrl: uploadResult.url,
+            sentAt: message.sentAt,
           });
         }
       }
