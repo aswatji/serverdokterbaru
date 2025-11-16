@@ -16,6 +16,7 @@ import categoryDoctorRoutes from "./categoryDoctorRoutes.js";
 import ratingRoutes from "./ratingRoutes.js";
 import uploadRoutes from "./uploadRoutes.js";
 import chatUploadRoutes from "./chatUploadRoutes.js";
+import upload from "../middleware/uploadMiddleware.js";
 
 // Export function yang nerima io parameter
 export default function routes(io) {
@@ -75,10 +76,10 @@ export default function routes(io) {
   /* -------------------------------------------
      📤 UPLOADS
   ------------------------------------------- */
-  router.use("/upload", uploadRoutes);
+  router.use("/upload", upload.single("file"), uploadRoutes);
 
   /* -------------------------------------------
-     🧭 404 HANDLER
+     🧭 404 HANDLER  
   ------------------------------------------- */
   router.use((req, res) => {
     res.status(404).json({

@@ -1,19 +1,7 @@
 import multer from "multer";
-import path from "path";
 
-// Konfigurasi Multer untuk menyimpan file di disk
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "uploads/"); // Tentukan folder penyimpanan
-  },
-  filename: function (req, file, cb) {
-    const timestamp = Date.now();
-    const originalName = file.originalname.replace(/\s+/g, "-"); // Ganti spasi dengan dash
-    const extension = path.extname(originalName); // ✅ Ambil extension
-    const nameWithoutExt = path.basename(originalName, extension); // ✅ Ambil nama tanpa extension
-    cb(null, `${timestamp}-${nameWithoutExt}${extension}`); // ✅ Format: 1234567890-filename.jpg
-  },
-});
+// Konfigurasi Multer untuk menyimpan file di memory (untuk upload ke MinIO)
+const storage = multer.memoryStorage();
 
 // Filter tipe file yang diizinkan
 const fileFilter = (req, file, cb) => {
