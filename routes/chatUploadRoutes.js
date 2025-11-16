@@ -1,10 +1,13 @@
 import express from "express";
 import { upload } from "../middleware/uploadMiddleware.js";
 import minioService from "../service/minioService.js";
-import prisma from "../config/database.js";
+import { dbConnection } from "../config/database.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
+
+// Get prisma instance dynamically to ensure it's fully initialized
+const getPrisma = () => dbConnection.getInstance();
 
 /**
  * 📤 Upload gambar/file untuk chat (seperti WhatsApp)
@@ -47,7 +50,8 @@ router.post(
         });
       }
 
-      // Verify chat exists and active
+      // Verify chat exists and is active
+      const prisma = getPrisma();
       const chat = await prisma.chat.findUnique({
         where: { id: chatId },
         select: {
@@ -189,6 +193,7 @@ router.post(
       }
 
       // Verify chat
+      const prisma = getPrisma();
       const chat = await prisma.chat.findUnique({
         where: { id: chatId },
         select: { id: true, isActive: true },
