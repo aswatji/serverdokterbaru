@@ -127,11 +127,14 @@ router.post(
       }
 
       // Create message with file info
+      // Store file URL in content for file/image types
+      const messageContent = messageType === "text" ? file.originalname : uploadResult.url;
+      
       const message = await prisma.chatMessage.create({
         data: {
           chatDateId: chatDate.id,
           sender: sender || "user",
-          content: file.originalname,
+          content: messageContent,
           type: messageType,
         },
         select: {
@@ -162,9 +165,12 @@ router.post(
           id: message.id,
           chatDateId: chatDate.id,
           sender: message.sender,
-          content: message.content,
+          content: message.content, // URL untuk display
           type: message.type,
           fileUrl: uploadResult.url,
+          fileName: file.originalname,
+          fileSize: file.size,
+          mimeType: file.mimetype,
           sentAt: message.sentAt,
         });
         console.log(`🔔 Socket.IO notification sent to room: ${roomName}`);
@@ -177,9 +183,12 @@ router.post(
           id: message.id,
           chatDateId: chatDate.id,
           sender: message.sender,
-          content: message.content,
-          type: message.type,
-          fileUrl: uploadResult.url,
+          content: message.content, // URL untuk image/pdf/file, filename untuk text
+          type: message.type, // "image", "pdf", "file", or "text"
+          fileUrl: uploadResult.url, // Always include for download
+          fileName: file.originalname, // Original filename
+          fileSize: file.size,
+          mimeType: file.mimetype,
           sentAt: message.sentAt,
         },
       });
@@ -274,11 +283,13 @@ router.post(
         );
 
         // Save to database
+        const messageContent = messageType === "text" ? file.originalname : uploadResult.url;
+        
         const message = await prisma.chatMessage.create({
           data: {
             chatDateId: chatDate.id,
             sender: sender || "user",
-            content: file.originalname,
+            content: messageContent,
             type: messageType,
           },
           select: {
@@ -293,6 +304,9 @@ router.post(
         uploadedMessages.push({
           ...message,
           fileUrl: uploadResult.url,
+          fileName: file.originalname,
+          fileSize: file.size,
+          mimeType: file.mimetype,
         });
 
         // Update chat lastMessageId
@@ -314,6 +328,9 @@ router.post(
             content: message.content,
             type: message.type,
             fileUrl: uploadResult.url,
+            fileName: file.originalname,
+            fileSize: file.size,
+            mimeType: file.mimetype,
             sentAt: message.sentAt,
           });
         }
