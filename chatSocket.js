@@ -70,7 +70,6 @@ export function initChatSocket(socketIo) {
           select: {
             id: true,
             isActive: true,
-            expiredAt: true,
             userId: true,
             doctorId: true,
           },
@@ -97,15 +96,8 @@ export function initChatSocket(socketIo) {
           if (callback) callback({ success: false, error: error.message });
           return;
         }
-        if (process.env.NODE_ENV !== "production") {
-          console.warn("⚠️ Bypass chat expired check for development");
-        } else if (chat.expiredAt && new Date() > chat.expiredAt) {
-          const error = { message: "Chat expired" };
-          console.error("❌ Chat expired:", chat.expiredAt);
-          socket.emit("error", error);
-          if (callback) callback({ success: false, error: error.message });
-          return;
-        }
+        // ✅ REMOVED: expiredAt check - handled by frontend
+        // Frontend will handle chat expiration based on payment.expiresAt
         socket.on("mark_as_read", async ({ chatId, userId, doctorId }) => {
           try {
             console.log(`👁️ Mark messages as read: chatId=${chatId}`);

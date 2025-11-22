@@ -128,8 +128,9 @@ router.post(
 
       // Create message with file info
       // Store file URL in content for file/image types
-      const messageContent = messageType === "text" ? file.originalname : uploadResult.url;
-      
+      const messageContent =
+        messageType === "text" ? file.originalname : uploadResult.url;
+
       const message = await prisma.chatMessage.create({
         data: {
           chatDateId: chatDate.id,
@@ -151,9 +152,9 @@ router.post(
       // Update chat lastMessageId and updatedAt
       await prisma.chat.update({
         where: { id: chatId },
-        data: { 
+        data: {
           lastMessageId: message.id,
-          updatedAt: new Date() 
+          updatedAt: new Date(),
         },
       });
 
@@ -283,8 +284,9 @@ router.post(
         );
 
         // Save to database
-        const messageContent = messageType === "text" ? file.originalname : uploadResult.url;
-        
+        const messageContent =
+          messageType === "text" ? file.originalname : uploadResult.url;
+
         const message = await prisma.chatMessage.create({
           data: {
             chatDateId: chatDate.id,
@@ -312,9 +314,9 @@ router.post(
         // Update chat lastMessageId
         await prisma.chat.update({
           where: { id: chatId },
-          data: { 
+          data: {
             lastMessageId: message.id,
-            updatedAt: new Date() 
+            updatedAt: new Date(),
           },
         });
 
