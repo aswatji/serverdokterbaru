@@ -105,10 +105,17 @@ class PaymentController {
       if (["cancel", "deny", "expire"].includes(transactionStatus))
         status = "failed";
 
-      // 🔹 Update payment di database
+      // 🔹 Update payment dengan paidAt dan expiresAt
+      const updateData = { status };
+      if (status === "success") {
+        const now = new Date();
+        updateData.paidAt = now;
+        updateData.expiresAt = new Date(now.getTime() + 30 * 60 * 1000); // 30 minutes
+      }
+
       const updatedPayment = await prisma.payment.update({
         where: { id: payload.order_id },
-        data: { status },
+        data: updateData,
       });
 
       // 🔹 Kalau sukses, aktifkan atau buat chat

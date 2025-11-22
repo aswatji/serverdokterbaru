@@ -53,15 +53,17 @@ model DoctorSchedule {
 }
 
 model Payment {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   amount    Float
   status    String
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
+  paidAt    DateTime? // Waktu pembayaran sukses
+  expiresAt DateTime? // Waktu expired (30 menit setelah pembayaran)
   userId    String
   doctorId  String
   chat      Chat?
-  doctor    Doctor   @relation(fields: [doctorId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
+  doctor    Doctor    @relation(fields: [doctorId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
 }
 
 model Chat {
