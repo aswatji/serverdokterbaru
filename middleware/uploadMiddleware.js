@@ -1,7 +1,7 @@
 import multer from "multer";
 
 // Konfigurasi Multer untuk menyimpan file di memory (untuk upload ke MinIO)
-const storage = multer.memoryStorage();
+const storage = multer.memoryStorage({});
 
 // Filter tipe file yang diizinkan
 const fileFilter = (req, file, cb) => {
@@ -23,6 +23,7 @@ const fileFilter = (req, file, cb) => {
     );
   }
 };
+
 
 // Konfigurasi upload dengan limit 5MB
 export const upload = multer({
