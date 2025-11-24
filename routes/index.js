@@ -17,6 +17,7 @@ import ratingRoutes from "./ratingRoutes.js";
 import uploadRoutes from "./uploadRoutes.js";
 import chatUploadRoutes from "./chatUploadRoutes.js";
 import upload from "../middleware/uploadMiddleware.js";
+import product from "./productRoutes.js";
 
 // Export function yang nerima io parameter
 export default function routes(io) {
@@ -77,6 +78,10 @@ export default function routes(io) {
      📤 UPLOADS
   ------------------------------------------- */
   router.use("/upload", upload.single("file"), uploadRoutes);
+
+
+  // ✅ Product routes
+  router.use("/products", productRoutes); // ✅ Tambahkan ini
 
   /* -------------------------------------------
      🧭 404 HANDLER  
