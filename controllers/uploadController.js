@@ -190,11 +190,12 @@ class UploadController {
       console.log(`📤 Uploading ${type} to MinIO: ${objectName}`);
 
       // Upload to MinIO
-      const fileUrl = await minioService.uploadBuffer(
+      const uploadResult = await minioService.uploadFile(
         file.buffer,
         objectName,
         file.mimetype
       );
+      const fileUrl = uploadResult.url;
 
       console.log(`✅ File uploaded to MinIO: ${fileUrl}`);
 
@@ -410,11 +411,12 @@ class UploadController {
           const fileName = `${timestamp}-${randomStr}.${ext}`;
           const objectName = `chat/${chatId}/${fileName}`;
 
-          const fileUrl = await minioService.uploadBuffer(
+          const uploadResult = await minioService.uploadFile(
             file.buffer,
             objectName,
             file.mimetype
           );
+          const fileUrl = uploadResult.url;
 
           const today = new Date();
           today.setHours(0, 0, 0, 0);
