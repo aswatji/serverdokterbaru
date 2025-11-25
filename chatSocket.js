@@ -19,7 +19,7 @@ export function initChatSocket(socketIo) {
 
     // 🧩 Join chat room
     socket.on("join_chat", (chatId) => {
-      const roomName = `${chatId}`;
+      const roomName = `chat:${chatId}`; // ✅ Consistent naming
       socket.join(roomName);
       console.log(`👋 ${socket.id} joined room ${roomName}`);
       socket.to(roomName).emit("user_joined", {
@@ -41,17 +41,45 @@ export function initChatSocket(socketIo) {
       socket.to(roomName).emit("stop_typing", { chatId, sender });
     });
 
+    // 👁️ Mark as read - MOVED: register once per connection
+    socket.on("mark_as_read", async ({ chatId, userId, doctorId }) => {
+      try {
+        console.log(`👁️ Mark as read: chatId=${chatId}, userId=${userId}, doctorId=${doctorId}`);
+
+        await prisma.chatUnread.updateMany({
+          where: { chatId, OR: [{ userId }, { doctorId }] },
+          data: { unreadCount: 0 },
+        });
+
+        const roomName = `chat:${chatId}`; // ✅ Consistent naming
+        ioInstance.to(roomName).emit("update_unread", {
+          chatId,
+          userId,
+          doctorId,
+          unreadCount: 0,
+        });
+
+        console.log(`✅ Unread reset for chat ${chatId}`);
+      } catch (err) {
+        console.error("❌ Error mark_as_read:", err);
+        socket.emit("error", { message: "Failed to mark as read: " + err.message });
+      }
+    });
+
     // 💬 Send message (text / image / pdf) - with callback support
     socket.on("send_message", async (payload, callback) => {
       try {
         const { chatId, sender, content, type = "text", fileData } = payload;
 
-        console.log(`📨 Received send_message:`, {
+        // ✅ Enhanced logging
+        console.log(`📨 [send_message] Received:`, {
           chatId,
           sender,
           type,
           contentLength: content?.length || 0,
           hasFileData: !!fileData,
+          socketId: socket.id,
+          timestamp: new Date().toISOString(),
         });
 
         if (!chatId || !sender || (!content && !fileData)) {
@@ -69,6 +97,7 @@ export function initChatSocket(socketIo) {
           },
           select: {
             id: true,
+            chatKey: true, // ✅ Include chatKey
             isActive: true,
             userId: true,
             doctorId: true,
@@ -98,27 +127,6 @@ export function initChatSocket(socketIo) {
         }
         // ✅ REMOVED: expiredAt check - handled by frontend
         // Frontend will handle chat expiration based on payment.expiresAt
-        socket.on("mark_as_read", async ({ chatId, userId, doctorId }) => {
-          try {
-            console.log(`👁️ Mark messages as read: chatId=${chatId}`);
-
-            await prisma.chatUnread.updateMany({
-              where: { chatId, OR: [{ userId }, { doctorId }] },
-              data: { unreadCount: 0 },
-            });
-
-            ioInstance.to(`chat:${chatId}`).emit("update_unread", {
-              chatId,
-              userId,
-              doctorId,
-              unreadCount: 0,
-            });
-
-            console.log(`✅ Unread reset for chat ${chatId}`);
-          } catch (err) {
-            console.error("❌ Error mark_as_read:", err);
-          }
-        });
         try {
           if (sender === chat.userId) {
             // User kirim pesan → dokter penerima
@@ -230,15 +238,21 @@ export function initChatSocket(socketIo) {
         const messagePayload = {
           messageId: savedMessage.id,
           chatId: chat.id,
+          chatKey: chat.chatKey, // ✅ Include chatKey
           sender,
           type,
           content: finalContent,
           sentAt: savedMessage.sentAt,
         };
 
-        const roomName = `chat:${chat.id}`; // Use chat.id (UUID) not chatId from payload
+        const roomName = `chat:${chat.id}`; // ✅ Consistent naming
+        console.log(`📢 [new_message] Broadcasting to ${roomName}:`, {
+          messageId: savedMessage.id,
+          type,
+          sender,
+        });
         ioInstance.to(roomName).emit("new_message", messagePayload);
-        console.log(`✅ Broadcast new_message to ${roomName}`);
+        console.log(`✅ Broadcast completed`);
 
         try {
           let newUnread;
@@ -285,27 +299,31 @@ export function initChatSocket(socketIo) {
         }
 
         // ✅ Send success callback to sender
-        console.log(`✅ Sending callback to client...`);
         if (callback) {
           callback({
             success: true,
             data: messagePayload,
           });
-          console.log(`✅ Callback sent successfully`);
+          console.log(`✅ [send_message] Callback sent: success=true, messageId=${savedMessage.id}`);
         } else {
-          console.warn(`⚠️ No callback function provided`);
+          console.warn(`⚠️ [send_message] No callback function provided`);
         }
       } catch (err) {
-        console.error("❌ Error send_message:", err);
+        console.error("❌ [send_message] Error:", err.message);
+        console.error("Stack:", err.stack);
         const error = { message: "Internal server error: " + err.message };
         socket.emit("error", error);
-        if (callback) callback({ success: false, error: error.message });
+        // ✅ Always call callback on error
+        if (callback) {
+          callback({ success: false, error: err.message });
+          console.log(`❌ [send_message] Callback sent: success=false, error=${err.message}`);
+        }
       }
     });
 
     // 🚪 Leave room
     socket.on("leave_chat", (chatId) => {
-      const roomName = `${chatId}`;
+      const roomName = `chat:${chatId}`; // ✅ Consistent naming
       socket.leave(roomName);
       console.log(`🚪 ${socket.id} left ${roomName}`);
       socket.to(roomName).emit("user_left", {
