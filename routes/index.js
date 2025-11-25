@@ -17,7 +17,7 @@ import ratingRoutes from "./ratingRoutes.js";
 import uploadRoutes from "./uploadRoutes.js";
 import chatUploadRoutes from "./chatUploadRoutes.js";
 import upload from "../middleware/uploadMiddleware.js";
-import product from "./productRoutes.js";
+import productRoutes from "./productRoutes.js";
 
 // Export function yang nerima io parameter
 export default function routes(io) {

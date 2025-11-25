@@ -21,7 +21,8 @@ export function initChatSocket(socketIo) {
     socket.on("join_chat", (chatId) => {
       const roomName = `chat:${chatId}`; // ✅ CRITICAL: Consistent prefix
       socket.join(roomName);
-      const roomSize = ioInstance.sockets.adapter.rooms.get(roomName)?.size || 0;
+      const roomSize =
+        ioInstance.sockets.adapter.rooms.get(roomName)?.size || 0;
       console.log(`👋 ${socket.id} joined ${roomName} (${roomSize} members)`);
       socket.to(roomName).emit("user_joined", {
         socketId: socket.id,
@@ -45,7 +46,9 @@ export function initChatSocket(socketIo) {
     // 👁️ Mark as read - MOVED: register once per connection
     socket.on("mark_as_read", async ({ chatId, userId, doctorId }) => {
       try {
-        console.log(`👁️ Mark as read: chatId=${chatId}, userId=${userId}, doctorId=${doctorId}`);
+        console.log(
+          `👁️ Mark as read: chatId=${chatId}, userId=${userId}, doctorId=${doctorId}`
+        );
 
         await prisma.chatUnread.updateMany({
           where: { chatId, OR: [{ userId }, { doctorId }] },
@@ -63,7 +66,9 @@ export function initChatSocket(socketIo) {
         console.log(`✅ Unread reset for chat ${chatId}`);
       } catch (err) {
         console.error("❌ Error mark_as_read:", err);
-        socket.emit("error", { message: "Failed to mark as read: " + err.message });
+        socket.emit("error", {
+          message: "Failed to mark as read: " + err.message,
+        });
       }
     });
 
@@ -237,22 +242,23 @@ export function initChatSocket(socketIo) {
 
         // 📢 Broadcast message to all clients in room
         const messagePayload = {
-          id: savedMessage.id,                    // ✅ PRIMARY ID
-          messageId: savedMessage.id,             // ✅ BACKWARD COMPAT
-          chatId: chat.id,                        // ✅ CHAT UUID
-          chatDateId: chatDate.id,                // ✅ REQUIRED BY CLIENT
-          chatKey: chat.chatKey,                  // ✅ Include chatKey
+          id: savedMessage.id, // ✅ PRIMARY ID
+          messageId: savedMessage.id, // ✅ BACKWARD COMPAT
+          chatId: chat.id, // ✅ CHAT UUID
+          chatDateId: chatDate.id, // ✅ REQUIRED BY CLIENT
+          chatKey: chat.chatKey, // ✅ Include chatKey
           sender,
           type,
           content: finalContent,
           sentAt: savedMessage.sentAt,
-          fileName: payload.fileName || payload.filename,  // ✅ FILE METADATA
-          fileUrl: type !== "text" ? finalContent : undefined,  // ✅ MEDIA URL
-          chatDate: { date: today.toISOString() },  // ✅ CLIENT COMPATIBILITY
+          fileName: payload.fileName || payload.filename, // ✅ FILE METADATA
+          fileUrl: type !== "text" ? finalContent : undefined, // ✅ MEDIA URL
+          chatDate: { date: today.toISOString() }, // ✅ CLIENT COMPATIBILITY
         };
 
         const roomName = `chat:${chat.id}`; // ✅ CRITICAL: Consistent prefix
-        const roomSize = ioInstance.sockets.adapter.rooms.get(roomName)?.size || 0;
+        const roomSize =
+          ioInstance.sockets.adapter.rooms.get(roomName)?.size || 0;
         console.log(`📢 [new_message] Broadcasting to ${roomName}:`, {
           messageId: savedMessage.id,
           type,
@@ -312,7 +318,9 @@ export function initChatSocket(socketIo) {
             success: true,
             data: messagePayload,
           });
-          console.log(`✅ [send_message] Callback sent: success=true, messageId=${savedMessage.id}`);
+          console.log(
+            `✅ [send_message] Callback sent: success=true, messageId=${savedMessage.id}`
+          );
         } else {
           console.warn(`⚠️ [send_message] No callback function provided`);
         }
@@ -324,7 +332,9 @@ export function initChatSocket(socketIo) {
         // ✅ Always call callback on error
         if (callback) {
           callback({ success: false, error: err.message });
-          console.log(`❌ [send_message] Callback sent: success=false, error=${err.message}`);
+          console.log(
+            `❌ [send_message] Callback sent: success=false, error=${err.message}`
+          );
         }
       }
     });
@@ -333,7 +343,8 @@ export function initChatSocket(socketIo) {
     socket.on("leave_chat", (chatId) => {
       const roomName = `chat:${chatId}`; // ✅ CRITICAL: Consistent prefix
       socket.leave(roomName);
-      const roomSize = ioInstance.sockets.adapter.rooms.get(roomName)?.size || 0;
+      const roomSize =
+        ioInstance.sockets.adapter.rooms.get(roomName)?.size || 0;
       console.log(`🚪 ${socket.id} left ${roomName} (${roomSize} remaining)`);
       socket.to(roomName).emit("user_left", {
         socketId: socket.id,
