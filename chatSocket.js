@@ -19,9 +19,10 @@ export function initChatSocket(socketIo) {
 
     // 🧩 Join chat room
     socket.on("join_chat", (chatId) => {
-      const roomName = `chat:${chatId}`; // ✅ Consistent naming
+      const roomName = `chat:${chatId}`; // ✅ CRITICAL: Consistent prefix
       socket.join(roomName);
-      console.log(`👋 ${socket.id} joined room ${roomName}`);
+      const roomSize = ioInstance.sockets.adapter.rooms.get(roomName)?.size || 0;
+      console.log(`👋 ${socket.id} joined ${roomName} (${roomSize} members)`);
       socket.to(roomName).emit("user_joined", {
         socketId: socket.id,
         chatId,
@@ -236,23 +237,30 @@ export function initChatSocket(socketIo) {
 
         // 📢 Broadcast message to all clients in room
         const messagePayload = {
-          messageId: savedMessage.id,
-          chatId: chat.id,
-          chatKey: chat.chatKey, // ✅ Include chatKey
+          id: savedMessage.id,                    // ✅ PRIMARY ID
+          messageId: savedMessage.id,             // ✅ BACKWARD COMPAT
+          chatId: chat.id,                        // ✅ CHAT UUID
+          chatDateId: chatDate.id,                // ✅ REQUIRED BY CLIENT
+          chatKey: chat.chatKey,                  // ✅ Include chatKey
           sender,
           type,
           content: finalContent,
           sentAt: savedMessage.sentAt,
+          fileName: payload.fileName || payload.filename,  // ✅ FILE METADATA
+          fileUrl: type !== "text" ? finalContent : undefined,  // ✅ MEDIA URL
+          chatDate: { date: today.toISOString() },  // ✅ CLIENT COMPATIBILITY
         };
 
-        const roomName = `chat:${chat.id}`; // ✅ Consistent naming
+        const roomName = `chat:${chat.id}`; // ✅ CRITICAL: Consistent prefix
+        const roomSize = ioInstance.sockets.adapter.rooms.get(roomName)?.size || 0;
         console.log(`📢 [new_message] Broadcasting to ${roomName}:`, {
           messageId: savedMessage.id,
           type,
           sender,
+          roomMembers: roomSize,
         });
         ioInstance.to(roomName).emit("new_message", messagePayload);
-        console.log(`✅ Broadcast completed`);
+        console.log(`✅ Broadcast completed to ${roomSize} client(s)`);
 
         try {
           let newUnread;
@@ -323,9 +331,10 @@ export function initChatSocket(socketIo) {
 
     // 🚪 Leave room
     socket.on("leave_chat", (chatId) => {
-      const roomName = `chat:${chatId}`; // ✅ Consistent naming
+      const roomName = `chat:${chatId}`; // ✅ CRITICAL: Consistent prefix
       socket.leave(roomName);
-      console.log(`🚪 ${socket.id} left ${roomName}`);
+      const roomSize = ioInstance.sockets.adapter.rooms.get(roomName)?.size || 0;
+      console.log(`🚪 ${socket.id} left ${roomName} (${roomSize} remaining)`);
       socket.to(roomName).emit("user_left", {
         socketId: socket.id,
         chatId,
