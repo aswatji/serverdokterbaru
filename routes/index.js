@@ -77,8 +77,7 @@ export default function routes(io) {
   /* -------------------------------------------
      📤 UPLOADS
   ------------------------------------------- */
-  router.use("/upload", upload.single("file"), uploadRoutes);
-
+  router.use("/upload", uploadRoutes);
 
   // ✅ Product routes
   router.use("/products", productRoutes); // ✅ Tambahkan ini

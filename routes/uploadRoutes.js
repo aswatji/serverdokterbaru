@@ -42,3 +42,30 @@ function uploadRoutes(io) {
 }
 
 export default uploadRoutes;
+
+// routes/uploadRoutes.js
+
+// import express from "express";
+// import UploadController from "../controllers/uploadController.js";
+// import { upload } from "../middleware/uploadMiddleware.js";
+// import { authenticate } from "../middleware/authMiddleware.js";
+
+// const router = express.Router();
+
+// // Single file upload
+// router.post(
+//   "/",
+//   authenticate,
+//   upload.single("file"),
+//   UploadController.uploadFile
+// );
+
+// // Multiple files upload
+// router.post(
+//   "/multiple",
+//   authenticate,
+//   upload.array("files", 5), // max 5 files
+//   UploadController.uploadMultiple
+// );
+
+// export default router;
