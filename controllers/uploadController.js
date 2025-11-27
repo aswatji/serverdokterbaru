@@ -139,7 +139,8 @@ class UploadController {
       if (!allowedTypes.includes(file.mimetype)) {
         return res.status(400).json({
           success: false,
-          message: "Tipe file tidak didukung. Hanya jpg, png, dan pdf yang diizinkan",
+          message:
+            "Tipe file tidak didukung. Hanya jpg, png, dan pdf yang diizinkan",
         });
       }
 
@@ -467,7 +468,9 @@ class UploadController {
 
       return res.status(200).json({
         success: true,
-        message: `${uploadResults.filter((r) => r.success).length} dari ${files.length} file berhasil diupload`,
+        message: `${uploadResults.filter((r) => r.success).length} dari ${
+          files.length
+        } file berhasil diupload`,
         results: uploadResults,
       });
     } catch (err) {

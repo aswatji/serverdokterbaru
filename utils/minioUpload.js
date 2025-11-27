@@ -67,3 +67,6 @@ export async function uploadBase64ToMinio(
 }
 
 export default { uploadToMinio, deleteFromMinio, uploadBase64ToMinio };
+// config/minio.js
+
+
