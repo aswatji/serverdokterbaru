@@ -9,6 +9,7 @@ import { authMiddleware } from "../middleware/authMiddleware.js";
 
 export default function paymentRoutes(io) {
   const router = express.Router();
+  const controller = paymentController;
 
   /* -------------------------------------------
    🧾 VALIDATION RULES
