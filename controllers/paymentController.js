@@ -106,11 +106,17 @@ class PaymentController {
         status = "failed";
 
       // 🔹 Update payment dengan paidAt dan expiresAt
+      // =============================
+      // ✅ UPDATE PAYMENT + HANDLE MULTI PAYMENT
+      // =============================
+
+      // Tentukan update payment
       const updateData = { status };
+      let now = new Date();
+
       if (status === "success") {
-        const now = new Date();
         updateData.paidAt = now;
-        updateData.expiresAt = new Date(now.getTime() + 30 * 60 * 1000); // 30 minutes
+        updateData.expiresAt = new Date(now.getTime() + 30 * 60 * 1000); // 30 menit
       }
 
       const updatedPayment = await prisma.payment.update({
@@ -118,39 +124,69 @@ class PaymentController {
         data: updateData,
       });
 
-      // 🔹 Kalau sukses, aktifkan atau buat chat
-      if (status === "success") {
-        const existingChat = await prisma.chat.findFirst({
-          where: {
+      // =============================
+      // 🔍 CARI CHAT ATAU BUAT BARU
+      // =============================
+      let chat = await prisma.chat.findFirst({
+        where: {
+          userId: updatedPayment.userId,
+          doctorId: updatedPayment.doctorId,
+        },
+      });
+
+      if (!chat) {
+        chat = await prisma.chat.create({
+          data: {
+            chatKey: `CHAT-${Date.now()}`,
             userId: updatedPayment.userId,
             doctorId: updatedPayment.doctorId,
+            payment: { connect: { id: updatedPayment.id } },
+            isActive: true,
           },
         });
-
-        if (existingChat) {
-          await prisma.chat.update({
-            where: { id: existingChat.id },
-            data: {
-              payment: { connect: { id: updatedPayment.id } },
-              isActive: true,
-              updatedAt: new Date(),
-            },
-          });
-        } else {
-          await prisma.chat.create({
-            data: {
-              chatKey: `CHAT-${Date.now()}`,
-              userId: updatedPayment.userId,
-              doctorId: updatedPayment.doctorId,
-              payment: { connect: { id: updatedPayment.id } },
-              isActive: true,
-            },
-          });
-        }
+      } else {
+        await prisma.chat.update({
+          where: { id: chat.id },
+          data: {
+            payment: { connect: { id: updatedPayment.id } },
+            isActive: true,
+            updatedAt: new Date(),
+          },
+        });
       }
 
-      console.log(`✅ Payment ${payload.order_id} updated to ${status}`);
-      res.status(200).json({ success: true, status });
+      // =============================
+      // 🧠 AMBIL SEMUA PEMBAYARAN SUKSES
+      // DAN CARI expiresAt PALING BARU
+      // =============================
+      const allSuccessPayments = await prisma.payment.findMany({
+        where: {
+          userId: updatedPayment.userId,
+          doctorId: updatedPayment.doctorId,
+          status: "success",
+          expiresAt: { not: null },
+        },
+        orderBy: {
+          expiresAt: "desc",
+        },
+      });
+
+      // expiresAt paling akhir
+      const finalExpires =
+        allSuccessPayments.length > 0
+          ? allSuccessPayments[0].expiresAt
+          : updatedPayment.expiresAt;
+
+      // =============================
+      // 📢 EMIT KE ROOM CHAT
+      // supaya pasien & dokter tau expired terbaru
+      // =============================
+      this.io.to(`chat:${chat.id}`).emit("payment_success", {
+        chatId: chat.id,
+        paymentId: updatedPayment.id,
+        paidAt: updatedPayment.paidAt,
+        expiresAt: finalExpires,
+      });
     } catch (error) {
       console.error("❌ midtransCallback error:", error);
       res.status(500).json({

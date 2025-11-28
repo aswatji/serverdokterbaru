@@ -43,7 +43,7 @@ export default function routes(io) {
   /* -------------------------------------------
      💰 PAYMENTS
   ------------------------------------------- */
-  router.use("/payment", paymentRoutes);
+  router.use("/payment", paymentRoutes(io));
 
   /* -------------------------------------------
      💬 CHAT & MESSAGES - pass io ke chatRoutes!

@@ -461,7 +461,10 @@ const chatDoctorCache = new Map(); // chatId -> { doctorId, expiresAt }
 const CHAT_DOCTOR_CACHE_TTL = 60 * 1000; // 60s TTL
 
 function cacheSetChatDoctor(chatId, doctorId) {
-  chatDoctorCache.set(chatId, { doctorId, expiresAt: Date.now() + CHAT_DOCTOR_CACHE_TTL });
+  chatDoctorCache.set(chatId, {
+    doctorId,
+    expiresAt: Date.now() + CHAT_DOCTOR_CACHE_TTL,
+  });
 }
 
 function cacheGetChatDoctor(chatId) {
@@ -504,7 +507,9 @@ export function initChatSocket(socketIo) {
       if (maybeAuth?.doctorId) {
         const docRoom = `doctor:${maybeAuth.doctorId}`;
         socket.join(docRoom);
-        console.log(`Auto-joined doctor room for ${maybeAuth.doctorId} (${socket.id})`);
+        console.log(
+          `Auto-joined doctor room for ${maybeAuth.doctorId} (${socket.id})`
+        );
       }
     } catch (err) {
       console.error("❌ Error while auto-joining doctor room:", err);
@@ -519,77 +524,130 @@ export function initChatSocket(socketIo) {
         }
         const roomName = `doctor:${doctorId}`;
         socket.join(roomName);
-        const roomSize = ioInstance.sockets.adapter.rooms.get(roomName)?.size || 0;
-        console.log(`👨‍⚕️ Doctor ${doctorId} joined ${roomName} (${roomSize} members)`);
+        const roomSize =
+          ioInstance.sockets.adapter.rooms.get(roomName)?.size || 0;
+        console.log(
+          `👨‍⚕️ Doctor ${doctorId} joined ${roomName} (${roomSize} members)`
+        );
       } catch (err) {
         console.error("❌ doctor_join error:", err);
       }
     });
 
     // 🧩 Join chat room
-    socket.on("join_chat", (chatId) => {
-      const roomName = `chat:${chatId}`; // ✅ CRITICAL: Consistent prefix
-      socket.join(roomName);
-      const roomSize =
-        ioInstance.sockets.adapter.rooms.get(roomName)?.size || 0;
-      console.log(`👋 ${socket.id} joined ${roomName} (${roomSize} members)`);
-      socket.to(roomName).emit("user_joined", {
-        socketId: socket.id,
-        chatId,
-        timestamp: new Date(),
-      });
+    // 🧩 Join chat room (ubah ini)
+    socket.on("join_chat", async (chatId) => {
+      try {
+        if (!chatId) return;
+        const roomName = `chat:${chatId}`; // CRITICAL: prefix tetap sama
+        socket.join(roomName);
+        const roomSize =
+          ioInstance.sockets.adapter.rooms.get(roomName)?.size || 0;
+        console.log(`👋 ${socket.id} joined ${roomName} (${roomSize} members)`);
+
+        // notify members that someone joined
+        socket.to(roomName).emit("user_joined", {
+          socketId: socket.id,
+          chatId,
+          timestamp: new Date(),
+        });
+
+        // --- NEW: emit current payment/chat status to the joining socket only ---
+        try {
+          const chat = await prisma.chat.findUnique({
+            where: { id: chatId },
+            include: { payment: true },
+          });
+
+          if (chat && chat.payment) {
+            socket.emit("payment_status", {
+              chatId,
+              paymentId: chat.payment.id,
+              paidAt: chat.payment.paidAt
+                ? chat.payment.paidAt.toISOString()
+                : null,
+              expiresAt: chat.payment.expiresAt
+                ? chat.payment.expiresAt.toISOString()
+                : null,
+              isActive: chat.isActive,
+            });
+          } else {
+            // If no payment attached, send minimal status so client can clear timer
+            socket.emit("payment_status", {
+              chatId,
+              paymentId: null,
+              isActive: chat?.isActive ?? false,
+            });
+          }
+        } catch (err) {
+          console.error("❌ fetch chat on join failed:", err);
+          // non-blocking — do not disconnect user if DB read fails
+        }
+      } catch (err) {
+        console.error("❌ join_chat handler error:", err);
+      }
     });
 
     // ✏️ User sedang mengetik - now broadcasts to chat room AND doctor's room
-    socket.on("typing", async ({ chatId, sender, doctorId: clientDoctorId }) => {
-      try {
-        const roomName = `chat:${chatId}`;
-        // Emit to chat room as before
-        socket.to(roomName).emit("typing", { chatId, sender });
+    socket.on(
+      "typing",
+      async ({ chatId, sender, doctorId: clientDoctorId }) => {
+        try {
+          const roomName = `chat:${chatId}`;
+          // Emit to chat room as before
+          socket.to(roomName).emit("typing", { chatId, sender });
 
-        // Try to get doctorId from (1) payload (trusted only if you validate), (2) cache, (3) DB
-        let doctorId = clientDoctorId || cacheGetChatDoctor(chatId);
-        if (!doctorId) {
-          // Query DB once and cache
-          const chat = await prisma.chat.findUnique({
-            where: { id: chatId },
-            select: { doctorId: true },
-          });
-          doctorId = chat?.doctorId;
-          if (doctorId) cacheSetChatDoctor(chatId, doctorId);
-        }
+          // Try to get doctorId from (1) payload (trusted only if you validate), (2) cache, (3) DB
+          let doctorId = clientDoctorId || cacheGetChatDoctor(chatId);
+          if (!doctorId) {
+            // Query DB once and cache
+            const chat = await prisma.chat.findUnique({
+              where: { id: chatId },
+              select: { doctorId: true },
+            });
+            doctorId = chat?.doctorId;
+            if (doctorId) cacheSetChatDoctor(chatId, doctorId);
+          }
 
-        if (doctorId) {
-          ioInstance.to(`doctor:${doctorId}`).emit("typing", { chatId, sender });
+          if (doctorId) {
+            ioInstance
+              .to(`doctor:${doctorId}`)
+              .emit("typing", { chatId, sender });
+          }
+        } catch (err) {
+          console.error("❌ typing handler error:", err);
         }
-      } catch (err) {
-        console.error("❌ typing handler error:", err);
       }
-    });
+    );
 
     // ✅ User berhenti mengetik - emit to chat room AND doctor's room
-    socket.on("stop_typing", async ({ chatId, sender, doctorId: clientDoctorId }) => {
-      try {
-        const roomName = `chat:${chatId}`;
-        socket.to(roomName).emit("stop_typing", { chatId, sender });
+    socket.on(
+      "stop_typing",
+      async ({ chatId, sender, doctorId: clientDoctorId }) => {
+        try {
+          const roomName = `chat:${chatId}`;
+          socket.to(roomName).emit("stop_typing", { chatId, sender });
 
-        let doctorId = clientDoctorId || cacheGetChatDoctor(chatId);
-        if (!doctorId) {
-          const chat = await prisma.chat.findUnique({
-            where: { id: chatId },
-            select: { doctorId: true },
-          });
-          doctorId = chat?.doctorId;
-          if (doctorId) cacheSetChatDoctor(chatId, doctorId);
-        }
+          let doctorId = clientDoctorId || cacheGetChatDoctor(chatId);
+          if (!doctorId) {
+            const chat = await prisma.chat.findUnique({
+              where: { id: chatId },
+              select: { doctorId: true },
+            });
+            doctorId = chat?.doctorId;
+            if (doctorId) cacheSetChatDoctor(chatId, doctorId);
+          }
 
-        if (doctorId) {
-          ioInstance.to(`doctor:${doctorId}`).emit("stop_typing", { chatId, sender });
+          if (doctorId) {
+            ioInstance
+              .to(`doctor:${doctorId}`)
+              .emit("stop_typing", { chatId, sender });
+          }
+        } catch (err) {
+          console.error("❌ stop_typing handler error:", err);
         }
-      } catch (err) {
-        console.error("❌ stop_typing handler error:", err);
       }
-    });
+    );
 
     // 👁️ Mark as read - MOVED: register once per connection
     socket.on("mark_as_read", async ({ chatId, userId, doctorId }) => {
@@ -879,13 +937,17 @@ export function initChatSocket(socketIo) {
       } catch (err) {
         console.error("❌ [send_message] Error:", err.message ?? err);
         console.error("Stack:", err.stack ?? "(no stack)");
-        const error = { message: "Internal server error: " + (err.message || String(err)) };
+        const error = {
+          message: "Internal server error: " + (err.message || String(err)),
+        };
         socket.emit("error", error);
         // ✅ Always call callback on error
         if (callback) {
           callback({ success: false, error: err.message || String(err) });
           console.log(
-            `❌ [send_message] Callback sent: success=false, error=${err.message || String(err)}`
+            `❌ [send_message] Callback sent: success=false, error=${
+              err.message || String(err)
+            }`
           );
         }
       }
