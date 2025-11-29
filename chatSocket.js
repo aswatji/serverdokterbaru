@@ -536,16 +536,21 @@ export function initChatSocket(socketIo) {
 
     // 🧩 Join chat room
     // 🧩 Join chat room (ubah ini)
-    socket.on("join_chat", async (chatId) => {
+    socket.on("join_chat", async (chatId, callback) => {
+      // ← Tambah callback param
       try {
-        if (!chatId) return;
-        const roomName = `chat:${chatId}`; // CRITICAL: prefix tetap sama
+        if (!chatId) {
+          if (callback) callback({ success: false, error: "chatId required" });
+          return;
+        }
+
+        const roomName = `chat:${chatId}`; // ✅ chatId sudah tanpa prefix
         socket.join(roomName);
+
         const roomSize =
           ioInstance.sockets.adapter.rooms.get(roomName)?.size || 0;
         console.log(`👋 ${socket.id} joined ${roomName} (${roomSize} members)`);
 
-        // notify members that someone joined
         socket.to(roomName).emit("user_joined", {
           socketId: socket.id,
           chatId,
@@ -571,6 +576,14 @@ export function initChatSocket(socketIo) {
                 : null,
               isActive: chat.isActive,
             });
+            if (callback) {
+              callback({
+                success: true,
+                roomName,
+                roomSize,
+                chatId,
+              });
+            }
           } else {
             // If no payment attached, send minimal status so client can clear timer
             socket.emit("payment_status", {
