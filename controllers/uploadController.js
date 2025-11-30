@@ -213,7 +213,7 @@ class UploadController {
       // Broadcast to Socket.IO room
       const io = req.app.get("io");
       if (io) {
-        const roomName = chat.id;
+        const roomName = `chat:${chat.id}`;
         io.to(roomName).emit("new_message", messagePayload);
         console.log(`📢 Broadcast new_message to ${roomName}`);
         console.log(`   ├─ Message ID: ${savedMessage.id}`);
