@@ -161,7 +161,7 @@ router.post(
       // Emit real-time notification via Socket.IO
       const io = req.app.get("io");
       if (io) {
-        const roomName = `${chatId}`;
+        const roomName = `chat:${chat.id}`;
         io.to(roomName).emit("new_message", {
           id: message.id,
           chatDateId: chatDate.id,
@@ -323,7 +323,7 @@ router.post(
         // Emit Socket.IO event
         const io = req.app.get("io");
         if (io) {
-          io.to(`${chatId}`).emit("new_message", {
+          io.to(`chat:${chat.id}`).emit("new_message", {
             id: message.id,
             chatDateId: chatDate.id,
             sender: message.sender,
