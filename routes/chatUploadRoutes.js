@@ -3,7 +3,7 @@ import { upload } from "../middleware/uploadMiddleware.js";
 import minioService from "../service/minioService.js";
 import { dbConnection } from "../config/database.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
-
+import { getIO } from "../chatSocket.js";
 const router = express.Router();
 
 // Get prisma instance dynamically to ensure it's fully initialized
@@ -159,7 +159,7 @@ router.post(
       });
 
       // Emit real-time notification via Socket.IO
-      const io = req.app.get("io");
+      const io = getIO();
       if (io) {
         const roomName = `chat:${chat.id}`;
         io.to(roomName).emit("new_message", {
@@ -321,7 +321,7 @@ router.post(
         });
 
         // Emit Socket.IO event
-        const io = req.app.get("io");
+        const io = getIO();
         if (io) {
           io.to(`chat:${chat.id}`).emit("new_message", {
             id: message.id,
