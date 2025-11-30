@@ -159,6 +159,58 @@ router.post(
       });
 
       // Emit real-time notification via Socket.IO
+      // ============================================================
+      // 🕵️‍♂️ CCTV DEBUGGING (COPY DARI SINI)
+      // ============================================================
+      console.log("------------------------------------------------");
+      console.log("🕵️‍♂️ MULAI PROSES SOCKET...");
+
+      try {
+        const io = getIO();
+
+        if (!io) {
+          console.error(
+            "❌ ERROR FATAL: getIO() mengembalikan null! Socket belum di-init di server.js"
+          );
+        } else {
+          // 1. Cek Nama Room
+          const roomName = `chat:${chat.id}`;
+          console.log(`🏠 Target Room: "${roomName}"`);
+
+          // 2. Cek Penghuni Room (INI YANG PALING PENTING)
+          const room = io.sockets.adapter.rooms.get(roomName);
+          const members = room ? Array.from(room) : [];
+
+          console.log(`👥 Jumlah Orang di Room: ${members.length}`);
+          console.log(`📋 ID Socket Penghuni:`, members);
+
+          // 3. Analisa Situasi
+          if (members.length === 0) {
+            console.error(
+              "😱 BAHAYA: KAMAR KOSONG! Tidak ada yang mendengar pesan ini."
+            );
+            console.error(
+              "👉 Penyebab: Frontend Pasien TIDAK JOIN ke room ini."
+            );
+          } else if (members.length === 1) {
+            console.warn(
+              "⚠️ PERINGATAN: Cuma ada 1 orang (kemungkinan cuma Pengirim). Pasien belum masuk."
+            );
+          } else {
+            console.log(
+              "✅ AMAN: Ada >1 orang (Pengirim + Penerima). Mengirim sinyal..."
+            );
+
+            // 4. Kirim Sinyal
+            io.to(roomName).emit("new_message", messagePayload);
+            console.log("🚀 Sinyal 'new_message' TERKIRIM!");
+          }
+        }
+      } catch (socketErr) {
+        console.error("❌ SOCKET ERROR:", socketErr);
+      }
+      console.log("------------------------------------------------");
+      // ============================================================
       const io = getIO();
       if (io) {
         const roomName = `chat:${chat.id}`;
