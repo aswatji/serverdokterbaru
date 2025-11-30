@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { PrismaClient } from "@prisma/client";
 import minioService from "../service/minioService.js";
-
+import { getIO } from "../chatSocket.js";
 const prisma = new PrismaClient();
 
 class UploadController {
@@ -211,7 +211,7 @@ class UploadController {
       };
 
       // Broadcast to Socket.IO room
-      const io = req.app.get("io");
+      const io = getIO();
       if (io) {
         const roomName = `chat:${chat.id}`;
         io.to(roomName).emit("new_message", messagePayload);
