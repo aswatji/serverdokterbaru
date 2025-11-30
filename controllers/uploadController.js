@@ -211,18 +211,50 @@ class UploadController {
       };
 
       // Broadcast to Socket.IO room
-      const io = getIO();
-      if (io) {
-        const roomName = `chat:${chat.id}`;
-        io.to(roomName).emit("new_message", messagePayload);
-        console.log(`📢 Broadcast new_message to ${roomName}`);
-        console.log(`   ├─ Message ID: ${savedMessage.id}`);
-        console.log(`   ├─ Type: ${type}`);
-        console.log(`   └─ File: ${file.originalname}`);
-      } else {
-        console.warn("⚠️ Socket.IO instance not found in app");
+      // const io = getIO();
+      // if (io) {
+      //   const roomName = `chat:${chat.id}`;
+      //   io.to(roomName).emit("new_message", messagePayload);
+      //   console.log(`📢 Broadcast new_message to ${roomName}`);
+      //   console.log(`   ├─ Message ID: ${savedMessage.id}`);
+      //   console.log(`   ├─ Type: ${type}`);
+      //   console.log(`   └─ File: ${file.originalname}`);
+      // } else {
+      //   console.warn("⚠️ Socket.IO instance not found in app");
+      // }
+try {
+        // ✅ PAKAI getIO() AGAR PASTI SAMA DENGAN CHAT BIASA
+        const io = getIO(); 
+        
+        if (io) {
+          const roomName = `chat:${chat.id}`;
+          
+          // 🔥 JEBAKAN DEBUGGING (WAJIB DILIHAT DI TERMINAL)
+          const room = io.sockets.adapter.rooms.get(roomName);
+          const memberCount = room ? room.size : 0;
+          
+          console.log("========================================");
+          console.log("🚀 DEBUG UPLOAD CONTROLLER");
+          console.log(`🏠 Target Room: ${roomName}`);
+          console.log(`👥 Jumlah Orang di Room: ${memberCount}`);
+          
+          if (memberCount === 0) {
+             console.error("😱 BAHAYA: Room Kosong! Pasien tidak connect ke socket ini.");
+          } else {
+             console.log("✅ Room Ada Penghuninya. Mengirim sinyal...");
+             io.to(roomName).emit("new_message", messagePayload);
+          }
+          console.log("========================================");
+          
+        } else {
+          console.warn("⚠️ Socket.IO instance is null from getIO()");
+        }
+      } catch (socketErr) {
+        console.error("❌ Gagal Broadcast Socket:", socketErr.message);
       }
 
+      // Return success response
+      return res.status(200).json({ });
       // Return success response
       return res.status(200).json({
         success: true,
