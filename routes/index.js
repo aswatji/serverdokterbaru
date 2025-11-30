@@ -17,6 +17,7 @@ import ratingRoutes from "./ratingRoutes.js";
 import uploadRoutes from "./uploadRoutes.js";
 import chatUploadRoutes from "./chatUploadRoutes.js";
 import upload from "../middleware/uploadMiddleware.js";
+import uploadRoutes from "./uploadRoutes.js";
 import productRoutes from "./productRoutes.js";
 
 // Export function yang nerima io parameter
@@ -48,7 +49,7 @@ export default function routes(io) {
   /* -------------------------------------------
      💬 CHAT & MESSAGES - pass io ke chatRoutes!
   ------------------------------------------- */
-  router.use("/chat", chatUploadRoutes); // WhatsApp-style upload (must be first!)
+  //   router.use("/chat", chatUploadRoutes); // WhatsApp-style upload (must be first!)
   router.use("/chat", chatRoutes(io));
   router.use("/messages", messageRoutes);
 
