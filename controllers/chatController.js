@@ -116,22 +116,40 @@ class ChatController {
             doctor: { select: { id: true, fullname: true, photo: true } },
           },
         });
-
-        console.log("✅ New chat created:", {
-          id: chat.id,
-          chatKey: chat.chatKey,
-          userId: chat.userId,
-          doctorId: chat.doctorId,
-        });
       }
 
-      // Return response dengan logging
-      console.log("📤 Returning chat data:", {
-        chatId: chat.id,
-        chatKey: chat.chatKey,
+      const now = new Date();
+
+      // 1. Query Payment untuk mencari waktu habis yang paling baru DAN masih aktif
+      const latestActivePayment = await prisma.payment.findFirst({
+        where: {
+          userId: userId,
+          doctorId: doctorId,
+          status: { in: ["paid", "success"] },
+          expiresAt: { gt: now }, // Harus lebih besar dari waktu sekarang (Aktif)
+        },
+        orderBy: {
+          expiresAt: "desc", // Ambil yang paling lama waktu habisnya
+        },
+        select: { expiresAt: true },
       });
 
-      res.status(200).json({ success: true, data: chat });
+      // 2. Format data chat untuk frontend
+      const chatDataToReturn = {
+        ...chat, // Data chat yang sudah ada
+
+        // Inject payment data yang sudah difilter
+        payment: latestActivePayment
+          ? { expiresAt: latestActivePayment.expiresAt.toISOString() }
+          : null, // Jika tidak ada pembayaran aktif, kirim null
+      };
+
+      console.log(
+        "✅ Returning chat data with latest expiry:",
+        chatDataToReturn.payment?.expiresAt
+      );
+
+      res.status(200).json({ success: true, data: chatDataToReturn });
     } catch (error) {
       console.error("❌ Error createChat:", error);
       res.status(500).json({
