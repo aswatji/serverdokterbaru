@@ -8,7 +8,7 @@ import validateRequest from "../middleware/validation.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 
 export default function paymentRoutes(io) {
-  paymentController.io =io
+  paymentController.io = io;
   const router = express.Router();
   const controller = paymentController;
 
@@ -93,6 +93,11 @@ export default function paymentRoutes(io) {
     param("id").notEmpty().withMessage("Payment ID is required"),
     validateRequest,
     paymentController.deletePayment
+  );
+  router.get(
+    "/active/doctor",
+    authMiddleware,
+    paymentController.getActiveConsultations
   );
 
   return router;

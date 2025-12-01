@@ -319,6 +319,56 @@ class PaymentController {
       });
     }
   }
+  async getActiveConsultations(req, res) {
+    try {
+      const { id: doctorId } = req.user;
+      const now = new Date();
+
+      const activeChats = await prisma.chat.findMany({
+        where: {
+          doctorId: doctorId,
+          // Filter chat yang payment-nya sukses DAN expiresAt > waktu sekarang
+          payment: {
+            is: {
+              status: "success",
+              expiresAt: {
+                gt: now, // Filter: expiresAt LEBIH BESAR dari waktu sekarang (belum kadaluarsa)
+              },
+            },
+          },
+        },
+        include: {
+          user: { select: { id: true, fullname: true, photo: true } },
+          payment: { select: { expiresAt: true, paidAt: true } },
+        },
+        orderBy: {
+          updatedAt: "desc",
+        },
+      });
+
+      const formatted = activeChats.map((chat) => ({
+        chatId: chat.id,
+        userId: chat.userId,
+        userName: chat.user.fullname,
+        userPhoto: chat.user.photo,
+        expiresAt: chat.payment?.expiresAt, // Waktu habisnya chat
+        remaining: chat.payment?.expiresAt
+          ? chat.payment.expiresAt.getTime() - now.getTime()
+          : 0,
+      }));
+
+      res.status(200).json({ success: true, data: formatted });
+    } catch (error) {
+      console.error("❌ getActiveConsultations error:", error);
+      res
+        .status(500)
+        .json({
+          success: false,
+          message: "Failed to fetch active consultations",
+          error: error.message,
+        });
+    }
+  }
 }
 
 export default new PaymentController();
