@@ -123,30 +123,7 @@ class PaymentController {
         where: { id: payload.order_id },
         data: updateData,
       });
-     
-      if (!chat) {
-        chat = await prisma.chat.create({
-          data: {
-            chatKey: `CHAT-${Date.now()}`,
-            userId: updatedPayment.userId,
-            doctorId: updatedPayment.doctorId,
-            payment: { connect: { id: updatedPayment.id } },
-            isActive: true,
-            expiredAt: newExpiry, // ✅ TAMBAHKAN INI SAAT CREATE
-          },
-        });
-      } else {
-        await prisma.chat.update({
-          where: { id: chat.id },
-          data: {
-            payment: { connect: { id: updatedPayment.id } },
-            isActive: true,
-            updatedAt: new Date(),
-            expiredAt: newExpiry, // ✅ TAMBAHKAN INI SAAT UPDATE
-          },
-        });
-      }
-
+      const newExpiry = new Date(now.getTime() + 30 * 60 * 1000);
 
       // =============================
       // 🔍 CARI CHAT ATAU BUAT BARU
@@ -175,6 +152,7 @@ class PaymentController {
             payment: { connect: { id: updatedPayment.id } },
             isActive: true,
             updatedAt: new Date(),
+            expiredAt: newExpiry, // ✅ TAMBAHKAN INI SAAT UPDATE
           },
         });
       }
@@ -384,13 +362,11 @@ class PaymentController {
       res.status(200).json({ success: true, data: formatted });
     } catch (error) {
       console.error("❌ getActiveConsultations error:", error);
-      res
-        .status(500)
-        .json({
-          success: false,
-          message: "Failed to fetch active consultations",
-          error: error.message,
-        });
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch active consultations",
+        error: error.message,
+      });
     }
   }
 }
