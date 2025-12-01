@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import MinioService from "../service/minioService"; // Sesuaikan path import ini
+import MinioService from "../service/minioService.js"; // Sesuaikan path import ini
 import { v4 as uuidv4 } from "uuid";
 import path from "path";
 
