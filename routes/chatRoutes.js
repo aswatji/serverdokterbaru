@@ -55,6 +55,8 @@ function chatRoutes(io) {
     controller.deleteMessage(req, res)
   );
 
+  router.post("/extend", authMiddleware, (req, res) => controller.extendSession(req, res));
+
   return router;
 }
 export default chatRoutes;

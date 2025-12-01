@@ -580,6 +580,106 @@ class ChatController {
       });
     }
   }
+
+  async extendSession(req, res) {
+    try {
+      const { chatId, minutes } = req.body; // Contoh: minutes = 30
+
+      if (!chatId || !minutes) {
+        return res.status(400).json({
+          success: false,
+          message: "chatId dan minutes wajib diisi",
+        });
+      }
+
+      // 1. Ambil data chat untuk tahu User & Doctor-nya
+      const chat = await prisma.chat.findUnique({
+        where: { id: chatId },
+        select: { userId: true, doctorId: true },
+      });
+
+      if (!chat) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Chat tidak ditemukan" });
+      }
+
+      // 2. Cari Pembayaran Terakhir yang Sukses (Paid)
+      // Kita update pembayaran terakhir, bukan membuat pembayaran baru
+      const lastPayment = await prisma.payment.findFirst({
+        where: {
+          userId: chat.userId,
+          doctorId: chat.doctorId,
+          status: { in: ["paid", "success"] }, // Hanya yang sudah lunas
+        },
+        orderBy: {
+          expiresAt: "desc", // Ambil yang paling akhir
+        },
+      });
+
+      if (!lastPayment) {
+        return res.status(400).json({
+          success: false,
+          message: "Tidak ada riwayat pembayaran aktif untuk diperpanjang",
+        });
+      }
+
+      // 3. Hitung Waktu Baru
+      const currentExpiry = new Date(lastPayment.expiresAt);
+      const now = new Date();
+
+      // Logika: Jika sudah expired, tambah dari SEKARANG.
+      // Jika belum expired, tambah dari SISA WAKTU yang ada.
+      const baseTime = currentExpiry > now ? currentExpiry : now;
+      const newExpiresAt = new Date(baseTime.getTime() + minutes * 60 * 1000);
+
+      // 4. Update Database (Tabel Payment)
+      await prisma.payment.update({
+        where: { id: lastPayment.id },
+        data: { expiresAt: newExpiresAt },
+      });
+
+      console.log(
+        `✅ Session extended for chat ${chatId}. New Expiry: ${newExpiresAt}`
+      );
+
+      // 5. 🔥 BROADCAST SOCKET (PENTING!)
+      // Kita gunakan event 'payment_success' karena Frontend Anda (ChatTimerContext)
+      // sudah mendengarkan event ini untuk me-reset timer.
+      try {
+        const io = getIO();
+        if (io) {
+          io.to(`chat:${chatId}`).emit("payment_success", {
+            chatId: chatId,
+            paymentId: lastPayment.id,
+            status: "paid",
+            expiresAt: newExpiresAt.toISOString(), // Kirim waktu baru ke Frontend
+          });
+          console.log(`📢 Timer update broadcasted to chat:${chatId}`);
+        }
+      } catch (socketErr) {
+        console.warn(
+          "⚠️ Socket not ready for timer update:",
+          socketErr.message
+        );
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: `Waktu berhasil diperpanjang ${minutes} menit`,
+        data: {
+          expiresAt: newExpiresAt,
+        },
+      });
+    } catch (error) {
+      console.error("❌ Error extendSession:", error);
+      res.status(500).json({
+        success: false,
+        message: "Gagal memperpanjang sesi",
+        error: error.message,
+      });
+    }
+  }
 }
 
 export default ChatController;
