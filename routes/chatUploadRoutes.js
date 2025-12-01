@@ -594,6 +594,7 @@
 // );
 
 // export default router;
+
 import express from "express";
 import multer from "multer";
 import { PrismaClient } from "@prisma/client";
@@ -610,10 +611,6 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
 });
-
-/**
- * 📤 POST /api/chat/upload
- */
 router.post(
   "/upload",
   authMiddleware,
@@ -621,13 +618,9 @@ router.post(
   async (req, res) => {
     try {
       const file = req.file;
-      const { chatId, sender } = req.body;
+      const { chatId } = req.body;
 
-      console.log("📤 [ROUTE] Upload Request:", {
-        chatId,
-        sender,
-        file: !!file,
-      });
+      console.log("📤 [ROUTE] Upload Request:", { chatId, file: !!file });
 
       // 1. Validasi Input
       if (!file)
@@ -639,117 +632,41 @@ router.post(
           .status(400)
           .json({ success: false, message: "ChatId wajib ada" });
 
-      // 2. Cek Chat di DB
-      const chat = await prisma.chat.findUnique({
-        where: { id: chatId },
-        select: {
-          id: true,
-          chatKey: true,
-          isActive: true,
-          userId: true,
-          doctorId: true,
-        },
-      });
+      // 2. Tentukan Nama File
+      // Kita bersihkan nama file agar aman di URL
+      const sanitizedFilename = file.originalname
+        .replace(/\s/g, "_")
+        .replace(/[^a-zA-Z0-9.-]/g, "");
+      const fileName = `chat/${chatId}/${Date.now()}-${sanitizedFilename}`;
 
-      if (!chat || !chat.isActive) {
-        return res
-          .status(400)
-          .json({ success: false, message: "Chat tidak valid/aktif" });
-      }
-
-      // 3. Tentukan Tipe & Nama File
-      const type = file.mimetype.startsWith("image/") ? "image" : "pdf";
-      const fileName = `chat/${chatId}/${Date.now()}-${file.originalname.replace(
-        /\s/g,
-        ""
-      )}`;
-
-      // 4. Upload ke MinIO
+      // 3. Upload ke MinIO
       console.log("☁️ Uploading to MinIO...");
       const uploadResult = await minioService.uploadFile(
         file.buffer,
         fileName,
         file.mimetype
       );
-      const fileUrl = uploadResult.url;
 
-      // 5. Update/Create ChatDate (Grouping Tanggal)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // Pastikan kita dapat string URL
+      const fileUrl = uploadResult.url || uploadResult;
 
-      const chatDate = await prisma.chatDate.upsert({
-        where: { chatId_date: { chatId: chat.id, date: today } },
-        update: {},
-        create: { chatId: chat.id, date: today },
-        select: { id: true },
-      });
+      console.log(`✅ Upload Sukses. URL: ${fileUrl}`);
 
-      // 6. Simpan Pesan ke DB
-      const savedMessage = await prisma.chatMessage.create({
-        data: {
-          chatDateId: chatDate.id,
-          sender: sender,
-          content: fileUrl,
-          type: type,
-        },
-      });
+      // ❌ HAPUS BAGIAN PRISMA CREATE / UPDATE
+      // ❌ HAPUS BAGIAN SOCKET BROADCAST
 
-      console.log(`✅ Database Saved. ID: ${savedMessage.id}`);
-
-      // 7. Update Last Message Chat
-      await prisma.chat.update({
-        where: { id: chat.id },
-        data: { lastMessageId: savedMessage.id, updatedAt: new Date() },
-      });
-
-      // 8. Payload untuk Socket & Response
-      const messagePayload = {
-        id: savedMessage.id,
-        chatId: chat.id, // Penting untuk filter di Frontend
-        chatDateId: chatDate.id,
-        sender: sender,
-        content: fileUrl,
-        type: type,
-        fileUrl: fileUrl,
-        fileName: file.originalname,
-        fileSize: file.size,
-        mimeType: file.mimetype,
-        sentAt: savedMessage.sentAt,
-        chatDate: { date: today.toISOString() },
-      };
-
-      // ============================================================
-      // 🔥 BROADCAST SOCKET (BAGIAN YG DIPERBAIKI)
-      // ============================================================
-      try {
-        // Gunakan getIO() agar instance SAMA dengan chat text
-        const io = getIO();
-
-        if (io) {
-          // ✅ GUNAKAN PREFIX 'chat:'
-          const roomName = `chat:${chat.id}`;
-
-          // Debugging: Cek apakah ada orang di room
-          const room = io.sockets.adapter.rooms.get(roomName);
-          const memberCount = room ? room.size : 0;
-
-          console.log(`📢 [ROUTE] Broadcasting to room: ${roomName}`);
-          console.log(`👥 [ROUTE] Members in room: ${memberCount}`);
-
-          io.to(roomName).emit("new_message", messagePayload);
-        } else {
-          console.error("❌ [ROUTE] Socket IO instance is null (getIO failed)");
-        }
-      } catch (socketErr) {
-        console.error("❌ [ROUTE] Socket Error:", socketErr);
-      }
-      // ============================================================
-
-      // 9. Response Sukses
+      // 4. Return URL ke Frontend
+      // Frontend yang akan menggunakan URL ini untuk mengirim pesan via Socket
       return res.status(200).json({
         success: true,
         message: "Upload berhasil",
-        data: messagePayload,
+        data: {
+          fileUrl: fileUrl,
+          fileName: file.originalname,
+          fileSize: file.size,
+          mimeType: file.mimetype,
+          // Kita tidak kirim ID pesan karena pesan belum dibuat di DB
+        },
       });
     } catch (err) {
       console.error("❌ [ROUTE] Upload Error:", err);
@@ -760,6 +677,7 @@ router.post(
 
 /**
  * 📤 POST /api/chat/upload/multiple
+ * Logic sama: Hanya upload, return array of URLs
  */
 router.post(
   "/upload/multiple",
@@ -768,7 +686,7 @@ router.post(
   async (req, res) => {
     try {
       const files = req.files;
-      const { chatId, sender } = req.body;
+      const { chatId } = req.body;
 
       if (!files || files.length === 0) {
         return res
@@ -776,32 +694,39 @@ router.post(
           .json({ success: false, message: "Tidak ada file" });
       }
 
-      // ... (Kode validasi chat sama seperti single upload) ...
-      // Agar ringkas, saya fokus ke bagian broadcast loop
-
-      const prisma = new PrismaClient(); // Gunakan instance prisma yg ada
-      // ... logic chat check ...
-      // Asumsi chat valid:
-
-      const uploadedMessages = [];
-      const io = getIO(); // Ambil IO sekali di luar loop
+      const uploadedFiles = [];
 
       for (const file of files) {
-        // ... Logic upload minio & create DB message ...
-        // Anggaplah 'message' dan 'fileUrl' sudah terbentuk
+        const sanitizedFilename = file.originalname
+          .replace(/\s/g, "_")
+          .replace(/[^a-zA-Z0-9.-]/g, "");
+        const fileName = `chat/${chatId}/${Date.now()}-${sanitizedFilename}`;
 
-        // Broadcast Loop
-        if (io) {
-          const roomName = `chat:${chatId}`; // ✅ Prefix Chat
-          // io.to(roomName).emit("new_message", payload);
-        }
-        // ...
+        const uploadResult = await minioService.uploadFile(
+          file.buffer,
+          fileName,
+          file.mimetype
+        );
+
+        const fileUrl = uploadResult.url || uploadResult;
+
+        uploadedFiles.push({
+          fileUrl: fileUrl,
+          fileName: file.originalname,
+          fileSize: file.size,
+          mimeType: file.mimetype,
+        });
       }
 
-      // Kembalikan response
-      // ...
+      // Return Array URL
+      res.status(200).json({
+        success: true,
+        message: `${uploadedFiles.length} file berhasil diupload`,
+        data: uploadedFiles,
+      });
     } catch (error) {
-      // ...
+      console.error("❌ Multiple upload error:", error);
+      res.status(500).json({ success: false, message: error.message });
     }
   }
 );
