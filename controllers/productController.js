@@ -1,68 +1,81 @@
 import { PrismaClient } from "@prisma/client";
-import MinioService from "../service/minioService.js"; // Sesuaikan path import ini
+// Pastikan path import ini mengarah ke file service yang SAMA dengan yang dipakai di Chat
+import minioService from "../service/minioService.js"; 
 import { v4 as uuidv4 } from "uuid";
 import path from "path";
 
 const prisma = new PrismaClient();
 
 class ProductController {
-  // ✅ membuat product
+  // ✅ CREATE PRODUCT
   async createProduct(req, res) {
     try {
-      // Saat pakai form-data, angka sering terkirim sebagai string, jadi perlu di-parse
       const { name, price } = req.body;
       let imageUrl = null;
 
-      // Logika Upload ke MinIO
+      // Logika Upload (Persis seperti Chat)
       if (req.file) {
-        const fileExtension = path.extname(req.file.originalname);
-        // Buat nama file unik: "products/uuid.jpg"
-        const fileName = `products/${uuidv4()}${fileExtension}`;
+        // 1. Bersihkan nama file (hapus spasi, dll)
+        const sanitizedFilename = req.file.originalname
+          .replace(/\s/g, "_")
+          .replace(/[^a-zA-Z0-9.-]/g, "");
         
-        // Upload menggunakan Service yang sudah kamu buat
-        const uploadResult = await MinioService.uploadFile(
+        // 2. Buat path unik: products/TIMESTAMP-namafile.jpg
+        const fileName = `products/${Date.now()}-${sanitizedFilename}`;
+
+        console.log("📤 Uploading Product Image:", fileName);
+
+        // 3. Panggil Service MinIO
+        const uploadResult = await minioService.uploadFile(
           req.file.buffer,
           fileName,
           req.file.mimetype
         );
-        
-        imageUrl = uploadResult.url;
+
+        // 4. Ambil URL (handle jika result berupa object atau string)
+        imageUrl = uploadResult.url || uploadResult;
       }
 
+      // 5. Simpan ke Database Prisma
       const product = await prisma.product.create({
         data: {
-          name,
-          image: imageUrl, // Simpan URL dari MinIO/Local
-          price: parseFloat(price), // Pastikan price jadi number
+          name: name,
+          price: parseFloat(price), // Pastikan harga jadi angka
+          image: imageUrl,          // Simpan URL MinIO disini
         },
       });
 
-      res.status(201).json({ success: true, data: product });
+      res.status(201).json({ 
+        success: true, 
+        message: "Produk berhasil dibuat",
+        data: product 
+      });
+
     } catch (error) {
-      console.error("Create Product Error:", error);
+      console.error("❌ Create Product Error:", error);
       res.status(500).json({ success: false, message: error.message });
     }
   }
 
-  // ✅ mendapatkan semua product (Tidak berubah)
+  // ✅ GET ALL PRODUCTS
   async getAllProducts(req, res) {
     try {
-      const products = await prisma.product.findMany();
+      const products = await prisma.product.findMany({
+        orderBy: { createdAt: 'desc' } // Urutkan dari yang terbaru
+      });
       res.json({ success: true, data: products });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }
   }
 
-  // ✅ mendapatkan product berdasarkan ID (Tidak berubah)
+  // ✅ GET PRODUCT BY ID
   async getProductById(req, res) {
     try {
       const { id } = req.params;
       const product = await prisma.product.findUnique({ where: { id } });
       if (!product) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Product not found" });
+        return res.status(404).json({ success: false, message: "Product not found" });
       }
       res.json({ success: true, data: product });
     } catch (error) {
@@ -70,30 +83,37 @@ class ProductController {
     }
   }
 
-  // ✅ memperbarui product berdasarkan ID
+  // ✅ UPDATE PRODUCT
   async updateProduct(req, res) {
     try {
       const { id } = req.params;
       const { name, price } = req.body;
 
-      // Siapkan object update
+      // Cek dulu apakah produk ada
+      const existingProduct = await prisma.product.findUnique({ where: { id } });
+      if (!existingProduct) {
+        return res.status(404).json({ success: false, message: "Product not found" });
+      }
+
       const updateData = {
         name,
         price: parseFloat(price),
       };
 
-      // Jika user mengupload gambar baru saat update
+      // Jika ada gambar baru di-upload
       if (req.file) {
-        const fileExtension = path.extname(req.file.originalname);
-        const fileName = `products/${uuidv4()}${fileExtension}`;
+        const sanitizedFilename = req.file.originalname
+          .replace(/\s/g, "_")
+          .replace(/[^a-zA-Z0-9.-]/g, "");
+        const fileName = `products/${Date.now()}-${sanitizedFilename}`;
 
-        const uploadResult = await MinioService.uploadFile(
+        const uploadResult = await minioService.uploadFile(
           req.file.buffer,
           fileName,
           req.file.mimetype
         );
 
-        updateData.image = uploadResult.url;
+        updateData.image = uploadResult.url || uploadResult;
       }
 
       const product = await prisma.product.update({
@@ -103,16 +123,15 @@ class ProductController {
 
       res.json({ success: true, data: product });
     } catch (error) {
-      console.error("Update Product Error:", error);
+      console.error("❌ Update Product Error:", error);
       res.status(500).json({ success: false, message: error.message });
     }
   }
 
-  // ✅ menghapus product berdasarkan ID
+  // ✅ DELETE PRODUCT
   async deleteProduct(req, res) {
     try {
       const { id } = req.params;
-      // Opsional: Kamu bisa tambahkan logika untuk menghapus file di MinIO juga disini sebelum delete DB
       await prisma.product.delete({ where: { id } });
       res.json({ success: true, message: "Product deleted successfully" });
     } catch (error) {
