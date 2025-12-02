@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 // Pastikan path import ini mengarah ke file service yang SAMA dengan yang dipakai di Chat
-import minioService from "../service/minioService.js"; 
+import minioService from "../service/minioService.js";
 import { v4 as uuidv4 } from "uuid";
 import path from "path";
 
@@ -10,7 +10,7 @@ class ProductController {
   // ✅ CREATE PRODUCT
   async createProduct(req, res) {
     try {
-      const { name, price } = req.body;
+      const { name, price, description } = req.body;
       let imageUrl = null;
 
       // Logika Upload (Persis seperti Chat)
@@ -19,7 +19,7 @@ class ProductController {
         const sanitizedFilename = req.file.originalname
           .replace(/\s/g, "_")
           .replace(/[^a-zA-Z0-9.-]/g, "");
-        
+
         // 2. Buat path unik: products/TIMESTAMP-namafile.jpg
         const fileName = `products/${Date.now()}-${sanitizedFilename}`;
 
@@ -41,16 +41,16 @@ class ProductController {
         data: {
           name: name,
           price: parseFloat(price), // Pastikan harga jadi angka
-          image: imageUrl,          // Simpan URL MinIO disini
+          image: imageUrl, // Simpan URL MinIO disini
+          description: description || null,
         },
       });
 
-      res.status(201).json({ 
-        success: true, 
+      res.status(201).json({
+        success: true,
         message: "Produk berhasil dibuat",
-        data: product 
+        data: product,
       });
-
     } catch (error) {
       console.error("❌ Create Product Error:", error);
       res.status(500).json({ success: false, message: error.message });
@@ -61,7 +61,7 @@ class ProductController {
   async getAllProducts(req, res) {
     try {
       const products = await prisma.product.findMany({
-        orderBy: { createdAt: 'desc' } // Urutkan dari yang terbaru
+        orderBy: { createdAt: "desc" }, // Urutkan dari yang terbaru
       });
       res.json({ success: true, data: products });
     } catch (error) {
@@ -75,7 +75,9 @@ class ProductController {
       const { id } = req.params;
       const product = await prisma.product.findUnique({ where: { id } });
       if (!product) {
-        return res.status(404).json({ success: false, message: "Product not found" });
+        return res
+          .status(404)
+          .json({ success: false, message: "Product not found" });
       }
       res.json({ success: true, data: product });
     } catch (error) {
@@ -90,9 +92,13 @@ class ProductController {
       const { name, price } = req.body;
 
       // Cek dulu apakah produk ada
-      const existingProduct = await prisma.product.findUnique({ where: { id } });
+      const existingProduct = await prisma.product.findUnique({
+        where: { id },
+      });
       if (!existingProduct) {
-        return res.status(404).json({ success: false, message: "Product not found" });
+        return res
+          .status(404)
+          .json({ success: false, message: "Product not found" });
       }
 
       const updateData = {
