@@ -1,39 +1,30 @@
 import express from "express";
-import ProductController from "../controllers/productController.js";
 import multer from "multer";
+import ProductController from "../controllers/ProductController.js";
 
 const router = express.Router();
 
-// --- 1. SETUP MULTER ---
-// Kita menggunakan memoryStorage() agar file tidak disimpan ke harddisk server dulu,
-// tapi disimpan sementara di RAM (sebagai Buffer).
-// Buffer inilah yang nanti dikirim oleh MinioService ke MinIO Cloud.
+// Setup Multer (Simpan di RAM/Buffer)
 const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
 
-const upload = multer({ 
-    storage: storage,
-    limits: {
-        fileSize: 5 * 1024 * 1024 // Opsional: Membatasi ukuran file max 5MB
-    }
-});
+// --- ROUTES ---
+// PERBAIKAN: Hapus "/products" di sini karena sudah didefinisikan di routes/index.js
+// URL Akhir: /api/products/ (karena /api + /products + /)
 
-// --- 2. DEFINISI ROUTE ---
+// CREATE: POST /api/products
+router.post("/", upload.single("image"), ProductController.createProduct);
 
-// CREATE: Upload gambar + Data Produk
-// 'image' adalah nama key/field yang harus dikirim dari Postman/Frontend
-router.post("/products", upload.single("image"), ProductController.createProduct);
+// READ ALL: GET /api/products
+router.get("/", ProductController.getAllProducts);
 
-// READ: Ambil semua produk
-router.get("/products", ProductController.getAllProducts);
+// READ ONE: GET /api/products/:id
+router.get("/:id", ProductController.getProductById);
 
-// READ: Ambil satu produk by ID
-router.get("/products/:id", ProductController.getProductById);
+// UPDATE: PUT /api/products/:id
+router.put("/:id", upload.single("image"), ProductController.updateProduct);
 
-// UPDATE: Edit data + Opsi ganti gambar
-// Kita pasang upload.single juga disini, karena user mungkin ingin mengganti foto produknya
-router.put("/products/:id", upload.single("image"), ProductController.updateProduct);
-
-// DELETE: Hapus produk
-router.delete("/products/:id", ProductController.deleteProduct);
+// DELETE: DELETE /api/products/:id
+router.delete("/:id", ProductController.deleteProduct);
 
 export default router;
