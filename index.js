@@ -161,6 +161,7 @@ async function startServer() {
           ratings: "/api/ratings",
           chat: "/api/chat",
           upload: "/api/upload",
+          products: "/api/products",
         },
       });
     });
