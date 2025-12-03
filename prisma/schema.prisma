@@ -175,4 +175,6 @@ model Product {
   price       Float
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  isRecommended Boolean  @default(false)
+  viewCount     Int      @default(0)
 }
