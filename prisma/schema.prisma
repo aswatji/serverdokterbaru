@@ -20,6 +20,7 @@ model User {
   ratings    DoctorRating[]
   payments   Payment[]
   unreads    ChatUnread[]   @relation("UserToUnread")
+  pushToken  String?
 }
 
 model Doctor {
@@ -41,6 +42,7 @@ model Doctor {
   schedules        DoctorSchedule[]
   payments         Payment[]
   unreads          ChatUnread[]     @relation("DoctorToUnread")
+  pushToken        String?
 }
 
 model DoctorSchedule {

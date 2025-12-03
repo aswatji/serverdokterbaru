@@ -58,6 +58,7 @@ const loginValidation = [
 // ======================================================
 
 // =================== USER ===================
+
 router.post(
   "/user/register",
   userRegisterValidation,
@@ -72,7 +73,7 @@ router.post(
   authController.loginUser
 );
 
-router.post("/user/logout", authController.logoutUser);
+router.post("/user/logout", authMiddleware, authController.logoutUser);
 
 // =================== DOCTOR ===================
 router.post(
@@ -89,9 +90,10 @@ router.post(
   authController.loginDoctor
 );
 
-router.post("/doctor/logout", authController.logoutDoctor);
+router.post("/doctor/logout", authMiddleware, authController.logoutDoctor);
 
 // =================== PROFILE (Both User & Doctor) ===================
 router.get("/profile", authMiddleware, authController.getProfile);
+router.post("/update-token", authMiddleware, authController.updatePushToken);
 
 export default router;
