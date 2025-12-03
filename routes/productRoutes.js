@@ -12,6 +12,8 @@ const upload = multer({ storage: storage });
 // PERBAIKAN: Hapus "/products" di sini karena sudah didefinisikan di routes/index.js
 // URL Akhir: /api/products/ (karena /api + /products + /)
 
+router.get("/home", ProductController.getHomeData);
+
 // CREATE: POST /api/products
 router.post("/", upload.single("image"), ProductController.createProduct);
 
