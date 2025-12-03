@@ -2,7 +2,7 @@ import prisma from "../config/database.js";
 import { getIO, initChatSocket } from "../chatSocket.js";
 import { uploadToMinio, deleteFromMinio } from "../utils/minioUpload.js";
 import { bucketName } from "../config/minio.js";
-
+import { sendPushNotification } from "../utils/notification.js";
 class ChatController {
   // =======================================================
   // 🔹 GET ALL CHATS
@@ -219,57 +219,167 @@ class ChatController {
   // =======================================================
   // 💬 SEND TEXT MESSAGE — OPTIMIZED with upsert & parallel queries
   // =======================================================
+  // async sendMessage(req, res) {
+  //   try {
+  //     const { chatKey } = req.params;
+  //     const { content } = req.body;
+  //     const { type } = req.user;
+
+  //     if (!content?.trim()) {
+  //       return res.status(400).json({
+  //         success: false,
+  //         message: "Pesan tidak boleh kosong",
+  //       });
+  //     }
+
+  //     // ✅ OPTIMASI 1: Ambil hanya field yang dibutuhkan
+  //     const chat = await prisma.chat.findUnique({
+  //       where: { chatKey },
+  //       select: { id: true },
+  //     });
+
+  //     if (!chat) {
+  //       return res.status(404).json({
+  //         success: false,
+  //         message: "Chat tidak ditemukan",
+  //       });
+  //     }
+
+  //     // ✅ OPTIMASI 2: Gunakan UPSERT untuk chatDate (1 query instead of 2-3)
+  //     const today = new Date();
+  //     today.setHours(0, 0, 0, 0);
+
+  //     const chatDate = await prisma.chatDate.upsert({
+  //       where: {
+  //         chatId_date: {
+  //           chatId: chat.id,
+  //           date: today,
+  //         },
+  //       },
+  //       update: {},
+  //       create: {
+  //         chatId: chat.id,
+  //         date: today,
+  //       },
+  //       select: { id: true },
+  //     });
+
+  //     // ✅ OPTIMASI 3: Buat message & update chat PARALLEL (jalankan bersamaan)
+  //     const [message] = await Promise.all([
+  //       prisma.chatMessage.create({
+  //         data: {
+  //           chatDateId: chatDate.id,
+  //           sender: type,
+  //           content,
+  //           type: "text",
+  //         },
+  //         select: {
+  //           id: true,
+  //           sender: true,
+  //           content: true,
+  //           type: true,
+  //           sentAt: true,
+  //         },
+  //       }),
+  //       // Update chat lastMessage (non-blocking)
+  //       prisma.chat
+  //         .update({
+  //           where: { id: chat.id },
+  //           data: { updatedAt: new Date() },
+  //         })
+  //         .catch((err) => console.warn("⚠️ Update chat failed:", err.message)),
+  //     ]);
+
+  //     // Update lastMessageId setelah message created
+  //     prisma.chat
+  //       .update({
+  //         where: { id: chat.id },
+  //         data: { lastMessageId: message.id },
+  //       })
+  //       .catch((err) =>
+  //         console.warn("⚠️ Update lastMessageId failed:", err.message)
+  //       );
+
+  //     // ✅ OPTIMASI 4: Broadcast socket tanpa await (non-blocking)
+  //     setImmediate(() => {
+  //       try {
+  //         const io = getIO();
+  //         const roomName = `chat:${chat.id}`;
+  //         io.to(roomName).emit("new_message", {
+  //           messageId: message.id,
+  //           chatId: chat.id,
+  //           sender: message.sender,
+  //           content: message.content,
+  //           type: message.type,
+  //           sentAt: message.sentAt,
+  //         });
+  //         console.log(`📢 Socket broadcast -> ${roomName}`);
+  //       } catch (socketErr) {
+  //         console.warn("⚠️ Socket.IO not ready:", socketErr.message);
+  //       }
+  //     });
+
+  //     // ✅ Response langsung tanpa tunggu update selesai
+  //     return res.status(201).json({
+  //       success: true,
+  //       message: "Pesan terkirim",
+  //       data: message,
+  //     });
+  //   } catch (error) {
+  //     console.error("❌ Error sendMessage:", error);
+  //     res.status(500).json({
+  //       success: false,
+  //       message: "Gagal mengirim pesan",
+  //       error: error.message,
+  //     });
+  //   }
+  // }
+
+  // =======================================================
+  // 💬 SEND FILE MESSAGE — NEW METHOD
+  // =======================================================
   async sendMessage(req, res) {
     try {
       const { chatKey } = req.params;
       const { content } = req.body;
-      const { type } = req.user;
+      const { id: senderId, type: senderType } = req.user;
 
       if (!content?.trim()) {
-        return res.status(400).json({
-          success: false,
-          message: "Pesan tidak boleh kosong",
-        });
+        return res
+          .status(400)
+          .json({ success: false, message: "Pesan tidak boleh kosong" });
       }
 
-      // ✅ OPTIMASI 1: Ambil hanya field yang dibutuhkan
+      // 🔥 2. UPDATE QUERY: Ambil data User & Doctor (termasuk pushToken & fullname)
       const chat = await prisma.chat.findUnique({
         where: { chatKey },
-        select: { id: true },
+        include: {
+          user: { select: { id: true, fullname: true, pushToken: true } },
+          doctor: { select: { id: true, fullname: true, pushToken: true } },
+        },
       });
 
-      if (!chat) {
-        return res.status(404).json({
-          success: false,
-          message: "Chat tidak ditemukan",
-        });
-      }
+      if (!chat)
+        return res
+          .status(404)
+          .json({ success: false, message: "Chat tidak ditemukan" });
 
-      // ✅ OPTIMASI 2: Gunakan UPSERT untuk chatDate (1 query instead of 2-3)
+      // --- Logic UPSERT & CREATE Message (TETAP SAMA SEPERTI OPTIMASIMU) ---
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
       const chatDate = await prisma.chatDate.upsert({
-        where: {
-          chatId_date: {
-            chatId: chat.id,
-            date: today,
-          },
-        },
+        where: { chatId_date: { chatId: chat.id, date: today } },
         update: {},
-        create: {
-          chatId: chat.id,
-          date: today,
-        },
+        create: { chatId: chat.id, date: today },
         select: { id: true },
       });
 
-      // ✅ OPTIMASI 3: Buat message & update chat PARALLEL (jalankan bersamaan)
       const [message] = await Promise.all([
         prisma.chatMessage.create({
           data: {
             chatDateId: chatDate.id,
-            sender: type,
+            sender: senderType,
             content,
             type: "text",
           },
@@ -281,27 +391,26 @@ class ChatController {
             sentAt: true,
           },
         }),
-        // Update chat lastMessage (non-blocking)
         prisma.chat
           .update({
             where: { id: chat.id },
-            data: { updatedAt: new Date() },
+            data: { updatedAt: new Date(), lastMessageId: undefined },
           })
           .catch((err) => console.warn("⚠️ Update chat failed:", err.message)),
       ]);
 
-      // Update lastMessageId setelah message created
-      prisma.chat
+      await prisma.chat
         .update({
           where: { id: chat.id },
           data: { lastMessageId: message.id },
         })
-        .catch((err) =>
-          console.warn("⚠️ Update lastMessageId failed:", err.message)
-        );
+        .catch((err) => console.warn(err));
 
-      // ✅ OPTIMASI 4: Broadcast socket tanpa await (non-blocking)
-      setImmediate(() => {
+      // --- END LOGIC DB ---
+
+      // 🔥 3. BROADCAST SOCKET & PUSH NOTIFICATION
+      setImmediate(async () => {
+        // A. Socket.IO (Realtime App Terbuka)
         try {
           const io = getIO();
           const roomName = `chat:${chat.id}`;
@@ -315,108 +424,252 @@ class ChatController {
           });
           console.log(`📢 Socket broadcast -> ${roomName}`);
         } catch (socketErr) {
-          console.warn("⚠️ Socket.IO not ready:", socketErr.message);
+          console.warn("Socket error", socketErr.message);
+        }
+
+        // B. Push Notification (App Tertutup/Background)
+        try {
+          // Tentukan Penerima (Lawan Bicara)
+          // Jika pengirim User -> Penerima Doctor. Jika pengirim Doctor -> Penerima User.
+          const receiver = senderType === "user" ? chat.doctor : chat.user;
+
+          // Nama Pengirim (untuk judul notif)
+          const senderName =
+            senderType === "user" ? chat.user.fullname : chat.doctor.fullname;
+
+          if (receiver && receiver.pushToken) {
+            const notifBody =
+              content.length > 50 ? content.substring(0, 50) + "..." : content;
+
+            await sendPushNotification(
+              receiver.pushToken,
+              senderName || "Pesan Baru", // Title
+              notifBody, // Body
+              { chatId: chat.id, chatKey: chat.chatKey } // Data payload untuk redirect
+            );
+          }
+        } catch (notifErr) {
+          console.error("❌ Gagal kirim notif:", notifErr);
         }
       });
 
-      // ✅ Response langsung tanpa tunggu update selesai
-      return res.status(201).json({
-        success: true,
-        message: "Pesan terkirim",
-        data: message,
-      });
+      return res
+        .status(201)
+        .json({ success: true, message: "Pesan terkirim", data: message });
     } catch (error) {
       console.error("❌ Error sendMessage:", error);
-      res.status(500).json({
-        success: false,
-        message: "Gagal mengirim pesan",
-        error: error.message,
-      });
+      res.status(500).json({ success: false, message: error.message });
     }
   }
+  // async sendFileMessage(req, res) {
+  //   try {
+  //     const { chatKey } = req.params;
+  //     const { type: userType } = req.user;
+  //     const file = req.file; // dari multer middleware
+
+  //     if (!file) {
+  //       return res.status(400).json({
+  //         success: false,
+  //         message: "File tidak ditemukan",
+  //       });
+  //     }
+
+  //     const allowedTypes = [
+  //       "image/jpeg",
+  //       "image/png",
+  //       "image/jpg",
+  //       "application/pdf",
+  //     ];
+  //     if (!allowedTypes.includes(file.mimetype)) {
+  //       return res.status(400).json({
+  //         success: false,
+  //         message: "Tipe file tidak didukung. Hanya jpg, png, pdf",
+  //       });
+  //     }
+
+  //     const maxSize = 5 * 1024 * 1024; // 5MB
+  //     if (file.size > maxSize) {
+  //       return res.status(400).json({
+  //         success: false,
+  //         message: "Ukuran file maksimal 5MB",
+  //       });
+  //     }
+
+  //     // ✅ OPTIMASI: Ambil hanya field yang dibutuhkan
+  //     const chat = await prisma.chat.findUnique({
+  //       where: { chatKey },
+  //       select: { id: true },
+  //     });
+
+  //     if (!chat) {
+  //       return res.status(404).json({
+  //         success: false,
+  //         message: "Chat tidak ditemukan",
+  //       });
+  //     }
+
+  //     // Tentukan tipe message (image atau file)
+  //     const messageType = file.mimetype.startsWith("image/") ? "image" : "file";
+
+  //     // Upload file ke MinIO & upsert chatDate PARALLEL
+  //     const timestamp = Date.now();
+  //     const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, "_");
+  //     const fileName = `chat/${chat.id}/${timestamp}-${sanitizedName}`;
+
+  //     const today = new Date();
+  //     today.setHours(0, 0, 0, 0);
+
+  //     // ✅ OPTIMASI: Jalankan upload dan upsert bersamaan
+  //     const [fileUrl, chatDate] = await Promise.all([
+  //       uploadToMinio(file.buffer, fileName, file.mimetype),
+  //       prisma.chatDate.upsert({
+  //         where: {
+  //           chatId_date: {
+  //             chatId: chat.id,
+  //             date: today,
+  //           },
+  //         },
+  //         update: {},
+  //         create: {
+  //           chatId: chat.id,
+  //           date: today,
+  //         },
+  //         select: { id: true },
+  //       }),
+  //     ]);
+
+  //     // Buat message dengan file URL dari MinIO
+  //     const message = await prisma.chatMessage.create({
+  //       data: {
+  //         chatDateId: chatDate.id,
+  //         sender: userType,
+  //         content: fileUrl, // URL dari MinIO
+  //         type: messageType,
+  //       },
+  //       select: {
+  //         id: true,
+  //         sender: true,
+  //         content: true,
+  //         type: true,
+  //         sentAt: true,
+  //       },
+  //     });
+
+  //     // ✅ OPTIMASI: Update lastMessage non-blocking
+  //     prisma.chat
+  //       .update({
+  //         where: { id: chat.id },
+  //         data: { lastMessageId: message.id, updatedAt: new Date() },
+  //       })
+  //       .catch((err) => console.warn("⚠️ Update chat failed:", err.message));
+
+  //     // ✅ OPTIMASI: Broadcast socket non-blocking
+  //     setImmediate(() => {
+  //       try {
+  //         const io = getIO();
+  //         const roomName = `chat:${chat.id}`;
+  //         io.to(roomName).emit("new_message", {
+  //           messageId: message.id,
+  //           chatId: chat.id,
+  //           sender: message.sender,
+  //           content: message.content,
+  //           type: message.type,
+  //           sentAt: message.sentAt,
+  //           fileName: file.originalname,
+  //           fileSize: file.size,
+  //         });
+  //         console.log(`📢 File message broadcast -> ${roomName}`);
+  //       } catch (socketErr) {
+  //         console.warn("⚠️ Socket.IO not ready:", socketErr.message);
+  //       }
+  //     });
+
+  //     return res.status(201).json({
+  //       success: true,
+  //       message: "File berhasil dikirim",
+  //       data: {
+  //         id: message.id,
+  //         sender: message.sender,
+  //         content: message.content,
+  //         type: message.type,
+  //         sentAt: message.sentAt,
+  //         fileName: file.originalname,
+  //         fileSize: file.size,
+  //       },
+  //     });
+  //   } catch (error) {
+  //     console.error("❌ Error sendFileMessage:", error);
+  //     res.status(500).json({
+  //       success: false,
+  //       message: "Gagal mengirim file",
+  //       error: error.message,
+  //     });
+  //   }
+  // }
+  // =======================================================
+// 💬 SEND FILE MESSAGE — NEW METHOD
+// =======================================================
   async sendFileMessage(req, res) {
     try {
       const { chatKey } = req.params;
       const { type: userType } = req.user;
-      const file = req.file; // dari multer middleware
+      const file = req.file;
 
-      if (!file) {
-        return res.status(400).json({
-          success: false,
-          message: "File tidak ditemukan",
-        });
-      }
+      if (!file)
+        return res
+          .status(400)
+          .json({ success: false, message: "File tidak ditemukan" });
 
+      // Validasi File (TETAP SAMA)
       const allowedTypes = [
         "image/jpeg",
         "image/png",
         "image/jpg",
         "application/pdf",
       ];
-      if (!allowedTypes.includes(file.mimetype)) {
-        return res.status(400).json({
-          success: false,
-          message: "Tipe file tidak didukung. Hanya jpg, png, pdf",
-        });
-      }
+      if (!allowedTypes.includes(file.mimetype))
+        return res
+          .status(400)
+          .json({ success: false, message: "Format salah" });
+      if (file.size > 5 * 1024 * 1024)
+        return res.status(400).json({ success: false, message: "Max 5MB" });
 
-      const maxSize = 5 * 1024 * 1024; // 5MB
-      if (file.size > maxSize) {
-        return res.status(400).json({
-          success: false,
-          message: "Ukuran file maksimal 5MB",
-        });
-      }
-
-      // ✅ OPTIMASI: Ambil hanya field yang dibutuhkan
+      // 🔥 2. UPDATE QUERY: Ambil data User & Doctor
       const chat = await prisma.chat.findUnique({
         where: { chatKey },
-        select: { id: true },
+        include: {
+          user: { select: { id: true, fullname: true, pushToken: true } },
+          doctor: { select: { id: true, fullname: true, pushToken: true } },
+        },
       });
 
-      if (!chat) {
-        return res.status(404).json({
-          success: false,
-          message: "Chat tidak ditemukan",
-        });
-      }
+      if (!chat)
+        return res
+          .status(404)
+          .json({ success: false, message: "Chat tidak ditemukan" });
 
-      // Tentukan tipe message (image atau file)
       const messageType = file.mimetype.startsWith("image/") ? "image" : "file";
-
-      // Upload file ke MinIO & upsert chatDate PARALLEL
       const timestamp = Date.now();
       const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, "_");
       const fileName = `chat/${chat.id}/${timestamp}-${sanitizedName}`;
-
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      // ✅ OPTIMASI: Jalankan upload dan upsert bersamaan
       const [fileUrl, chatDate] = await Promise.all([
         uploadToMinio(file.buffer, fileName, file.mimetype),
         prisma.chatDate.upsert({
-          where: {
-            chatId_date: {
-              chatId: chat.id,
-              date: today,
-            },
-          },
+          where: { chatId_date: { chatId: chat.id, date: today } },
           update: {},
-          create: {
-            chatId: chat.id,
-            date: today,
-          },
+          create: { chatId: chat.id, date: today },
           select: { id: true },
         }),
       ]);
 
-      // Buat message dengan file URL dari MinIO
       const message = await prisma.chatMessage.create({
         data: {
           chatDateId: chatDate.id,
           sender: userType,
-          content: fileUrl, // URL dari MinIO
+          content: fileUrl,
           type: messageType,
         },
         select: {
@@ -428,16 +681,16 @@ class ChatController {
         },
       });
 
-      // ✅ OPTIMASI: Update lastMessage non-blocking
       prisma.chat
         .update({
           where: { id: chat.id },
           data: { lastMessageId: message.id, updatedAt: new Date() },
         })
-        .catch((err) => console.warn("⚠️ Update chat failed:", err.message));
+        .catch((err) => console.warn(err));
 
-      // ✅ OPTIMASI: Broadcast socket non-blocking
-      setImmediate(() => {
+      // 🔥 3. BROADCAST SOCKET & PUSH NOTIFICATION
+      setImmediate(async () => {
+        // A. Socket
         try {
           const io = getIO();
           const roomName = `chat:${chat.id}`;
@@ -453,34 +706,47 @@ class ChatController {
           });
           console.log(`📢 File message broadcast -> ${roomName}`);
         } catch (socketErr) {
-          console.warn("⚠️ Socket.IO not ready:", socketErr.message);
+          console.warn("Socket error", socketErr.message);
+        }
+
+        // B. Push Notification
+        try {
+          const receiver = userType === "user" ? chat.doctor : chat.user;
+          const senderName =
+            userType === "user" ? chat.user.fullname : chat.doctor.fullname;
+
+          if (receiver && receiver.pushToken) {
+            // Sesuaikan isi notif berdasarkan tipe file
+            const notifBody =
+              messageType === "image"
+                ? "📷 Mengirim gambar"
+                : "📄 Mengirim dokumen";
+
+            await sendPushNotification(
+              receiver.pushToken,
+              senderName || "File Baru",
+              notifBody,
+              { chatId: chat.id, chatKey: chat.chatKey }
+            );
+          }
+        } catch (notifErr) {
+          console.error("❌ Gagal kirim notif file:", notifErr);
         }
       });
 
       return res.status(201).json({
         success: true,
         message: "File berhasil dikirim",
-        data: {
-          id: message.id,
-          sender: message.sender,
-          content: message.content,
-          type: message.type,
-          sentAt: message.sentAt,
-          fileName: file.originalname,
-          fileSize: file.size,
-        },
+        data: { ...message, fileName: file.originalname, fileSize: file.size },
       });
     } catch (error) {
       console.error("❌ Error sendFileMessage:", error);
-      res.status(500).json({
-        success: false,
-        message: "Gagal mengirim file",
-        error: error.message,
-      });
+      res.status(500).json({ success: false, message: error.message });
     }
   }
 
   // 🗑️ DELETE MESSAGE (dengan cleanup file dari MinIO)
+
   async deleteMessage(req, res) {
     try {
       const { messageId } = req.params;
