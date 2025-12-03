@@ -248,7 +248,7 @@ class ProductController {
         data: {
           name: name,
           price: parseFloat(price),
-          imageUrl: imageUrl, // Sesuaikan dengan schema (imageUrl atau image)
+          image: imageUrl, // Sesuaikan dengan schema (imageUrl atau image)
           description: description || null,
           isRecommended: isRecommendedBool, // Simpan status rekomendasi
         },
@@ -352,7 +352,7 @@ class ProductController {
           req.file.mimetype
         );
 
-        updateData.imageUrl = uploadResult.url || uploadResult;
+        updateData.image = uploadResult.url || uploadResult;
       }
 
       const product = await prisma.product.update({
