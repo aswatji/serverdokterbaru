@@ -17,19 +17,45 @@ export const sendPushNotification = async (pushToken, title, body, data = {}) =>
       sound: "default",
       title: title,
       body: body,
-      data: data, // Data untuk redirect (chatId, dll)
+      data: data,
       badge: 1,
+      _displayInForeground: true, // Tambahan: Biar muncul walau app lagi dibuka (opsional)
     },
   ];
 
   // 3. Kirim
   try {
     const chunks = expo.chunkPushNotifications(messages);
+    const tickets = [];
+
     for (let chunk of chunks) {
-      await expo.sendPushNotificationsAsync(chunk);
+      try {
+        const ticketChunk = await expo.sendPushNotificationsAsync(chunk);
+        tickets.push(...ticketChunk);
+        
+        // --- LOGGING TAMBAHAN UNTUK DEBUGGING ---
+        console.log("🎫 Ticket Respon dari Expo:", ticketChunk); 
+        // ----------------------------------------
+
+      } catch (error) {
+        console.error("❌ Error sending chunk:", error);
+      }
     }
-    console.log(`🔔 Notifikasi dikirim ke: ${pushToken}`);
+    
+    // Cek apakah ada error spesifik di dalam ticket
+    // Contoh error umum: "DeviceNotRegistered" (Token lama/kadaluarsa)
+    tickets.forEach((ticket) => {
+        if (ticket.status === 'error') {
+            console.error(`❌ Gagal kirim (Expo Error): ${ticket.message}`);
+            if (ticket.details && ticket.details.error) {
+                console.error(`   Detail: ${ticket.details.error}`);
+            }
+        } else {
+            console.log(`✅ Notifikasi SUKSES dikirim ke server Expo: ${pushToken}`);
+        }
+    });
+
   } catch (error) {
-    console.error("❌ Gagal kirim notifikasi:", error);
+    console.error("❌ Gagal total kirim notifikasi:", error);
   }
 };
