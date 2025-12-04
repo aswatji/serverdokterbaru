@@ -18,6 +18,7 @@ import uploadRoutes from "./uploadRoutes.js";
 import chatUploadRoutes from "./chatUploadRoutes.js";
 import upload from "../middleware/uploadMiddleware.js";
 import productRoutes from "./productRoutes.js";
+import chatTemplateRoutes from "./chatTemplateRoutes.js";
 
 // Export function yang nerima io parameter
 export default function routes(io) {
@@ -78,6 +79,11 @@ export default function routes(io) {
      ⭐ DOCTOR RATINGS
   ------------------------------------------- */
   router.use("/ratings", ratingRoutes);
+
+  /* -------------------------------------------
+     📋 CHAT TEMPLATES (Doctor Quick Messages)
+  ------------------------------------------- */
+  router.use("/chat-templates", chatTemplateRoutes);
 
   // ✅ Product routes
   router.use("/products", productRoutes); // ✅ Tambahkan ini

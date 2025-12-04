@@ -170,6 +170,122 @@ async function main() {
     ],
   });
 
+  // ✅ Seed Chat Templates for all doctors
+  console.log("🌱 Seeding Chat Templates...");
+  
+  const defaultTemplates = [
+    // ETIKET
+    {
+      category: "etiket",
+      title: "Sapaan",
+      content: "Selamat pagi/siang/sore/malam. Terima kasih telah berkonsultasi dengan saya.",
+    },
+    {
+      category: "etiket",
+      title: "Penutup",
+      content: "Semoga cepat sembuh. Jangan ragu untuk berkonsultasi kembali jika ada keluhan.",
+    },
+    // ANAMNESIS
+    {
+      category: "anamnesis",
+      title: "Keluhan Utama",
+      content: "Bisa tolong jelaskan keluhan yang Anda rasakan saat ini? Sejak kapan keluhan ini muncul?",
+    },
+    {
+      category: "anamnesis",
+      title: "Riwayat Penyakit",
+      content: "Apakah Anda memiliki riwayat penyakit kronis seperti diabetes, hipertensi, atau asma?",
+    },
+    {
+      category: "anamnesis",
+      title: "Alergi Obat",
+      content: "Apakah Anda memiliki alergi terhadap obat-obatan tertentu?",
+    },
+    // PENJELASAN
+    {
+      category: "penjelasan",
+      title: "Diagnosis Sementara",
+      content: "Berdasarkan gejala yang Anda sampaikan, kemungkinan Anda mengalami [diagnosis]. Namun, untuk memastikan diperlukan pemeriksaan lebih lanjut.",
+    },
+    {
+      category: "penjelasan",
+      title: "Cara Minum Obat",
+      content: "Obat ini diminum [frekuensi] per hari, [waktu]. Pastikan diminum setelah makan untuk mengurangi efek samping pada lambung.",
+    },
+    // PELAKSANAAN
+    {
+      category: "pelaksanaan",
+      title: "Istirahat Cukup",
+      content: "Saya sarankan Anda untuk istirahat yang cukup minimal 7-8 jam per hari dan hindari aktivitas berat sementara waktu.",
+    },
+    {
+      category: "pelaksanaan",
+      title: "Minum Air Putih",
+      content: "Pastikan Anda minum air putih minimal 2 liter (8 gelas) per hari untuk membantu proses penyembuhan.",
+    },
+    {
+      category: "pelaksanaan",
+      title: "Kompres Hangat",
+      content: "Anda bisa mengompres bagian yang nyeri dengan air hangat selama 15-20 menit, 2-3 kali sehari.",
+    },
+    // LAB
+    {
+      category: "lab",
+      title: "Tes Darah Lengkap",
+      content: "Saya merekomendasikan Anda untuk melakukan pemeriksaan darah lengkap untuk melihat kondisi kesehatan Anda secara menyeluruh.",
+    },
+    {
+      category: "lab",
+      title: "Rontgen",
+      content: "Untuk memastikan diagnosis, diperlukan pemeriksaan rontgen [bagian tubuh]. Silakan lakukan di laboratorium terdekat.",
+    },
+    // QUICK
+    {
+      category: "quick",
+      title: "Baik, saya mengerti",
+      content: "Baik, saya mengerti. Terima kasih atas informasinya.",
+    },
+    {
+      category: "quick",
+      title: "Mohon tunggu",
+      content: "Mohon tunggu sebentar, saya akan memeriksa data Anda terlebih dahulu.",
+    },
+    {
+      category: "quick",
+      title: "Sudah saya resepkan",
+      content: "Sudah saya resepkan obatnya. Silakan cek di menu resep dan lakukan pembayaran.",
+    },
+  ];
+
+  // Get all doctors
+  const doctors = await prisma.doctor.findMany({ select: { id: true, fullname: true } });
+  
+  for (const doctor of doctors) {
+    console.log(`📝 Creating templates for ${doctor.fullname}...`);
+    
+    for (const template of defaultTemplates) {
+      await prisma.chatTemplate.upsert({
+        where: {
+          doctorId_category_title: {
+            doctorId: doctor.id,
+            category: template.category,
+            title: template.title,
+          },
+        },
+        update: { content: template.content },
+        create: {
+          doctorId: doctor.id,
+          category: template.category,
+          title: template.title,
+          content: template.content,
+        },
+      });
+    }
+    
+    console.log(`✅ ${defaultTemplates.length} templates created for ${doctor.fullname}`);
+  }
+
+  console.log("✅ Chat Templates seeding completed!");
   console.log("Seeding completed successfully!");
 }
 

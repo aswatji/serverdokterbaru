@@ -43,6 +43,7 @@ model Doctor {
   payments         Payment[]
   unreads          ChatUnread[]     @relation("DoctorToUnread")
   pushToken        String?
+  chatTemplates    ChatTemplate[]   // ✅ Relasi ke templates
 }
 
 model DoctorSchedule {
@@ -179,4 +180,21 @@ model Product {
   updatedAt   DateTime @updatedAt
   isRecommended Boolean  @default(false)
   viewCount     Int      @default(0)
+}
+
+model ChatTemplate {
+  id        String   @id @default(cuid())
+  category  String   // "etiket" | "anamnesis" | "penjelasan" | "pelaksanaan" | "lab" | "quick"
+  title     String   // Nama tombol (e.g., "Sapaan")
+  content   String   @db.Text // Isi pesan panjang
+  
+  doctorId  String
+  doctor    Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([doctorId, category, title])
+  @@index([doctorId])
+  @@index([category])
 }
