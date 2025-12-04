@@ -468,14 +468,22 @@ class ChatController {
           console.log(`🔔 [DEBUG] Coba kirim notif ke: ${receiver?.fullname}`);
 
           if (receiver && receiver.pushToken) {
-            const notifBody =
-              content.length > 50 ? content.substring(0, 50) + "..." : content;
-
+            let notifBody = "";
+            if (messageType === "image") {
+              notifBody = "📷 Mengirim foto";
+            } else if (messageType === "file") {
+              notifBody = "📄 Mengirim file";
+            } else {
+              notifBody =
+                content.length > 50
+                  ? content.substring(0, 50) + "..."
+                  : content;
+            }
             await sendPushNotification(
               receiver.pushToken,
               senderName || "Pesan Baru",
               notifBody,
-              { chatId: chat.id, chatKey: chat.chatKey }
+              { screen: "chat", chatId: chat.id, chatKey: chat.chatKey }
             );
           } else {
             console.log("⚠️ [DEBUG] Skip notif: Token kosong/Receiver null");

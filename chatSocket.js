@@ -544,16 +544,25 @@ export function initChatSocket(socketIo) {
 
             // Pastikan token ada
             if (receiver && receiver.pushToken) {
-              const notifBody =
-                content.length > 50
-                  ? content.substring(0, 50) + "..."
-                  : content;
+              let notifBody = "";
 
+              if (type === "image") {
+                notifBody = "📷 Mengirim sebuah foto";
+              } else if (type === "file" || type === "document") {
+                // Sesuaikan dengan type di DB Anda
+                notifBody = "📄 Mengirim sebuah dokumen";
+              } else {
+                // Jika text biasa, baru kita potong jika kepanjangan
+                notifBody =
+                  content.length > 50
+                    ? content.substring(0, 50) + "..."
+                    : content;
+              }
               await sendPushNotification(
                 receiver.pushToken,
                 senderName || "Pesan Baru", // Title
                 notifBody, // Body
-                { chatId: chat.id, chatKey: chat.chatKey } // Data Payload
+                { screen: "chat", chatId: chat.id, chatKey: chat.chatKey } // Data Payload
               );
               console.log(
                 `🔔 Notif sent to ${receiver.fullname} (${receiver.pushToken})`
