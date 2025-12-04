@@ -1,4 +1,3 @@
-
 // import { Server } from "socket.io";
 // import prisma from "./config/database.js";
 // import minioService from "./service/minioService.js";
@@ -124,9 +123,9 @@
 
 //         // Jika DOKTER yang baca -> Reset unread milik dokter
 //         // Jika USER yang baca -> Reset unread milik user
-        
+
 //         let whereCondition = {};
-        
+
 //         if (role === "doctor") {
 //            whereCondition = { chatId, doctorId: { not: null } }; // Reset record unread milik dokter
 //         } else {
@@ -226,7 +225,7 @@
 //               select: { unreadCount: true }
 //             });
 //             ioInstance.to(roomName).emit("update_unread", { role: "doctor", count: unread.unreadCount });
-          
+
 //           } else if (sender === "doctor") {
 //             // Dokter kirim -> User belum baca
 //             const unread = await prisma.chatUnread.upsert({
@@ -276,17 +275,16 @@
 //   if (!ioInstance) throw new Error("Socket.IO not initialized");
 //   return ioInstance;
 // }
-
 import { Server } from "socket.io";
 import prisma from "./config/database.js";
-import minioService from "./service/minioService.js";
+import { sendPushNotification } from "./utils/notification.js"; // 👈 WAJIB IMPORT INI
 
 let ioInstance;
 let doctorAvailabilityInterval;
 
 // Cache doctorId agar tidak hit DB terus menerus
-const chatDoctorCache = new Map(); // chatId -> { doctorId, expiresAt }
-const CHAT_DOCTOR_CACHE_TTL = 60 * 1000; // 60s TTL
+const chatDoctorCache = new Map();
+const CHAT_DOCTOR_CACHE_TTL = 60 * 1000;
 
 function cacheSetChatDoctor(chatId, doctorId) {
   chatDoctorCache.set(chatId, {
@@ -350,14 +348,13 @@ export function initChatSocket(socketIo) {
           return;
         }
 
-        const roomName = `chat:${chatId}`; // ✅ Prefix Chat
+        const roomName = `chat:${chatId}`;
         socket.join(roomName);
 
         const roomSize =
           ioInstance.sockets.adapter.rooms.get(roomName)?.size || 0;
         console.log(`👋 ${socket.id} joined ${roomName} (${roomSize} members)`);
 
-        // Emit status pembayaran saat join
         try {
           const chat = await prisma.chat.findUnique({
             where: { id: chatId },
@@ -394,34 +391,14 @@ export function initChatSocket(socketIo) {
       socket.to(roomName).emit("stop_typing", { chatId, sender });
     });
 
-    // 👁️ Mark as Read (Logic Role: 'doctor' or 'user')
+    // 👁️ Mark as Read
     socket.on("mark_as_read", async ({ chatId, role }) => {
-      // role: "doctor" (berarti dokter yang baca) atau "user" (user yang baca)
       try {
-        console.log(`👁️ Mark as read: Chat=${chatId}, Reader=${role}`);
-
-        let whereCondition = {};
-
-        // PERBAIKAN: Gunakan kunci spesifik agar lebih aman
-        if (role === "doctor") {
-          // Dokter membaca, berarti reset unread milik DOKTER
-          whereCondition = {
-            chatId_doctorId: { chatId, doctorId: socket.handshake.auth.doctorId || null } 
-            // Note: Jika socket auth tidak ada, fallback ke updateMany biasa di bawah
-          };
-        } else {
-          // User membaca, berarti reset unread milik USER
-          whereCondition = {
-            chatId_userId: { chatId, userId: socket.handshake.auth.userId || null }
-          };
-        }
-
-        // Kita gunakan updateMany agar lebih fleksibel jika ID tidak tersedia di socket auth
         let prismaWhere = {};
         if (role === "doctor") {
-            prismaWhere = { chatId, doctorId: { not: null } };
+          prismaWhere = { chatId, doctorId: { not: null } };
         } else {
-            prismaWhere = { chatId, userId: { not: null } };
+          prismaWhere = { chatId, userId: { not: null } };
         }
 
         await prisma.chatUnread.updateMany({
@@ -431,10 +408,9 @@ export function initChatSocket(socketIo) {
 
         ioInstance.to(`chat:${chatId}`).emit("update_unread", {
           chatId,
-          role, // Beri tahu FE siapa yang baru saja membaca
+          role,
           unreadCount: 0,
         });
-
       } catch (err) {
         console.error("❌ Mark as read error:", err);
       }
@@ -444,17 +420,20 @@ export function initChatSocket(socketIo) {
     socket.on("send_message", async (payload, callback) => {
       try {
         const { chatId, sender, content, type = "text", fileData } = payload;
-        // sender harus berisi string "doctor" atau "user"
 
         if (!chatId || !sender || (!content && !fileData)) {
           if (callback) callback({ success: false, error: "Data incomplete" });
           return;
         }
 
-        // Cek Chat
+        // 1. Ambil Data Chat BESERTA Token User & Doctor
+        // Kita ubah dari select biasa menjadi include relation
         const chat = await prisma.chat.findUnique({
           where: { id: chatId },
-          select: { id: true, isActive: true, userId: true, doctorId: true, chatKey: true }
+          include: {
+            user: { select: { id: true, fullname: true, pushToken: true } },
+            doctor: { select: { id: true, fullname: true, pushToken: true } },
+          },
         });
 
         if (!chat || !chat.isActive) {
@@ -472,11 +451,11 @@ export function initChatSocket(socketIo) {
           select: { id: true },
         });
 
-        // Simpan Pesan (sender = role string)
+        // Simpan Pesan
         const savedMessage = await prisma.chatMessage.create({
           data: {
             chatDateId: chatDate.id,
-            sender: sender, // "doctor" atau "user"
+            sender: sender,
             content,
             type,
           },
@@ -488,13 +467,13 @@ export function initChatSocket(socketIo) {
           data: { lastMessageId: savedMessage.id, updatedAt: new Date() },
         });
 
-        // Broadcast
+        // Broadcast ke Socket
         const messagePayload = {
           id: savedMessage.id,
           chatId: chat.id,
           chatDateId: chatDate.id,
           chatKey: chat.chatKey,
-          sender, // string role
+          sender,
           content,
           type,
           sentAt: savedMessage.sentAt,
@@ -505,68 +484,98 @@ export function initChatSocket(socketIo) {
         ioInstance.to(roomName).emit("new_message", messagePayload);
         console.log(`📢 Broadcast text to ${roomName} (Sender: ${sender})`);
 
-        // ==========================================================
-        // 🔥 UPDATE UNREAD LOGIC (FIXED - NO CRASH)
-        // ==========================================================
+        // Update Unread Logic (Fixed)
         try {
           if (sender === "user") {
-            // User kirim -> Update unread milik DOKTER
-            // Gunakan key: chatId_doctorId
             const unread = await prisma.chatUnread.upsert({
-              where: { 
-                chatId_doctorId: { 
-                  chatId: chat.id, 
-                  doctorId: chat.doctorId 
-                } 
-              }, 
-              update: { unreadCount: { increment: 1 } },
-              create: { 
-                chatId: chat.id, 
-                doctorId: chat.doctorId, 
-                userId: null, 
-                unreadCount: 1 
+              where: {
+                chatId_doctorId: { chatId: chat.id, doctorId: chat.doctorId },
               },
-              select: { unreadCount: true }
+              update: { unreadCount: { increment: 1 } },
+              create: {
+                chatId: chat.id,
+                doctorId: chat.doctorId,
+                userId: null,
+                unreadCount: 1,
+              },
+              select: { unreadCount: true },
             });
-            
-            ioInstance.to(roomName).emit("update_unread", { role: "doctor", count: unread.unreadCount });
-          
+            ioInstance.to(roomName).emit("update_unread", {
+              role: "doctor",
+              count: unread.unreadCount,
+            });
           } else if (sender === "doctor") {
-            // Dokter kirim -> Update unread milik USER
-            // Gunakan key: chatId_userId
             const unread = await prisma.chatUnread.upsert({
-              where: { 
-                chatId_userId: { 
-                  chatId: chat.id, 
-                  userId: chat.userId 
-                } 
-              }, 
-              update: { unreadCount: { increment: 1 } },
-              create: { 
-                chatId: chat.id, 
-                userId: chat.userId, 
-                doctorId: null, 
-                unreadCount: 1 
+              where: {
+                chatId_userId: { chatId: chat.id, userId: chat.userId },
               },
-              select: { unreadCount: true }
+              update: { unreadCount: { increment: 1 } },
+              create: {
+                chatId: chat.id,
+                userId: chat.userId,
+                doctorId: null,
+                unreadCount: 1,
+              },
+              select: { unreadCount: true },
             });
-            
-            ioInstance.to(roomName).emit("update_unread", { role: "user", count: unread.unreadCount });
+            ioInstance.to(roomName).emit("update_unread", {
+              role: "user",
+              count: unread.unreadCount,
+            });
           }
-        } catch (e) { 
-          console.error("⚠️ Unread update error in Socket:", e.message); 
+        } catch (e) {
+          console.error("⚠️ Unread update error:", e.message);
         }
-        // ==========================================================
 
+        // Callback sukses ke pengirim agar UI update
         if (callback) callback({ success: true, data: messagePayload });
 
+        // ==========================================================
+        // 🔥 [BARU] KIRIM PUSH NOTIFICATION (Non-blocking)
+        // ==========================================================
+        setImmediate(async () => {
+          try {
+            // Tentukan Penerima
+            const isSenderUser = sender === "user";
+            const receiver = isSenderUser ? chat.doctor : chat.user;
+            const senderName = isSenderUser
+              ? chat.user.fullname
+              : chat.doctor.fullname;
+
+            // Pastikan token ada
+            if (receiver && receiver.pushToken) {
+              const notifBody =
+                content.length > 50
+                  ? content.substring(0, 50) + "..."
+                  : content;
+
+              await sendPushNotification(
+                receiver.pushToken,
+                senderName || "Pesan Baru", // Title
+                notifBody, // Body
+                { chatId: chat.id, chatKey: chat.chatKey } // Data Payload
+              );
+              console.log(
+                `🔔 Notif sent to ${receiver.fullname} (${receiver.pushToken})`
+              );
+            } else {
+              console.log(
+                `⚠️ Skip Notif: Token kosong untuk ${
+                  isSenderUser ? "Doctor" : "User"
+                }`
+              );
+            }
+          } catch (notifErr) {
+            console.error("❌ Notif Error in Socket:", notifErr);
+          }
+        });
+        // ==========================================================
       } catch (err) {
         console.error("❌ Send message error:", err);
         if (callback) callback({ success: false, error: err.message });
       }
     });
 
-    // 🚪 Leave Room
     socket.on("leave_chat", (chatId) => {
       const roomName = `chat:${chatId}`;
       socket.leave(roomName);
@@ -584,7 +593,6 @@ export function initChatSocket(socketIo) {
 
 export function startDoctorAvailabilityNotification() {
   if (doctorAvailabilityInterval) clearInterval(doctorAvailabilityInterval);
-  // ... (Logic availability biarkan saja)
 }
 
 export function stopDoctorAvailabilityNotification() {
