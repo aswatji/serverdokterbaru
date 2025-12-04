@@ -338,6 +338,9 @@ class ChatController {
   // =======================================================
   // 💬 SEND FILE MESSAGE — NEW METHOD
   // =======================================================
+// =======================================================
+  // 💬 SEND TEXT MESSAGE — FIXED (Unread Count + Notif Debug)
+  // =======================================================
   async sendMessage(req, res) {
     try {
       const { chatKey } = req.params;
@@ -350,7 +353,7 @@ class ChatController {
           .json({ success: false, message: "Pesan tidak boleh kosong" });
       }
 
-      // 🔥 2. UPDATE QUERY: Ambil data User & Doctor (termasuk pushToken & fullname)
+      // 1. Ambil data Chat, User, & Doctor
       const chat = await prisma.chat.findUnique({
         where: { chatKey },
         include: {
@@ -364,7 +367,7 @@ class ChatController {
           .status(404)
           .json({ success: false, message: "Chat tidak ditemukan" });
 
-      // --- Logic UPSERT & CREATE Message (TETAP SAMA SEPERTI OPTIMASIMU) ---
+      // 2. Logic Simpan Pesan (Database)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
@@ -399,6 +402,7 @@ class ChatController {
           .catch((err) => console.warn("⚠️ Update chat failed:", err.message)),
       ]);
 
+      // Update lastMessageId terpisah agar aman
       await prisma.chat
         .update({
           where: { id: chat.id },
@@ -406,11 +410,37 @@ class ChatController {
         })
         .catch((err) => console.warn(err));
 
-      // --- END LOGIC DB ---
+      // ---------------------------------------------------------
+      // 🔥 [NEW] UPDATE UNREAD COUNT (Solusi Error Prisma Tadi)
+      // ---------------------------------------------------------
+      // Kita jalankan tanpa 'await' (fire and forget) agar response cepat
+      const targetRole = senderType === "user" ? "doctor" : "user";
+      const targetId = senderType === "user" ? chat.doctorId : chat.userId;
 
-      // 🔥 3. BROADCAST SOCKET & PUSH NOTIFICATION
+      // Tentukan WHERE clause yang benar sesuai Schema Prisma Anda
+      let unreadWhere = {};
+      if (targetRole === "user") {
+        unreadWhere = { chatId_userId: { chatId: chat.id, userId: targetId } };
+      } else {
+        unreadWhere = { chatId_doctorId: { chatId: chat.id, doctorId: targetId } };
+      }
+
+      prisma.chatUnread.upsert({
+        where: unreadWhere, // ✅ Ini perbaikan kuncinya!
+        update: { unreadCount: { increment: 1 } },
+        create: {
+          chatId: chat.id,
+          userId: targetRole === "user" ? targetId : null,
+          doctorId: targetRole === "doctor" ? targetId : null,
+          unreadCount: 1,
+        },
+      }).catch(err => console.error("⚠️ Gagal update unread:", err.message));
+      // ---------------------------------------------------------
+
+
+      // 3. BROADCAST SOCKET & PUSH NOTIFICATION
       setImmediate(async () => {
-        // A. Socket.IO (Realtime App Terbuka)
+        // A. Socket.IO
         try {
           const io = getIO();
           const roomName = `chat:${chat.id}`;
@@ -422,34 +452,31 @@ class ChatController {
             type: message.type,
             sentAt: message.sentAt,
           });
-          console.log(`📢 Socket broadcast -> ${roomName}`);
         } catch (socketErr) {
           console.warn("Socket error", socketErr.message);
         }
 
-        // B. Push Notification (App Tertutup/Background)
+        // B. Push Notification (Dengan Debugging Lengkap)
         try {
-          // Tentukan Penerima (Lawan Bicara)
-          // Jika pengirim User -> Penerima Doctor. Jika pengirim Doctor -> Penerima User.
           const receiver = senderType === "user" ? chat.doctor : chat.user;
+          const senderName = senderType === "user" ? chat.user.fullname : chat.doctor.fullname;
 
-          // Nama Pengirim (untuk judul notif)
-          const senderName =
-            senderType === "user" ? chat.user.fullname : chat.doctor.fullname;
+          console.log(`🔔 [DEBUG] Coba kirim notif ke: ${receiver?.fullname}`);
 
           if (receiver && receiver.pushToken) {
-            const notifBody =
-              content.length > 50 ? content.substring(0, 50) + "..." : content;
-
+            const notifBody = content.length > 50 ? content.substring(0, 50) + "..." : content;
+            
             await sendPushNotification(
               receiver.pushToken,
-              senderName || "Pesan Baru", // Title
-              notifBody, // Body
-              { chatId: chat.id, chatKey: chat.chatKey } // Data payload untuk redirect
+              senderName || "Pesan Baru",
+              notifBody,
+              { chatId: chat.id, chatKey: chat.chatKey }
             );
+          } else {
+            console.log("⚠️ [DEBUG] Skip notif: Token kosong/Receiver null");
           }
         } catch (notifErr) {
-          console.error("❌ Gagal kirim notif:", notifErr);
+          console.error("❌ [DEBUG] Gagal kirim notif:", notifErr);
         }
       });
 
