@@ -338,7 +338,7 @@ class ChatController {
   // =======================================================
   // 💬 SEND FILE MESSAGE — NEW METHOD
   // =======================================================
-// =======================================================
+  // =======================================================
   // 💬 SEND TEXT MESSAGE — FIXED (Unread Count + Notif Debug)
   // =======================================================
   async sendMessage(req, res) {
@@ -422,21 +422,24 @@ class ChatController {
       if (targetRole === "user") {
         unreadWhere = { chatId_userId: { chatId: chat.id, userId: targetId } };
       } else {
-        unreadWhere = { chatId_doctorId: { chatId: chat.id, doctorId: targetId } };
+        unreadWhere = {
+          chatId_doctorId: { chatId: chat.id, doctorId: targetId },
+        };
       }
 
-      prisma.chatUnread.upsert({
-        where: unreadWhere, // ✅ Ini perbaikan kuncinya!
-        update: { unreadCount: { increment: 1 } },
-        create: {
-          chatId: chat.id,
-          userId: targetRole === "user" ? targetId : null,
-          doctorId: targetRole === "doctor" ? targetId : null,
-          unreadCount: 1,
-        },
-      }).catch(err => console.error("⚠️ Gagal update unread:", err.message));
+      prisma.chatUnread
+        .upsert({
+          where: unreadWhere, // ✅ Ini perbaikan kuncinya!
+          update: { unreadCount: { increment: 1 } },
+          create: {
+            chatId: chat.id,
+            userId: targetRole === "user" ? targetId : null,
+            doctorId: targetRole === "doctor" ? targetId : null,
+            unreadCount: 1,
+          },
+        })
+        .catch((err) => console.error("⚠️ Gagal update unread:", err.message));
       // ---------------------------------------------------------
-
 
       // 3. BROADCAST SOCKET & PUSH NOTIFICATION
       setImmediate(async () => {
@@ -459,13 +462,15 @@ class ChatController {
         // B. Push Notification (Dengan Debugging Lengkap)
         try {
           const receiver = senderType === "user" ? chat.doctor : chat.user;
-          const senderName = senderType === "user" ? chat.user.fullname : chat.doctor.fullname;
+          const senderName =
+            senderType === "user" ? chat.user.fullname : chat.doctor.fullname;
 
           console.log(`🔔 [DEBUG] Coba kirim notif ke: ${receiver?.fullname}`);
 
           if (receiver && receiver.pushToken) {
-            const notifBody = content.length > 50 ? content.substring(0, 50) + "..." : content;
-            
+            const notifBody =
+              content.length > 50 ? content.substring(0, 50) + "..." : content;
+
             await sendPushNotification(
               receiver.pushToken,
               senderName || "Pesan Baru",
@@ -634,8 +639,8 @@ class ChatController {
   //   }
   // }
   // =======================================================
-// 💬 SEND FILE MESSAGE — NEW METHOD
-// =======================================================
+  // 💬 SEND FILE MESSAGE — NEW METHOD
+  // =======================================================
   async sendFileMessage(req, res) {
     try {
       const { chatKey } = req.params;
