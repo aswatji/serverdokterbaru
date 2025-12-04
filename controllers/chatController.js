@@ -2,7 +2,7 @@ import prisma from "../config/database.js";
 import { getIO, initChatSocket } from "../chatSocket.js";
 import { uploadToMinio, deleteFromMinio } from "../utils/minioUpload.js";
 import { bucketName } from "../config/minio.js";
-// import { sendPushNotification } from "../utils/notification.js"; // ❌ DISABLED - expo-server-sdk not installed
+import { sendPushNotification } from "../utils/notification.js";
 
 class ChatController {
   // =======================================================
@@ -480,17 +480,12 @@ class ChatController {
                   ? content.substring(0, 50) + "..."
                   : content;
             }
-            // await sendPushNotification(
-            //   receiver.pushToken,
-            //   senderName || "Pesan Baru",
-            //   notifBody,
-            //   { screen: "chat", chatId: chat.id, chatKey: chat.chatKey }
-            // );
-            console.log("📱 [DISABLED] Push notification would be sent:", {
-              token: receiver.pushToken?.substring(0, 20) + "...",
-              title: senderName || "Pesan Baru",
-              body: notifBody,
-            });
+            await sendPushNotification(
+              receiver.pushToken,
+              senderName || "Pesan Baru",
+              notifBody,
+              { screen: "chat", chatId: chat.id, chatKey: chat.chatKey }
+            );
           } else {
             console.log("⚠️ [DEBUG] Skip notif: Token kosong/Receiver null");
           }
@@ -768,17 +763,12 @@ class ChatController {
                 ? "📷 Mengirim gambar"
                 : "📄 Mengirim dokumen";
 
-            // await sendPushNotification(
-            //   receiver.pushToken,
-            //   senderName || "File Baru",
-            //   notifBody,
-            //   { chatId: chat.id, chatKey: chat.chatKey }
-            // );
-            console.log("📱 [DISABLED] Push notification would be sent:", {
-              token: receiver.pushToken?.substring(0, 20) + "...",
-              title: senderName || "File Baru",
-              body: notifBody,
-            });
+            await sendPushNotification(
+              receiver.pushToken,
+              senderName || "File Baru",
+              notifBody,
+              { chatId: chat.id, chatKey: chat.chatKey }
+            );
           }
         } catch (notifErr) {
           console.error("❌ Gagal kirim notif file:", notifErr);

@@ -132,7 +132,9 @@ class ChatTemplateController {
       if (!validCategories.includes(category)) {
         return res.status(400).json({
           success: false,
-          message: `Category harus salah satu dari: ${validCategories.join(", ")}`,
+          message: `Category harus salah satu dari: ${validCategories.join(
+            ", "
+          )}`,
         });
       }
 
@@ -225,7 +227,9 @@ class ChatTemplateController {
         if (!validCategories.includes(category)) {
           return res.status(400).json({
             success: false,
-            message: `Category harus salah satu dari: ${validCategories.join(", ")}`,
+            message: `Category harus salah satu dari: ${validCategories.join(
+              ", "
+            )}`,
           });
         }
       }
