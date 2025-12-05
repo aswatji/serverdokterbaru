@@ -472,7 +472,7 @@ class ChatController {
             let notifBody = "";
             if (messageType === "image") {
               notifBody = "📷 Mengirim foto";
-            } else if (messageType === "file") {
+            } else if (messageType === "pdf") {
               notifBody = "📄 Mengirim file";
             } else {
               notifBody =
@@ -502,151 +502,7 @@ class ChatController {
       res.status(500).json({ success: false, message: error.message });
     }
   }
-  // async sendFileMessage(req, res) {
-  //   try {
-  //     const { chatKey } = req.params;
-  //     const { type: userType } = req.user;
-  //     const file = req.file; // dari multer middleware
-
-  //     if (!file) {
-  //       return res.status(400).json({
-  //         success: false,
-  //         message: "File tidak ditemukan",
-  //       });
-  //     }
-
-  //     const allowedTypes = [
-  //       "image/jpeg",
-  //       "image/png",
-  //       "image/jpg",
-  //       "application/pdf",
-  //     ];
-  //     if (!allowedTypes.includes(file.mimetype)) {
-  //       return res.status(400).json({
-  //         success: false,
-  //         message: "Tipe file tidak didukung. Hanya jpg, png, pdf",
-  //       });
-  //     }
-
-  //     const maxSize = 5 * 1024 * 1024; // 5MB
-  //     if (file.size > maxSize) {
-  //       return res.status(400).json({
-  //         success: false,
-  //         message: "Ukuran file maksimal 5MB",
-  //       });
-  //     }
-
-  //     // ✅ OPTIMASI: Ambil hanya field yang dibutuhkan
-  //     const chat = await prisma.chat.findUnique({
-  //       where: { chatKey },
-  //       select: { id: true },
-  //     });
-
-  //     if (!chat) {
-  //       return res.status(404).json({
-  //         success: false,
-  //         message: "Chat tidak ditemukan",
-  //       });
-  //     }
-
-  //     // Tentukan tipe message (image atau file)
-  //     const messageType = file.mimetype.startsWith("image/") ? "image" : "file";
-
-  //     // Upload file ke MinIO & upsert chatDate PARALLEL
-  //     const timestamp = Date.now();
-  //     const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, "_");
-  //     const fileName = `chat/${chat.id}/${timestamp}-${sanitizedName}`;
-
-  //     const today = new Date();
-  //     today.setHours(0, 0, 0, 0);
-
-  //     // ✅ OPTIMASI: Jalankan upload dan upsert bersamaan
-  //     const [fileUrl, chatDate] = await Promise.all([
-  //       uploadToMinio(file.buffer, fileName, file.mimetype),
-  //       prisma.chatDate.upsert({
-  //         where: {
-  //           chatId_date: {
-  //             chatId: chat.id,
-  //             date: today,
-  //           },
-  //         },
-  //         update: {},
-  //         create: {
-  //           chatId: chat.id,
-  //           date: today,
-  //         },
-  //         select: { id: true },
-  //       }),
-  //     ]);
-
-  //     // Buat message dengan file URL dari MinIO
-  //     const message = await prisma.chatMessage.create({
-  //       data: {
-  //         chatDateId: chatDate.id,
-  //         sender: userType,
-  //         content: fileUrl, // URL dari MinIO
-  //         type: messageType,
-  //       },
-  //       select: {
-  //         id: true,
-  //         sender: true,
-  //         content: true,
-  //         type: true,
-  //         sentAt: true,
-  //       },
-  //     });
-
-  //     // ✅ OPTIMASI: Update lastMessage non-blocking
-  //     prisma.chat
-  //       .update({
-  //         where: { id: chat.id },
-  //         data: { lastMessageId: message.id, updatedAt: new Date() },
-  //       })
-  //       .catch((err) => console.warn("⚠️ Update chat failed:", err.message));
-
-  //     // ✅ OPTIMASI: Broadcast socket non-blocking
-  //     setImmediate(() => {
-  //       try {
-  //         const io = getIO();
-  //         const roomName = `chat:${chat.id}`;
-  //         io.to(roomName).emit("new_message", {
-  //           messageId: message.id,
-  //           chatId: chat.id,
-  //           sender: message.sender,
-  //           content: message.content,
-  //           type: message.type,
-  //           sentAt: message.sentAt,
-  //           fileName: file.originalname,
-  //           fileSize: file.size,
-  //         });
-  //         console.log(`📢 File message broadcast -> ${roomName}`);
-  //       } catch (socketErr) {
-  //         console.warn("⚠️ Socket.IO not ready:", socketErr.message);
-  //       }
-  //     });
-
-  //     return res.status(201).json({
-  //       success: true,
-  //       message: "File berhasil dikirim",
-  //       data: {
-  //         id: message.id,
-  //         sender: message.sender,
-  //         content: message.content,
-  //         type: message.type,
-  //         sentAt: message.sentAt,
-  //         fileName: file.originalname,
-  //         fileSize: file.size,
-  //       },
-  //     });
-  //   } catch (error) {
-  //     console.error("❌ Error sendFileMessage:", error);
-  //     res.status(500).json({
-  //       success: false,
-  //       message: "Gagal mengirim file",
-  //       error: error.message,
-  //     });
-  //   }
-  // }
+ 
   // =======================================================
   // 💬 SEND FILE MESSAGE — NEW METHOD
   // =======================================================
@@ -689,7 +545,7 @@ class ChatController {
           .status(404)
           .json({ success: false, message: "Chat tidak ditemukan" });
 
-      const messageType = file.mimetype.startsWith("image/") ? "image" : "file";
+      const messageType = file.mimetype.startsWith("image/") ? "image" : "pdf";
       const timestamp = Date.now();
       const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, "_");
       const fileName = `chat/${chat.id}/${timestamp}-${sanitizedName}`;
@@ -825,7 +681,7 @@ class ChatController {
       }
 
       // Jika message berisi file, hapus dari MinIO
-      if (message.type === "image" || message.type === "file") {
+      if (message.type === "image" || message.type === "pdf") {
         try {
           // Extract filename from URL
           const urlParts = message.content.split("/");
