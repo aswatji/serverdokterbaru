@@ -176,12 +176,24 @@ class ChatController {
             include: {
               messages: {
                 orderBy: { sentAt: "asc" },
+
                 select: {
                   id: true,
                   sender: true,
                   content: true,
                   type: true,
                   sentAt: true,
+                  fileUrl: true,
+                  status: true,
+
+                  replyTo: {
+                    select: {
+                      id: true,
+                      content: true,
+                      sender: true,
+                      type: true,
+                    },
+                  },
                 },
               },
             },
@@ -220,7 +232,7 @@ class ChatController {
   // =======================================================
   // 💬 SEND TEXT MESSAGE — OPTIMIZED with upsert & parallel queries
   // =======================================================
-  
+
   // =======================================================
   // 💬 SEND TEXT MESSAGE — FIXED (Unread Count + Notif Debug)
   // =======================================================
@@ -384,7 +396,7 @@ class ChatController {
       res.status(500).json({ success: false, message: error.message });
     }
   }
- 
+
   // =======================================================
   // 💬 SEND FILE MESSAGE — NEW METHOD
   // =======================================================
@@ -723,6 +735,74 @@ class ChatController {
         message: "Gagal memperpanjang sesi",
         error: error.message,
       });
+    }
+  }
+  // controllers/ChatController.js
+
+  // =======================================================
+  // ✏️ EDIT MESSAGE
+  // =======================================================
+  async editMessage(req, res) {
+    try {
+      const { messageId } = req.params;
+      const { content } = req.body; // Isi pesan baru
+      const { id: userId, type: userType } = req.user;
+
+      if (!content || !content.trim()) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Konten tidak boleh kosong" });
+      }
+
+      // 1. Cari pesan lama
+      const message = await prisma.chatMessage.findUnique({
+        where: { id: messageId },
+        include: { chatDate: { include: { chat: true } } }, // Ambil info chat
+      });
+
+      if (!message)
+        return res
+          .status(404)
+          .json({ success: false, message: "Pesan tidak ditemukan" });
+
+      // 2. Validasi: Hanya pengirim asli yang boleh edit
+      const isSender = message.sender === userType; // userType: 'user' atau 'doctor'
+      if (!isSender) {
+        return res.status(403).json({
+          success: false,
+          message: "Dilarang mengedit pesan orang lain",
+        });
+      }
+
+      // 3. Update Database
+      const updatedMessage = await prisma.chatMessage.update({
+        where: { id: messageId },
+        data: {
+          content: content,
+          // Opsional: Tambah kolom 'isEdited' di DB jika mau menampilkan label (diedit)
+          // isEdited: true
+        },
+        include: {
+          replyTo: { select: { id: true, content: true, sender: true } }, // Sertakan replyTo biar ga hilang
+        },
+      });
+
+      // 4. Broadcast Socket (PENTING)
+      try {
+        const io = getIO();
+        const roomName = `chat:${message.chatDate.chat.id}`;
+        io.to(roomName).emit("message_updated", {
+          chatId: message.chatDate.chat.id,
+          message: updatedMessage,
+        });
+      } catch (err) {
+        console.warn("Socket error:", err.message);
+      }
+
+      return res.json({ success: true, data: updatedMessage });
+    } catch (error) {
+      console.error("❌ Error editMessage:", error);
+      res.status(500).json({ success: false, message: error.message });
     }
   }
 }
