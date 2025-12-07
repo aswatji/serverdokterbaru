@@ -183,9 +183,6 @@ class ChatController {
                   content: true,
                   type: true,
                   sentAt: true,
-                  fileUrl: true,
-                  status: true,
-
                   replyTo: {
                     select: {
                       id: true,
