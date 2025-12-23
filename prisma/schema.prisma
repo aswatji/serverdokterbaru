@@ -8,23 +8,19 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(cuid())
-  email         String         @unique
-  password      String
-  createdAt     DateTime       @default(now())
-  fullname      String
-  photo         String?
-  profession    String?
-  updatedAt     DateTime       @updatedAt
-  
-  // Relasi
-  chats         Chat[]         @relation("UserChats")
-  ratings       DoctorRating[]
-  payments      Payment[]
-  unreads       ChatUnread[]   @relation("UserToUnread")
-  prescriptions Prescription[] // ✅ Relasi ke Resep (Pasien)
-  
-  pushToken     String?
+  id         String         @id @default(cuid())
+  email      String         @unique
+  password   String
+  createdAt  DateTime       @default(now())
+  fullname   String
+  photo      String?
+  profession String?
+  updatedAt  DateTime       @updatedAt
+  pushToken  String?
+  chats      Chat[]         @relation("UserChats")
+  unreads    ChatUnread[]   @relation("UserToUnread")
+  ratings    DoctorRating[]
+  payments   Payment[]
 }
 
 model Doctor {
@@ -41,17 +37,13 @@ model Doctor {
   email            String           @unique
   password         String
   alamatRumahSakit String?
-  
-  // Relasi
+  pushToken        String?
   chats            Chat[]           @relation("DoctorChats")
+  chatTemplates    ChatTemplate[]
+  unreads          ChatUnread[]     @relation("DoctorToUnread")
   ratings          DoctorRating[]
   schedules        DoctorSchedule[]
   payments         Payment[]
-  unreads          ChatUnread[]     @relation("DoctorToUnread")
-  chatTemplates    ChatTemplate[]
-  prescriptions    Prescription[]   // ✅ Relasi ke Resep (Dokter)
-  
-  pushToken        String?
 }
 
 model DoctorSchedule {
@@ -68,36 +60,32 @@ model Payment {
   amount    Float
   status    String
   createdAt DateTime  @default(now())
-  paidAt    DateTime? 
-  expiresAt DateTime? 
   userId    String
   doctorId  String
-  
+  expiresAt DateTime?
+  paidAt    DateTime?
   chat      Chat?
   doctor    Doctor    @relation(fields: [doctorId], references: [id])
   user      User      @relation(fields: [userId], references: [id])
 }
 
 model Chat {
-  id            String         @id @default(cuid())
-  chatKey       String         @unique
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @default(now()) @updatedAt
+  id            String       @id @default(cuid())
+  chatKey       String       @unique
+  createdAt     DateTime     @default(now())
   doctorId      String
   userId        String
-  lastMessageId String?        @unique
-  paymentId     String?        @unique
+  lastMessageId String?      @unique
+  paymentId     String?      @unique
+  updatedAt     DateTime     @default(now()) @updatedAt
   expiredAt     DateTime?
-  isActive      Boolean        @default(false)
-  
-  doctor        Doctor         @relation("DoctorChats", fields: [doctorId], references: [id])
-  lastMessage   ChatMessage?   @relation("LastMessageRelation", fields: [lastMessageId], references: [id])
-  payment       Payment?       @relation(fields: [paymentId], references: [id])
-  user          User           @relation("UserChats", fields: [userId], references: [id])
-  
+  isActive      Boolean      @default(false)
+  doctor        Doctor       @relation("DoctorChats", fields: [doctorId], references: [id])
+  lastMessage   ChatMessage? @relation("LastMessageRelation", fields: [lastMessageId], references: [id])
+  payment       Payment?     @relation(fields: [paymentId], references: [id])
+  user          User         @relation("UserChats", fields: [userId], references: [id])
   dates         ChatDate[]
-  unreads       ChatUnread[]   @relation("ChatToUnread")
-  prescriptions Prescription[] // ✅ Relasi ke Resep (Chat Room)
+  unreads       ChatUnread[] @relation("ChatToUnread")
 
   @@unique([userId, doctorId])
   @@index([userId])
@@ -124,54 +112,14 @@ model ChatMessage {
   sender          String
   content         String
   sentAt          DateTime @default(now())
-  type            String   @default("text") // "text", "image", "prescription"
-  
-  // --- FITUR BARU: READ STATUS & REPLY ---
-  isRead          Boolean  @default(false)  // ✅ Untuk Centang Biru / Unread Count
-  
-  replyToId       String?                   // ✅ ID Pesan yang dibalas (Boleh kosong)
-  replyTo         ChatMessage?  @relation("ReplyRelation", fields: [replyToId], references: [id])
-  replies         ChatMessage[] @relation("ReplyRelation")
-  // ---------------------------------------
-
+  type            String   @default("text")
   chatLastMessage Chat?    @relation("LastMessageRelation")
   chatDate        ChatDate @relation(fields: [chatDateId], references: [id])
+  isRead          Boolean  @default(false)
 
   @@index([chatDateId])
   @@index([sentAt])
-  @@index([isRead]) // Index agar query unread cepat
 }
-
-// --- MODEL BARU: RESEP DIGITAL ---
-model Prescription {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  
-  chatId    String
-  doctorId  String
-  userId    String
-  status    String   @default("pending") // pending, redeemed
-
-  // Relasi
-  chat      Chat     @relation(fields: [chatId], references: [id])
-  doctor    Doctor   @relation(fields: [doctorId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
-  
-  items     PrescriptionItem[] // Daftar obat
-}
-
-model PrescriptionItem {
-  id             String       @id @default(cuid())
-  prescriptionId String
-  medicineName   String
-  dosage         String       // e.g. 500mg
-  frequency      String       // e.g. 3x1
-  quantity       Int
-  notes          String?
-
-  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
-}
-// ---------------------------------
 
 model News {
   id        String   @id @default(cuid())
@@ -212,10 +160,9 @@ model ChatUnread {
   userId      String?
   doctorId    String?
   unreadCount Int     @default(0)
-
-  chat   Chat    @relation(fields: [chatId], references: [id], name: "ChatToUnread")
-  user   User?   @relation(fields: [userId], references: [id], name: "UserToUnread")
-  doctor Doctor? @relation(fields: [doctorId], references: [id], name: "DoctorToUnread")
+  chat        Chat    @relation("ChatToUnread", fields: [chatId], references: [id])
+  doctor      Doctor? @relation("DoctorToUnread", fields: [doctorId], references: [id])
+  user        User?   @relation("UserToUnread", fields: [userId], references: [id])
 
   @@unique([chatId, userId])
   @@unique([chatId, doctorId])
@@ -227,26 +174,24 @@ model Product {
   id            String   @id @default(cuid())
   name          String
   description   String?
-  image         String?
   price         Float
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  image         String?
   isRecommended Boolean  @default(false)
   viewCount     Int      @default(0)
 }
 
 model ChatTemplate {
   id        String   @id @default(cuid())
-  category  String   
-  title     String   
-  content   String   @db.Text 
-   
+  category  String
+  title     String
+  content   String
   doctorId  String
-  doctor    Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
-   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-   
+  doctor    Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
   @@unique([doctorId, category, title])
   @@index([doctorId])
   @@index([category])
