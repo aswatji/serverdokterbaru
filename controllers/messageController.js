@@ -57,45 +57,99 @@ class MessageController {
   }
 
   // ✅ Buat pesan baru (user atau dokter)
+  // async createMessage(req, res) {
+  //   try {
+  //     const { chatId, sender, content, userId, doctorId } = req.body;
+
+  //     if (!chatId || !sender || !content) {
+  //       return res.status(400).json({
+  //         success: false,
+  //         message: "chatId, sender, and content are required",
+  //       });
+  //     }
+
+  //     const message = await prisma.message.create({
+  //       data: {
+  //         chatId,
+  //         sender,
+  //         content,
+  //         userId: sender === "user" ? userId : null,
+  //         doctorId: sender === "doctor" ? doctorId : null,
+  //       },
+  //     });
+
+  //     // Update lastMessageId di Chat
+  //     await prisma.chat.update({
+  //       where: { id: chatId },
+  //       data: { lastMessageId: message.id },
+  //     });
+
+  //     res.status(201).json({
+  //       success: true,
+  //       message: "Message created successfully",
+  //       data: message,
+  //     });
+  //   } catch (error) {
+  //     console.error("❌ Error createMessage:", error);
+  //     res.status(500).json({
+  //       success: false,
+  //       message: "Failed to create message",
+  //       error: error.message,
+  //     });
+  //   }
+  // }
+
   async createMessage(req, res) {
     try {
-      const { chatId, sender, content, userId, doctorId } = req.body;
+      const { chatId, sender, content, type = "text", replyToId } = req.body;
 
       if (!chatId || !sender || !content) {
-        return res.status(400).json({
-          success: false,
-          message: "chatId, sender, and content are required",
-        });
+        return res
+          .status(400)
+          .json({ success: false, message: "Missing fields" });
       }
 
-      const message = await prisma.message.create({
+      // 1. Upsert ChatDate (Group by today)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const chatDate = await prisma.chatDate.upsert({
+        where: { chatId_date: { chatId, date: today } },
+        update: {},
+        create: { chatId, date: today },
+        select: { id: true },
+      });
+
+      // 2. Create Message using ChatDate ID
+      const message = await prisma.chatMessage.create({
         data: {
-          chatId,
+          chatDateId: chatDate.id,
           sender,
           content,
-          userId: sender === "user" ? userId : null,
-          doctorId: sender === "doctor" ? doctorId : null,
+          type,
+          replyToId: replyToId || null, // Now valid after schema update
+        },
+        include: {
+          replyTo: {
+            select: { id: true, content: true, sender: true, type: true },
+          },
         },
       });
 
-      // Update lastMessageId di Chat
+      // 3. Update Last Message on Chat
       await prisma.chat.update({
         where: { id: chatId },
-        data: { lastMessageId: message.id },
+        data: { lastMessageId: message.id, updatedAt: new Date() },
       });
 
       res.status(201).json({
         success: true,
-        message: "Message created successfully",
+        message: "Message created",
         data: message,
       });
     } catch (error) {
       console.error("❌ Error createMessage:", error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to create message",
-        error: error.message,
-      });
+      res.status(500).json({ success: false, message: error.message });
     }
   }
 
@@ -162,6 +216,43 @@ class MessageController {
     }
   }
   // ✅ Ambil semua pesan berdasarkan Chat ID
+  // async getMessagesByChatId(req, res) {
+  //   try {
+  //     const { chatId } = req.params;
+
+  //     const chat = await prisma.chat.findUnique({
+  //       where: { id: chatId },
+  //       include: {
+  //         messages: {
+  //           orderBy: { sentAt: "asc" },
+  //           include: {
+  //             user: { select: { id: true, fullname: true, photo: true } },
+  //             doctor: { select: { id: true, fullname: true, photo: true } },
+  //           },
+  //         },
+  //       },
+  //     });
+
+  //     if (!chat) {
+  //       return res.status(404).json({
+  //         success: false,
+  //         message: "Chat not found",
+  //       });
+  //     }
+
+  //     res.json({
+  //       success: true,
+  //       data: chat.messages,
+  //     });
+  //   } catch (error) {
+  //     console.error("❌ Error getMessagesByChatId:", error);
+  //     res.status(500).json({
+  //       success: false,
+  //       message: "Failed to fetch messages by chat ID",
+  //       error: error.message,
+  //     });
+  //   }
+  // }
   async getMessagesByChatId(req, res) {
     try {
       const { chatId } = req.params;
@@ -169,34 +260,43 @@ class MessageController {
       const chat = await prisma.chat.findUnique({
         where: { id: chatId },
         include: {
-          messages: {
-            orderBy: { sentAt: "asc" },
+          dates: {
+            orderBy: { date: "asc" },
             include: {
-              user: { select: { id: true, fullname: true, photo: true } },
-              doctor: { select: { id: true, fullname: true, photo: true } },
+              messages: {
+                orderBy: { sentAt: "asc" },
+                include: {
+                  // Include reply info
+                  replyTo: {
+                    select: {
+                      id: true,
+                      content: true,
+                      sender: true,
+                      type: true,
+                    },
+                  },
+                },
+              },
             },
           },
         },
       });
 
+      // If chat not found, return empty array instead of 404/500
       if (!chat) {
-        return res.status(404).json({
-          success: false,
-          message: "Chat not found",
-        });
+        return res.status(200).json({ success: true, data: [] });
       }
 
-      res.json({
+      // Flatten the structure for the frontend
+      const allMessages = chat.dates.flatMap((d) => d.messages || []);
+
+      res.status(200).json({
         success: true,
-        data: chat.messages,
+        data: allMessages,
       });
     } catch (error) {
       console.error("❌ Error getMessagesByChatId:", error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to fetch messages by chat ID",
-        error: error.message,
-      });
+      res.status(500).json({ success: false, message: error.message });
     }
   }
 }
