@@ -113,12 +113,12 @@ model ChatMessage {
   content         String
   sentAt          DateTime @default(now())
   type            String   @default("text")
+  isRead          Boolean  @default(false)
+ replyToId       String?
+  replyTo         ChatMessage?  @relation("ReplyRelation", fields: [replyToId], references: [id])
+  replies         ChatMessage[] @relation("ReplyRelation")
   chatLastMessage Chat?    @relation("LastMessageRelation")
   chatDate        ChatDate @relation(fields: [chatDateId], references: [id])
-  isRead          Boolean  @default(false)
-  replyToId       String?      // Optional ID for the parent message
-  replyTo         ChatMessage? @relation("ReplyRelation", fields: [replyToId], references: [id])
-  replies         ChatMessage[] @relation("ReplyRelation")
 
   @@index([chatDateId])
   @@index([sentAt])
