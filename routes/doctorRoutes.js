@@ -199,9 +199,25 @@ const updateDoctorValidation = [
   body("bio").optional().isString(),
   body("photo").optional().isString(),
 ];
+// ✅ Doctor Schedule Validation
+const addScheduleValidation = [
+  body("dayOfWeek")
+    .isInt({ min: 0, max: 6 })
+    .withMessage("Day of week must be 0–6 (0=Sunday, 6=Saturday)"),
+  body("startTime").isISO8601().withMessage("Start time must be a valid date"),
+  body("endTime").isISO8601().withMessage("End time must be a valid date"),
+];
+
 const updateScheduleValidation = [
-  body("schedules").isArray().withMessage("Schedules must be an array"),
-  // ...
+  body("dayOfWeek")
+    .optional()
+    .isInt({ min: 0, max: 6 })
+    .withMessage("Day of week must be 0–6 (0=Sunday, 6=Saturday)"),
+  body("startTime")
+    .optional()
+    .isISO8601()
+    .withMessage("Start time must be valid"),
+  body("endTime").optional().isISO8601().withMessage("End time must be valid"),
 ];
 
 /* -------------------------------------------
@@ -275,11 +291,6 @@ router.get(
 
 // ✅ Get by ID (Hati-hati, ini menangkap semua GET yang tidak match di atas)
 router.get("/:doctorId", doctorController.getDoctorById);
-router.put(
-  "/:doctorId",
-  authMiddleware,
-  requireDoctor,
-  doctorController.updateProfile
-);
+router.put("/:doctorId", requireDoctor, doctorController.updateProfile);
 router.put("/:id", doctorController.updatePhoto);
 export default router;
