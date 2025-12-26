@@ -446,8 +446,12 @@ export function initChatSocket(socketIo) {
         if (callback) callback({ success: true, data: messagePayload });
 
         // Push Notification Logic (Sama seperti kode asli Anda)
+        // ... di dalam socket.on("send_message") ...
+
+        // ==========================================================
+        // 🔥 KIRIM PUSH NOTIFICATION
+        // ==========================================================
         setImmediate(async () => {
-          // ... kode notifikasi Anda ...
           try {
             const isSenderUser = sender === "user";
             const receiver = isSenderUser ? chat.doctor : chat.user;
@@ -457,20 +461,55 @@ export function initChatSocket(socketIo) {
 
             if (receiver && receiver.pushToken) {
               let notifBody = "";
-              if (type === "image") notifBody = "📷 Mengirim sebuah foto";
-              else if (type === "file")
-                notifBody = "📄 Mengirim sebuah dokumen";
-              else
-                notifBody =
-                  content.length > 50
-                    ? content.substring(0, 50) + "..."
-                    : content;
 
+              // 1. Cek Tipe Pesan (Gambar/File)
+              if (type === "image") {
+                notifBody = "📷 Mengirim sebuah foto";
+              } else if (type === "file" || type === "document") {
+                notifBody = "📎 Mengirim sebuah dokumen";
+              }
+              // 2. Cek Jika Content adalah JSON (Resep / Catatan)
+              else {
+                // Default anggap teks biasa
+                notifBody = content;
+
+                // Cek apakah string dimulai dengan kurung kurawal (tanda JSON)
+                if (
+                  typeof content === "string" &&
+                  content.startsWith("{") &&
+                  content.endsWith("}")
+                ) {
+                  try {
+                    const parsed = JSON.parse(content);
+                    if (
+                      parsed.type === "prescription" ||
+                      parsed.title === "Resep Digital"
+                    ) {
+                      notifBody = "📄 Resep Digital Baru";
+                    } else if (parsed.type === "medical_note") {
+                      notifBody = "📝 Catatan Dokter Baru";
+                    }
+                  } catch (e) {
+                    // Abaikan error parsing, lanjut sebagai text biasa
+                  }
+                }
+
+                // Truncate jika teks biasa kepanjangan (dan bukan resep yg sudah diubah teksnya)
+                if (notifBody === content && content.length > 50) {
+                  notifBody = content.substring(0, 50) + "...";
+                }
+              }
+
+              // 3. Kirim Notifikasi
               await sendPushNotification(
                 receiver.pushToken,
-                senderName || "Pesan Baru",
-                notifBody,
-                { screen: "chat", chatId: chat.id, chatKey: chat.chatKey }
+                senderName || "Pesan Baru", // Title
+                notifBody, // Body (yang sudah kita ubah jadi "Resep Digital")
+                { screen: "chat", chatId: chat.id, chatKey: chat.chatKey } // Data
+              );
+
+              console.log(
+                `🔔 Notif sent to ${receiver.fullname}: ${notifBody}`
               );
             }
           } catch (notifErr) {
