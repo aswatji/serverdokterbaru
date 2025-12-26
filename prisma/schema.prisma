@@ -54,7 +54,7 @@ model DoctorSchedule {
   endTime   String  
   isActive  Boolean  @default(true) 
   doctor    Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
-  @@unique([doctorId, day]) // Mencegah duplikasi hari yang sama untuk satu dokter
+@@index([doctorId, day])
 }
 
 model Payment {
