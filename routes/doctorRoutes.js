@@ -170,7 +170,34 @@ const router = express.Router();
 ------------------------------------------- */
 // ... (Validation rules tetap sama, saya skip biar ringkas) ...
 const updateDoctorValidation = [
-  /* ... */
+  body("fullname")
+    .optional()
+    .notEmpty()
+    .withMessage("Full name cannot be empty"),
+  body("category")
+    .optional()
+    .isString()
+    .withMessage("Category must be a string"),
+  body("university")
+    .optional()
+    .isString()
+    .withMessage("University must be a string"),
+  body("strNumber")
+    .optional()
+    .isString()
+    .withMessage("STR Number must be a string"),
+  body("gender")
+    .optional()
+    .isIn(["MALE", "FEMALE", "male", "female"])
+    .withMessage("Gender must be either MALE or FEMALE"),
+  body("email").optional().isEmail().withMessage("Valid email is required"),
+  body("password")
+    .optional()
+    .isLength({ min: 6 })
+    .withMessage("Password must be at least 6 characters long"),
+  body("alamatRumahSakit").optional().isString(),
+  body("bio").optional().isString(),
+  body("photo").optional().isString(),
 ];
 const updateScheduleValidation = [
   body("schedules").isArray().withMessage("Schedules must be an array"),
@@ -254,4 +281,5 @@ router.put(
   requireDoctor,
   doctorController.updateProfile
 );
+router.put("/:id", doctorController.updatePhoto);
 export default router;
