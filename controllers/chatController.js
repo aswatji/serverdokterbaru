@@ -835,8 +835,12 @@ class ChatController {
       const chats = await prisma.chat.findMany({
         where,
         include: {
-          user: { select: { id: true, fullname: true, photo: true } },
-          doctor: { select: { id: true, fullname: true, photo: true } },
+          user: {
+            select: { id: true, fullname: true, photo: true, profession: true },
+          },
+          doctor: {
+            select: { id: true, fullname: true, photo: true, category: true },
+          },
           lastMessage: {
             select: {
               id: true,
@@ -852,12 +856,14 @@ class ChatController {
 
       const formatted = chats.map((chat) => {
         const partner = type === "doctor" ? chat.user : chat.doctor;
+        const infoPekerjaan = partner.category || partner.profession || "";
         return {
           id: chat.id,
           chatKey: chat.chatKey,
           displayName: partner.fullname,
           photo: partner.photo,
           partnerId: partner.id,
+          profession: infoPekerjaan,
           lastMessage: chat.lastMessage?.content || "Belum ada pesan",
           lastMessageType: chat.lastMessage?.type || "text",
           lastMessageTime: chat.lastMessage?.sentAt || chat.updatedAt,
