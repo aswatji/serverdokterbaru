@@ -252,6 +252,6 @@ router.put(
   "/:doctorId",
   authMiddleware,
   requireDoctor,
-  doctorController.updatePhoto
+  doctorController.updateProfile
 );
 export default router;
