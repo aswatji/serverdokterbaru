@@ -590,7 +590,7 @@ class DoctorController {
   // ✅ FITUR JADWAL (SCHEDULE) TERBARU
   // ============================================================
 
-  // 1. UPDATE MASSAL JADWAL (Dipakai tombol Simpan di React Native)
+  // 1. UPDATE MASSAL JADWAL (Multi Slot)
   async updateScheduleSettings(req, res) {
     try {
       const doctorId = req.user.id;
@@ -603,31 +603,24 @@ class DoctorController {
         });
       }
 
-      // Gunakan Transaction agar semua data tersimpan bersamaan
-      const operations = schedules.map((item) => {
-        return prisma.doctorSchedule.upsert({
-          where: {
-            doctorId_day: {
-              doctorId: doctorId,
-              day: item.day,
-            },
-          },
-          update: {
-            startTime: item.start,
-            endTime: item.end,
-            isActive: item.active,
-          },
-          create: {
-            doctorId: doctorId,
-            day: item.day,
-            startTime: item.start,
-            endTime: item.end,
-            isActive: item.active,
-          },
-        });
-      });
+      // Format data untuk prisma
+      const formattedData = schedules.map((item) => ({
+        doctorId: doctorId,
+        day: item.day,
+        startTime: item.start,
+        endTime: item.end,
+        isActive: item.active,
+      }));
 
-      await prisma.$transaction(operations);
+      // Gunakan Transaction: HAPUS SEMUA dulu, baru INSERT BARU
+      await prisma.$transaction([
+        prisma.doctorSchedule.deleteMany({
+          where: { doctorId: doctorId },
+        }),
+        prisma.doctorSchedule.createMany({
+          data: formattedData,
+        }),
+      ]);
 
       res.json({
         success: true,
@@ -642,7 +635,6 @@ class DoctorController {
       });
     }
   }
-
   // 2. GET JADWAL (Untuk load awal di Frontend)
   async getMySchedules(req, res) {
     try {
