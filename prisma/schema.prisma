@@ -47,12 +47,14 @@ model Doctor {
 }
 
 model DoctorSchedule {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
   doctorId  String
-  dayOfWeek Int
-  startTime DateTime
-  endTime   DateTime
-  doctor    Doctor   @relation(fields: [doctorId], references: [id])
+  day       String   
+  startTime String  
+  endTime   String  
+  isActive  Boolean  @default(true) 
+  doctor    Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  @@unique([doctorId, day]) // Mencegah duplikasi hari yang sama untuk satu dokter
 }
 
 model Payment {
