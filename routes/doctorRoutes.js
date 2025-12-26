@@ -249,7 +249,7 @@ router.get(
 // ✅ Get by ID (Hati-hati, ini menangkap semua GET yang tidak match di atas)
 router.get("/:doctorId", doctorController.getDoctorById);
 router.put(
-  "/photo/update",
+  "/:doctorId",
   authMiddleware,
   requireDoctor,
   doctorController.updatePhoto
