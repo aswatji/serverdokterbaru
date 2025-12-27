@@ -291,6 +291,17 @@ router.get(
 
 // ✅ Get by ID (Hati-hati, ini menangkap semua GET yang tidak match di atas)
 router.get("/:doctorId", doctorController.getDoctorById);
-router.put("/:doctorId", requireDoctor, doctorController.updateProfile);
-router.put("/:id", doctorController.updatePhoto);
+router.put(
+  "/:doctorId",
+  // requireDoctor,
+  updateDoctorValidation,
+  validateRequest,
+  doctorController.updateProfile
+);
+// router.put(
+//   "/:doctorId/photo",
+//   // authMiddleware,
+//   requireDoctor,
+//   doctorController.updatePhoto
+// );
 export default router;

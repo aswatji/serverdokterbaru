@@ -461,9 +461,89 @@ class DoctorController {
   }
 
   // ✅ Update profil dokter
+  // async updateProfile(req, res) {
+  //   try {
+  //     // Support both routes: /profile (uses req.user.id) and /:doctorId (uses params)
+  //     const doctorId = req.params.doctorId || req.user?.id;
+
+  //     if (!doctorId) {
+  //       return res.status(400).json({
+  //         success: false,
+  //         message: "Doctor ID is required",
+  //       });
+  //     }
+
+  //     const {
+  //       fullname,
+  //       category,
+  //       university,
+  //       strNumber,
+  //       gender,
+  //       email,
+  //       password,
+  //       alamatRumahSakit,
+  //       bio,
+  //       photo,
+  //     } = req.body;
+
+  //     const doctor = await prisma.doctor.findUnique({
+  //       where: { id: doctorId },
+  //     });
+  //     if (!doctor) {
+  //       return res.status(404).json({
+  //         success: false,
+  //         message: "Doctor not found",
+  //       });
+  //     }
+
+  //     let updatedData = {
+  //       fullname,
+  //       category,
+  //       university,
+  //       strNumber,
+  //       gender,
+  //       email,
+  //       alamatRumahSakit,
+  //       bio,
+  //       photo,
+  //     };
+
+  //     if (password) {
+  //       updatedData.password = await bcrypt.hash(password, 10);
+  //     }
+
+  //     const updatedDoctor = await prisma.doctor.update({
+  //       where: { id: doctorId },
+  //       data: updatedData,
+  //     });
+
+  //     res.json({
+  //       success: true,
+  //       message: "Profile updated successfully",
+  //       data: updatedDoctor,
+  //     });
+  //   } catch (error) {
+  //     console.error("❌ Error updateProfile:", error);
+  //     res.status(500).json({
+  //       success: false,
+  //       message: "Failed to update profile",
+  //       error: error.message,
+  //     });
+  //   }
+  // }
   async updateProfile(req, res) {
     try {
-      const doctorId = req.user.id;
+      // 1. Ambil ID dari URL (:doctorId)
+      // Ini kuncinya supaya "seperti pasien"
+      const { doctorId } = req.params;
+
+      if (!doctorId) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Doctor ID is required" });
+      }
+
+      // 2. Ambil data dari Body (termasuk photo)
       const {
         fullname,
         category,
@@ -474,19 +554,21 @@ class DoctorController {
         password,
         alamatRumahSakit,
         bio,
-        photo,
+        photo, // 👈 Foto diterima sebagai string di sini
       } = req.body;
 
+      // 3. Cek Dokter ada atau tidak
       const doctor = await prisma.doctor.findUnique({
         where: { id: doctorId },
       });
+
       if (!doctor) {
-        return res.status(404).json({
-          success: false,
-          message: "Doctor not found",
-        });
+        return res
+          .status(404)
+          .json({ success: false, message: "Doctor not found" });
       }
 
+      // 4. Siapkan data update
       let updatedData = {
         fullname,
         category,
@@ -496,13 +578,14 @@ class DoctorController {
         email,
         alamatRumahSakit,
         bio,
-        photo,
+        photo, // 👈 Update foto langsung gabung di sini
       };
 
       if (password) {
         updatedData.password = await bcrypt.hash(password, 10);
       }
 
+      // 5. Eksekusi Update ke Database
       const updatedDoctor = await prisma.doctor.update({
         where: { id: doctorId },
         data: updatedData,
@@ -523,30 +606,30 @@ class DoctorController {
     }
   }
 
-  async updatePhoto(req, res) {
-    try {
-      const doctorId = req.params.id;
-      const { photo } = req.body;
+  // async updatePhoto(req, res) {
+  //   try {
+  //     const { doctorId } = req.params;
+  //     const { photo } = req.body;
 
-      const updatedDoctor = await prisma.doctor.update({
-        where: { id: doctorId },
-        data: { photo },
-      });
+  //     const updatedDoctor = await prisma.doctor.update({
+  //       where: { id: doctorId },
+  //       data: { photo },
+  //     });
 
-      res.json({
-        success: true,
-        message: "Photo berhasil diupdate",
-        data: updatedDoctor,
-      });
-    } catch (error) {
-      console.error("❌ Error updatePhoto:", error);
-      res.status(500).json({
-        success: false,
-        message: "Gagal untuk update photo",
-        error: error.message,
-      });
-    }
-  }
+  //     res.json({
+  //       success: true,
+  //       message: "Photo berhasil diupdate",
+  //       data: updatedDoctor,
+  //     });
+  //   } catch (error) {
+  //     console.error("❌ Error updatePhoto:", error);
+  //     res.status(500).json({
+  //       success: false,
+  //       message: "Gagal untuk update photo",
+  //       error: error.message,
+  //     });
+  //   }
+  // }
 
   // ✅ Ambil profil dokter login
   async getProfile(req, res) {
