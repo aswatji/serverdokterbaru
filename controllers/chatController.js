@@ -905,7 +905,7 @@ class ChatController {
         chat = await prisma.chat.update({
           where: { id: chat.id },
           data: {
-            status: null, 
+            status: "open",
             isActive: true,
             // Opsional: Jika ingin menghapus history chat sebelumnya, uncomment bawah ini:
             // lastMessageId: null
@@ -931,6 +931,7 @@ class ChatController {
               doctorId,
               chatKey,
               isActive: false, // Default false sampai dibayar
+              status: "open",
             },
             include: {
               user: { select: { id: true, fullname: true, photo: true } },
@@ -949,6 +950,16 @@ class ChatController {
               doctor: { select: { id: true, fullname: true, photo: true } },
             },
           });
+          if (chat && chat.status === "finished") {
+            chat = await prisma.chat.update({
+              where: { id: chat.id },
+              data: { status: "open", isActive: true }, // 👈 Ganti null jadi "open"
+              include: {
+                user: { select: { id: true, fullname: true, photo: true } },
+                doctor: { select: { id: true, fullname: true, photo: true } },
+              },
+            });
+          }
         }
       }
 
