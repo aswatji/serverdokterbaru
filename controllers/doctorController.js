@@ -460,81 +460,9 @@ class DoctorController {
     }
   }
 
-  // ✅ Update profil dokter
-  // async updateProfile(req, res) {
-  //   try {
-  //     // Support both routes: /profile (uses req.user.id) and /:doctorId (uses params)
-  //     const doctorId = req.params.doctorId || req.user?.id;
-
-  //     if (!doctorId) {
-  //       return res.status(400).json({
-  //         success: false,
-  //         message: "Doctor ID is required",
-  //       });
-  //     }
-
-  //     const {
-  //       fullname,
-  //       category,
-  //       university,
-  //       strNumber,
-  //       gender,
-  //       email,
-  //       password,
-  //       alamatRumahSakit,
-  //       bio,
-  //       photo,
-  //     } = req.body;
-
-  //     const doctor = await prisma.doctor.findUnique({
-  //       where: { id: doctorId },
-  //     });
-  //     if (!doctor) {
-  //       return res.status(404).json({
-  //         success: false,
-  //         message: "Doctor not found",
-  //       });
-  //     }
-
-  //     let updatedData = {
-  //       fullname,
-  //       category,
-  //       university,
-  //       strNumber,
-  //       gender,
-  //       email,
-  //       alamatRumahSakit,
-  //       bio,
-  //       photo,
-  //     };
-
-  //     if (password) {
-  //       updatedData.password = await bcrypt.hash(password, 10);
-  //     }
-
-  //     const updatedDoctor = await prisma.doctor.update({
-  //       where: { id: doctorId },
-  //       data: updatedData,
-  //     });
-
-  //     res.json({
-  //       success: true,
-  //       message: "Profile updated successfully",
-  //       data: updatedDoctor,
-  //     });
-  //   } catch (error) {
-  //     console.error("❌ Error updateProfile:", error);
-  //     res.status(500).json({
-  //       success: false,
-  //       message: "Failed to update profile",
-  //       error: error.message,
-  //     });
-  //   }
-  // }
   async updateProfile(req, res) {
     try {
       // 1. Ambil ID dari URL (:doctorId)
-      // Ini kuncinya supaya "seperti pasien"
       const { doctorId } = req.params;
 
       if (!doctorId) {
@@ -578,7 +506,7 @@ class DoctorController {
         email,
         alamatRumahSakit,
         bio,
-        photo, // 👈 Update foto langsung gabung di sini
+        photo,
       };
 
       if (password) {
@@ -605,31 +533,6 @@ class DoctorController {
       });
     }
   }
-
-  // async updatePhoto(req, res) {
-  //   try {
-  //     const { doctorId } = req.params;
-  //     const { photo } = req.body;
-
-  //     const updatedDoctor = await prisma.doctor.update({
-  //       where: { id: doctorId },
-  //       data: { photo },
-  //     });
-
-  //     res.json({
-  //       success: true,
-  //       message: "Photo berhasil diupdate",
-  //       data: updatedDoctor,
-  //     });
-  //   } catch (error) {
-  //     console.error("❌ Error updatePhoto:", error);
-  //     res.status(500).json({
-  //       success: false,
-  //       message: "Gagal untuk update photo",
-  //       error: error.message,
-  //     });
-  //   }
-  // }
 
   // ✅ Ambil profil dokter login
   async getProfile(req, res) {

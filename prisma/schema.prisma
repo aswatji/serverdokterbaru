@@ -88,6 +88,7 @@ model Chat {
   user          User         @relation("UserChats", fields: [userId], references: [id])
   dates         ChatDate[]
   unreads       ChatUnread[] @relation("ChatToUnread")
+  status    String   @default("open")
 
   @@unique([userId, doctorId])
   @@index([userId])

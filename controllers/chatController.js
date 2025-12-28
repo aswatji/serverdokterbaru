@@ -1037,6 +1037,34 @@ class ChatController {
   }
 
   // =======================================================
+  // 🔹 FINISH CHAT
+  // =======================================================
+
+  async finishChat(req, res) {
+    try {
+      const { chatId } = req.params;
+
+      // Update status jadi 'finished'
+      const chat = await prisma.chat.update({
+        where: { id: chatId },
+        data: {
+          status: "finished",
+          expiredAt: new Date(),
+        },
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Chat finished successfully",
+        data: chat,
+      });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ success: false, message: "Server Error" });
+    }
+  }
+
+  // =======================================================
   // 💬 SEND TEXT MESSAGE (Fixed Upsert & Unread)
   // =======================================================
   async sendMessage(req, res) {

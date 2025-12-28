@@ -54,15 +54,20 @@ function chatRoutes(io) {
   router.delete("/message/:messageId", authMiddleware, (req, res) =>
     controller.deleteMessage(req, res)
   );
-// ✏️ Edit message
+  // ✏️ Edit message
   router.put(
-  "/message/:messageId", 
-  authMiddleware, // Middleware Auth (Wajib, karena controller butuh req.user)
-  (req, res) => controller.editMessage(req, res)
-);
+    "/message/:messageId",
+    authMiddleware, // Middleware Auth (Wajib, karena controller butuh req.user)
+    (req, res) => controller.editMessage(req, res)
+  );
   // 🔄 Extend chat session
 
-  router.post("/extend", authMiddleware, (req, res) => controller.extendSession(req, res));
+  router.post("/extend", authMiddleware, (req, res) =>
+    controller.extendSession(req, res)
+  );
+  router.put("/:chatId/finish", authMiddleware, (req, res) =>
+    controller.finishChat(req, res)
+  );
 
   return router;
 }
