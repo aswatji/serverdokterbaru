@@ -867,6 +867,7 @@ class ChatController {
           lastMessage: chat.lastMessage?.content || "Belum ada pesan",
           lastMessageType: chat.lastMessage?.type || "text",
           lastMessageTime: chat.lastMessage?.sentAt || chat.updatedAt,
+          status: chat.status,
         };
       });
 
