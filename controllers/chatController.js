@@ -901,6 +901,21 @@ class ChatController {
           doctor: { select: { id: true, fullname: true, photo: true } },
         },
       });
+      if (chat && chat.status === "finished") {
+        chat = await prisma.chat.update({
+          where: { id: chat.id },
+          data: {
+            status: null, 
+            isActive: true,
+            // Opsional: Jika ingin menghapus history chat sebelumnya, uncomment bawah ini:
+            // lastMessageId: null
+          },
+          include: {
+            user: { select: { id: true, fullname: true, photo: true } },
+            doctor: { select: { id: true, fullname: true, photo: true } },
+          },
+        });
+      }
 
       // 2. BUAT BARU: Jika tidak ditemukan
       if (!chat) {
