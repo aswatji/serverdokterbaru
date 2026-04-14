@@ -141,7 +141,7 @@ class PaymentController {
             chatKey: `CHAT-${Date.now()}`,
             userId: updatedPayment.userId,
             doctorId: updatedPayment.doctorId,
-            payment: updatedPayment.id,
+            paymentId: updatedPayment.id,
             // payment: { connect: { id: updatedPayment.id } },
             isActive: true,
           },
@@ -150,7 +150,7 @@ class PaymentController {
         await prisma.chat.update({
           where: { id: chat.id },
           data: {
-            payment: updatedPayment.id,
+            paymentId: updatedPayment.id,
             // payment: { connect: { id: updatedPayment.id } },
             isActive: true,
             updatedAt: new Date(),
