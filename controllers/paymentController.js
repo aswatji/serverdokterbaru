@@ -86,7 +86,7 @@ class PaymentController {
           payload.order_id +
             payload.status_code +
             payload.gross_amount +
-            process.env.MIDTRANS_SERVER_KEY
+            process.env.MIDTRANS_SERVER_KEY,
         )
         .digest("hex");
 
@@ -141,7 +141,8 @@ class PaymentController {
             chatKey: `CHAT-${Date.now()}`,
             userId: updatedPayment.userId,
             doctorId: updatedPayment.doctorId,
-            payment: { connect: { id: updatedPayment.id } },
+            payment: updatedPayment.id,
+            // payment: { connect: { id: updatedPayment.id } },
             isActive: true,
           },
         });
@@ -149,7 +150,8 @@ class PaymentController {
         await prisma.chat.update({
           where: { id: chat.id },
           data: {
-            payment: { connect: { id: updatedPayment.id } },
+            payment: updatedPayment.id,
+            // payment: { connect: { id: updatedPayment.id } },
             isActive: true,
             updatedAt: new Date(),
             expiredAt: newExpiry, // ✅ TAMBAHKAN INI SAAT UPDATE
