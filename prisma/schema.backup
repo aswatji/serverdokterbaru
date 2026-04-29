@@ -21,7 +21,6 @@ model User {
   unreads    ChatUnread[]   @relation("UserToUnread")
   ratings    DoctorRating[]
   payments   Payment[]
-  prescriptions  Prescription[] @relation("UserPrescriptions")
 }
 
 model Doctor {
@@ -45,7 +44,6 @@ model Doctor {
   ratings          DoctorRating[]
   schedules        DoctorSchedule[]
   payments         Payment[]
-  prescriptions  Prescription[] @relation("DoctorPrescriptions")
 }
 
 model DoctorSchedule {
@@ -91,7 +89,6 @@ model Chat {
   dates         ChatDate[]
   unreads       ChatUnread[] @relation("ChatToUnread")
   status    String   @default("open")
-  prescriptions  Prescription[]
 
   @@unique([userId, doctorId])
   @@index([userId])
@@ -204,33 +201,4 @@ model ChatTemplate {
   @@unique([doctorId, category, title])
   @@index([doctorId])
   @@index([category])
-}
-
-model Prescription {
-  id               String    @id @default(cuid())
-  prescriptionCode String    @unique // Kode unik untuk QR Code (Misal: RX-2026-ABCD)
-  
-  // Relasi ID
-  doctorId         String
-  userId           String
-  chatId           String?   // Opsional: Jika resep dibuat dari dalam ruang chat
-  
-  // Data File & Status Keamanan
-  fileUrl          String    // Link file PDF yang tersimpan di MinIO S3
-  status           String    @default("AVAILABLE") // Status: AVAILABLE, REDEEMED, REVOKED
-  redeemedAt       DateTime? // Mencatat kapan apotek menebus/memberikan obat ini
-  medicines        Json?     // Opsional: Simpan detail obat format JSON untuk ditampilkan di web apotek
-  
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-
-  // Definisi Relasi
-  doctor           Doctor    @relation("DoctorPrescriptions", fields: [doctorId], references: [id])
-  user             User      @relation("UserPrescriptions", fields: [userId], references: [id])
-  chat             Chat?     @relation(fields: [chatId], references: [id])
-
-  // Indexing agar pencarian QR Code oleh apotek sangat cepat
-  @@index([prescriptionCode])
-  @@index([doctorId])
-  @@index([userId])
 }
