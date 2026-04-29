@@ -18,14 +18,16 @@ export const createPrescription = async (req, res, io) => {
     const file = req.file;
 
     if (!file) {
-      return res.status(400).json({ success: false, message: "File PDF resep wajib disertakan." });
+      return res
+        .status(400)
+        .json({ success: false, message: "File PDF resep wajib disertakan." });
     }
 
     const prescriptionCode = `RX-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     const fileName = `resep/${prescriptionCode}.pdf`;
 
     const uploadParams = {
-      Bucket: process.env.MINIO_BUCKET_NAME,
+      Bucket: process.env.MINIO_BUCKET_RESEP,
       Key: fileName,
       Body: file.buffer,
       ContentType: file.mimetype,
@@ -33,7 +35,7 @@ export const createPrescription = async (req, res, io) => {
 
     // Upload ke MinIO
     await s3.upload(uploadParams).promise();
-    const fileUrl = `${process.env.MINIO_ENDPOINT}/${process.env.MINIO_BUCKET_NAME}/${fileName}`;
+    const fileUrl = `${process.env.MINIO_ENDPOINT}/${process.env.MINIO_BUCKET_RESEP}/${fileName}`;
 
     // Simpan ke Prisma
     await prisma.prescription.create({
@@ -54,7 +56,7 @@ export const createPrescription = async (req, res, io) => {
     if (chatId) {
       const chatDate = await prisma.chatDate.findFirst({
         where: { chatId },
-        orderBy: { date: 'desc' }
+        orderBy: { date: "desc" },
       });
 
       if (chatDate) {
@@ -75,13 +77,15 @@ export const createPrescription = async (req, res, io) => {
           type: "prescription",
           fileUrl: fileUrl,
           sentAt: newMessage.sentAt,
-          prescriptionCode: prescriptionCode
+          prescriptionCode: prescriptionCode,
         };
 
         // ✅ Gunakan 'io' yang dilempar dari routes/index.js
         if (io) {
           io.to(`chat:${chatId}`).emit("new_message", messagePayload);
-          console.log(`📤 Resep berhasil di-emit via Socket ke ruang chat:${chatId}`);
+          console.log(
+            `📤 Resep berhasil di-emit via Socket ke ruang chat:${chatId}`,
+          );
         }
       }
     }
@@ -91,9 +95,10 @@ export const createPrescription = async (req, res, io) => {
       message: "Resep berhasil dibuat dan dikirim",
       data: messagePayload || { prescriptionCode, fileUrl },
     });
-
   } catch (error) {
     console.error("❌ Error upload resep:", error);
-    return res.status(500).json({ success: false, message: "Terjadi kesalahan di server." });
+    return res
+      .status(500)
+      .json({ success: false, message: "Terjadi kesalahan di server." });
   }
 };
