@@ -4,6 +4,7 @@
 import crypto from "crypto";
 import { PrismaClient } from "@prisma/client";
 import midtransClient from "midtrans-client";
+import { getIO } from "../chatSocket.js";
 
 const prisma = new PrismaClient();
 
@@ -86,7 +87,7 @@ class PaymentController {
           payload.order_id +
             payload.status_code +
             payload.gross_amount +
-            process.env.MIDTRANS_SERVER_KEY
+            process.env.MIDTRANS_SERVER_KEY,
         )
         .digest("hex");
 
@@ -141,7 +142,8 @@ class PaymentController {
             chatKey: `CHAT-${Date.now()}`,
             userId: updatedPayment.userId,
             doctorId: updatedPayment.doctorId,
-            payment: { connect: { id: updatedPayment.id } },
+            paymentId: updatedPayment.id,
+            // payment: { connect: { id: updatedPayment.id } },
             isActive: true,
           },
         });
@@ -149,7 +151,8 @@ class PaymentController {
         await prisma.chat.update({
           where: { id: chat.id },
           data: {
-            payment: { connect: { id: updatedPayment.id } },
+            paymentId: updatedPayment.id,
+            // payment: { connect: { id: updatedPayment.id } },
             isActive: true,
             updatedAt: new Date(),
             expiredAt: newExpiry, // ✅ TAMBAHKAN INI SAAT UPDATE
@@ -183,12 +186,34 @@ class PaymentController {
       // 📢 EMIT KE ROOM CHAT
       // supaya pasien & dokter tau expired terbaru
       // =============================
-      this.io.to(`chat:${chat.id}`).emit("payment_success", {
-        chatId: chat.id,
-        paymentId: updatedPayment.id,
-        paidAt: updatedPayment.paidAt,
-        expiresAt: finalExpires,
-      });
+      try {
+        const io = getIO(); // ✅ Memanggil fungsi getIO() dengan aman
+        io.to(`chat:${chat.id}`).emit("payment_success", {
+          chatId: chat.id,
+          paymentId: updatedPayment.id,
+          paidAt: updatedPayment.paidAt,
+          expiresAt: finalExpires,
+        });
+        console.log(
+          `✅ Berhasil mengirim notifikasi socket untuk Chat: ${chat.id}`,
+        );
+      } catch (socketErr) {
+        console.warn(
+          "⚠️ Gagal mengirim socket emit, tapi pembayaran sukses di DB:",
+          socketErr.message,
+        );
+      }
+
+      // ✅ Wajib membalas 200 OK agar Midtrans berhenti melakukan spam retry
+      return res
+        .status(200)
+        .json({ success: true, message: "Callback processed successfully" });
+      // this.io.to(`chat:${chat.id}`).emit("payment_success", {
+      //   chatId: chat.id,
+      //   paymentId: updatedPayment.id,
+      //   paidAt: updatedPayment.paidAt,
+      //   expiresAt: finalExpires,
+      // });
     } catch (error) {
       console.error("❌ midtransCallback error:", error);
       res.status(500).json({
