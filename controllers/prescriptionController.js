@@ -67,7 +67,7 @@ export const createPrescription = async (req, res, io) => {
             content: "Resep Digital diterbitkan",
             type: "prescription",
             content: req.body.medicines,
-            fileUrl: `https://${minioFileUrl}`,
+            fileUrl: `https://${fileUrl}`,
           },
         });
 
@@ -75,9 +75,9 @@ export const createPrescription = async (req, res, io) => {
           id: newMessage.id,
           chatId,
           sender: doctorId,
-          content: "Resep Digital diterbitkan",
+          content: req.body.medicines,
           type: "prescription",
-          fileUrl: fileUrl,
+          fileUrl: `https://${fileUrl}`,
           sentAt: newMessage.sentAt,
           prescriptionCode: prescriptionCode,
         };
