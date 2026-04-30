@@ -67,7 +67,6 @@ export const createPrescription = async (req, res, io) => {
             content: "Resep Digital diterbitkan",
             type: "prescription",
             content: req.body.medicines,
-            fileUrl: `https://${fileUrl}`,
           },
         });
 
@@ -77,7 +76,7 @@ export const createPrescription = async (req, res, io) => {
           sender: doctorId,
           content: req.body.medicines,
           type: "prescription",
-          fileUrl: `https://${fileUrl}`,
+          fileUrl: fileUrl,
           sentAt: newMessage.sentAt,
           prescriptionCode: prescriptionCode,
         };
