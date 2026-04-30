@@ -67,7 +67,7 @@ export const createPrescription = async (req, res, io) => {
             content: "Resep Digital diterbitkan",
             type: "prescription",
             content: req.body.medicines,
-            fileUrl: fileUrl,
+            // fileUrl: fileUrl,
           },
         });
 
