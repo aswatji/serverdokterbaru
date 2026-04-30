@@ -44,7 +44,7 @@ export const createPrescription = async (req, res, io) => {
         doctorId,
         userId,
         chatId: chatId || null,
-        fileUrl,
+        fileUrl: `https://${fileUrl}`,
         status: "AVAILABLE",
         medicines: medicines ? JSON.parse(medicines) : null,
       },
@@ -67,6 +67,7 @@ export const createPrescription = async (req, res, io) => {
             content: "Resep Digital diterbitkan",
             type: "prescription",
             content: req.body.medicines,
+            fileUrl: `https://${fileUrl}`,
           },
         });
 
@@ -76,7 +77,7 @@ export const createPrescription = async (req, res, io) => {
           sender: doctorId,
           content: req.body.medicines,
           type: "prescription",
-          fileUrl: fileUrl,
+          fileUrl: `https://${fileUrl}`,
           sentAt: newMessage.sentAt,
           prescriptionCode: prescriptionCode,
         };

@@ -116,7 +116,8 @@ model ChatMessage {
   id              String   @id @default(cuid())
   chatDateId      String
   sender          String
-  content         String
+  content         String   @db.Text
+  fileUrl         String?  @db.Text
   sentAt          DateTime @default(now())
   type            String   @default("text")
   isRead          Boolean  @default(false)
