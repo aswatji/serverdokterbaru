@@ -756,7 +756,7 @@ class DoctorController {
             where: { doctorId: doctor.id },
           });
           return { ...doctor, consultationCount: chatCount };
-        })
+        }),
       );
 
       res.json({
@@ -769,6 +769,47 @@ class DoctorController {
       res.status(500).json({
         success: false,
         message: "Failed to fetch doctors by category",
+        error: error.message,
+      });
+    }
+  }
+
+  async getAllDoctorSchedules(req, res) {
+    try {
+      const schedules = await prisma.doctorSchedule.findMany({
+        where: {
+          isActive: true, // Opsional: Hanya tampilkan jadwal yang aktif
+        },
+        include: {
+          doctor: {
+            select: {
+              id: true,
+              fullname: true,
+              strNumber: true,
+              category: true,
+              university: true,
+              photo: true,
+              gender: true,
+              // JANGAN menyertakan password di sini
+            },
+          },
+        },
+        // Opsional: Urutkan berdasarkan jadwal terbaru atau hari
+        orderBy: {
+          day: "asc",
+        },
+      });
+
+      res.json({
+        success: true,
+        message: "Berhasil mengambil jadwal beserta data dokter",
+        data: schedules,
+      });
+    } catch (error) {
+      console.error("❌ Error getAllDoctorSchedules:", error);
+      res.status(500).json({
+        success: false,
+        message: "Gagal mengambil data jadwal dokter",
         error: error.message,
       });
     }

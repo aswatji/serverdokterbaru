@@ -235,7 +235,7 @@ router.get(
   "/profile/me",
   authMiddleware,
   requireDoctor,
-  doctorController.getProfile
+  doctorController.getProfile,
 );
 router.put(
   "/profile",
@@ -243,7 +243,7 @@ router.put(
   requireDoctor,
   updateDoctorValidation,
   validateRequest,
-  doctorController.updateProfile
+  doctorController.updateProfile,
 );
 
 /* -------------------------------------------
@@ -258,7 +258,7 @@ router.put(
   requireDoctor,
   updateScheduleValidation,
   validateRequest,
-  doctorController.updateScheduleSettings
+  doctorController.updateScheduleSettings,
 );
 
 // ✅ GET JADWAL
@@ -266,7 +266,7 @@ router.get(
   "/schedule",
   authMiddleware,
   requireDoctor,
-  doctorController.getMySchedules
+  doctorController.getMySchedules,
 );
 
 /* -------------------------------------------
@@ -276,13 +276,13 @@ router.get(
   "/chats",
   authMiddleware,
   requireDoctor,
-  doctorController.getDoctorChats
+  doctorController.getDoctorChats,
 );
 router.get(
   "/chat/:id",
   authMiddleware,
   requireDoctor,
-  doctorController.getDoctorChatById
+  doctorController.getDoctorChatById,
 );
 
 /* -------------------------------------------
@@ -290,13 +290,14 @@ router.get(
 ------------------------------------------- */
 
 // ✅ Get by ID (Hati-hati, ini menangkap semua GET yang tidak match di atas)
+router.get("/schedules/all", doctorController.getAllDoctorSchedules);
 router.get("/:doctorId", doctorController.getDoctorById);
 router.put(
   "/:doctorId",
   // requireDoctor,
   updateDoctorValidation,
   validateRequest,
-  doctorController.updateProfile
+  doctorController.updateProfile,
 );
 // router.put(
 //   "/:doctorId/photo",
