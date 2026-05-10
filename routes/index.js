@@ -92,7 +92,10 @@ export default function routes(io) {
   router.use("/prescriptions", prescriptionRoutes(io));
 
   // ✅ Product routes
-  router.use("/products", productRoutes); // ✅ Tambahkan ini
+  router.use("/products", productRoutes);
+
+  // ✅ Appointment routes
+  router.use("/appointments", appointmentRoutes);
 
   /* -------------------------------------------
      🧭 404 HANDLER  

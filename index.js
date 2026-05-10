@@ -162,6 +162,7 @@ async function startServer() {
           chat: "/api/chat",
           upload: "/api/upload",
           products: "/api/products",
+          appointments: "/api/appointments",
         },
       });
     });

@@ -138,175 +138,7 @@ export function initChatSocket(socketIo) {
         console.error("❌ Mark as read error:", err);
       }
     });
-
-    // 💬 Send Message (Text Only via Socket)
-    // socket.on("send_message", async (payload, callback) => {
-    //   try {
-    //     const { chatId, sender, content, type = "text", fileData } = payload;
-
-    //     if (!chatId || !sender || (!content && !fileData)) {
-    //       if (callback) callback({ success: false, error: "Data incomplete" });
-    //       return;
-    //     }
-
-    //     // 1. Ambil Data Chat BESERTA Token User & Doctor
-    //     // Kita ubah dari select biasa menjadi include relation
-    //     const chat = await prisma.chat.findUnique({
-    //       where: { id: chatId },
-    //       include: {
-    //         user: { select: { id: true, fullname: true, pushToken: true } },
-    //         doctor: { select: { id: true, fullname: true, pushToken: true } },
-    //       },
-    //     });
-
-    //     if (!chat || !chat.isActive) {
-    //       if (callback) callback({ success: false, error: "Chat inactive" });
-    //       return;
-    //     }
-
-    //     // Upsert ChatDate
-    //     const today = new Date();
-    //     today.setHours(0, 0, 0, 0);
-    //     const chatDate = await prisma.chatDate.upsert({
-    //       where: { chatId_date: { chatId: chat.id, date: today } },
-    //       update: {},
-    //       create: { chatId: chat.id, date: today },
-    //       select: { id: true },
-    //     });
-
-    //     // Simpan Pesan
-    //     const savedMessage = await prisma.chatMessage.create({
-    //       data: {
-    //         chatDateId: chatDate.id,
-    //         sender: sender,
-    //         content,
-    //         type,
-    //       },
-    //     });
-
-    //     // Update Chat
-    //     await prisma.chat.update({
-    //       where: { id: chat.id },
-    //       data: { lastMessageId: savedMessage.id, updatedAt: new Date() },
-    //     });
-
-    //     // Broadcast ke Socket
-    //     const messagePayload = {
-    //       id: savedMessage.id,
-    //       chatId: chat.id,
-    //       chatDateId: chatDate.id,
-    //       chatKey: chat.chatKey,
-    //       sender,
-    //       content,
-    //       type,
-    //       sentAt: savedMessage.sentAt,
-    //       chatDate: { date: today.toISOString() },
-    //     };
-
-    //     const roomName = `chat:${chat.id}`;
-    //     ioInstance.to(roomName).emit("new_message", messagePayload);
-    //     console.log(`📢 Broadcast text to ${roomName} (Sender: ${sender})`);
-
-    //     // Update Unread Logic (Fixed)
-    //     try {
-    //       if (sender === "user") {
-    //         const unread = await prisma.chatUnread.upsert({
-    //           where: {
-    //             chatId_doctorId: { chatId: chat.id, doctorId: chat.doctorId },
-    //           },
-    //           update: { unreadCount: { increment: 1 } },
-    //           create: {
-    //             chatId: chat.id,
-    //             doctorId: chat.doctorId,
-    //             userId: null,
-    //             unreadCount: 1,
-    //           },
-    //           select: { unreadCount: true },
-    //         });
-    //         ioInstance.to(roomName).emit("update_unread", {
-    //           role: "doctor",
-    //           count: unread.unreadCount,
-    //         });
-    //       } else if (sender === "doctor") {
-    //         const unread = await prisma.chatUnread.upsert({
-    //           where: {
-    //             chatId_userId: { chatId: chat.id, userId: chat.userId },
-    //           },
-    //           update: { unreadCount: { increment: 1 } },
-    //           create: {
-    //             chatId: chat.id,
-    //             userId: chat.userId,
-    //             doctorId: null,
-    //             unreadCount: 1,
-    //           },
-    //           select: { unreadCount: true },
-    //         });
-    //         ioInstance.to(roomName).emit("update_unread", {
-    //           role: "user",
-    //           count: unread.unreadCount,
-    //         });
-    //       }
-    //     } catch (e) {
-    //       console.error("⚠️ Unread update error:", e.message);
-    //     }
-
-    //     // Callback sukses ke pengirim agar UI update
-    //     if (callback) callback({ success: true, data: messagePayload });
-
-    //     // ==========================================================
-    //     // 🔥 [BARU] KIRIM PUSH NOTIFICATION (Non-blocking)
-    //     // ==========================================================
-    //     setImmediate(async () => {
-    //       try {
-    //         // Tentukan Penerima
-    //         const isSenderUser = sender === "user";
-    //         const receiver = isSenderUser ? chat.doctor : chat.user;
-    //         const senderName = isSenderUser
-    //           ? chat.user.fullname
-    //           : chat.doctor.fullname;
-
-    //         // Pastikan token ada
-    //         if (receiver && receiver.pushToken) {
-    //           let notifBody = "";
-
-    //           if (type === "image") {
-    //             notifBody = "📷 Mengirim sebuah foto";
-    //           } else if (type === "file" || type === "document") {
-    //             // Sesuaikan dengan type di DB Anda
-    //             notifBody = "📄 Mengirim sebuah dokumen";
-    //           } else {
-    //             // Jika text biasa, baru kita potong jika kepanjangan
-    //             notifBody =
-    //               content.length > 50
-    //                 ? content.substring(0, 50) + "..."
-    //                 : content;
-    //           }
-    //           await sendPushNotification(
-    //             receiver.pushToken,
-    //             senderName || "Pesan Baru", // Title
-    //             notifBody, // Body
-    //             { screen: "chat", chatId: chat.id, chatKey: chat.chatKey } // Data Payload
-    //           );
-    //           console.log(
-    //             `🔔 Notif sent to ${receiver.fullname} (${receiver.pushToken})`
-    //           );
-    //         } else {
-    //           console.log(
-    //             `⚠️ Skip Notif: Token kosong untuk ${
-    //               isSenderUser ? "Doctor" : "User"
-    //             }`
-    //           );
-    //         }
-    //       } catch (notifErr) {
-    //         console.error("❌ Notif Error in Socket:", notifErr);
-    //       }
-    //     });
-    //     // ==========================================================
-    //   } catch (err) {
-    //     console.error("❌ Send message error:", err);
-    //     if (callback) callback({ success: false, error: err.message });
-    //   }
-    // });
+    
     socket.on("send_message", async (payload, callback) => {
       try {
         // ✅ 1. Tambahkan 'replyToId' di sini
@@ -505,11 +337,11 @@ export function initChatSocket(socketIo) {
                 receiver.pushToken,
                 senderName || "Pesan Baru", // Title
                 notifBody, // Body (yang sudah kita ubah jadi "Resep Digital")
-                { screen: "chat", chatId: chat.id, chatKey: chat.chatKey } // Data
+                { screen: "chat", chatId: chat.id, chatKey: chat.chatKey }, // Data
               );
 
               console.log(
-                `🔔 Notif sent to ${receiver.fullname}: ${notifBody}`
+                `🔔 Notif sent to ${receiver.fullname}: ${notifBody}`,
               );
             }
           } catch (notifErr) {

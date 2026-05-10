@@ -8,26 +8,29 @@ datasource db {
 }
 
 model User {
-  id         String         @id @default(cuid())
-  email      String         @unique
-  password   String
-  createdAt  DateTime       @default(now())
-  fullname   String
-  photo      String?
-  profession String?
-  updatedAt  DateTime       @updatedAt
-  pushToken  String?
-  chats      Chat[]         @relation("UserChats")
-  unreads    ChatUnread[]   @relation("UserToUnread")
-  ratings    DoctorRating[]
-  payments   Payment[]
-  prescriptions  Prescription[] @relation("UserPrescriptions")
+  id            String         @id @default(cuid())
+  email         String         @unique
+  password      String
+  createdAt     DateTime       @default(now())
+  fullname      String
+  photo         String?
+  profession    String?
+  updatedAt     DateTime       @updatedAt
+  pushToken     String?
+  chats         Chat[]         @relation("UserChats")
+  unreads       ChatUnread[]   @relation("UserToUnread")
+  ratings       DoctorRating[]
+  payments      Payment[]
+  prescriptions Prescription[] @relation("UserPrescriptions")
+  appointments   Appointment[]   @relation("UserAppointments")
 }
 
 model Doctor {
   id               String           @id @default(cuid())
   bio              String?
   photo            String?
+  about            String?           @db.Text
+  experienceYears  Int?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
   fullname         String
@@ -45,18 +48,22 @@ model Doctor {
   ratings          DoctorRating[]
   schedules        DoctorSchedule[]
   payments         Payment[]
-  prescriptions  Prescription[] @relation("DoctorPrescriptions")
+  isAvailable      Boolean          @default(false)
+  prescriptions    Prescription[]   @relation("DoctorPrescriptions")
+  appointments      Appointment[]   @relation("DoctorAppointments")
 }
 
 model DoctorSchedule {
   id        String  @id @default(cuid())
   doctorId  String
-  day       String   
-  startTime String  
-  endTime   String  
-  isActive  Boolean  @default(true) 
-  doctor    Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
-@@index([doctorId, day])
+  startTime String
+  endTime   String
+  day       String
+  isActive  Boolean @default(true)
+  doctor    Doctor  @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  appointments     Appointment[]
+
+  @@index([doctorId, day])
 }
 
 model Payment {
@@ -74,24 +81,24 @@ model Payment {
 }
 
 model Chat {
-  id            String       @id @default(cuid())
-  chatKey       String       @unique
-  createdAt     DateTime     @default(now())
+  id            String         @id @default(cuid())
+  chatKey       String         @unique
+  createdAt     DateTime       @default(now())
   doctorId      String
   userId        String
-  lastMessageId String?      @unique
-  paymentId     String?      @unique
-  updatedAt     DateTime     @default(now()) @updatedAt
+  lastMessageId String?        @unique
+  paymentId     String?        @unique
+  updatedAt     DateTime       @default(now()) @updatedAt
   expiredAt     DateTime?
-  isActive      Boolean      @default(false)
-  doctor        Doctor       @relation("DoctorChats", fields: [doctorId], references: [id])
-  lastMessage   ChatMessage? @relation("LastMessageRelation", fields: [lastMessageId], references: [id])
-  payment       Payment?     @relation(fields: [paymentId], references: [id])
-  user          User         @relation("UserChats", fields: [userId], references: [id])
+  isActive      Boolean        @default(false)
+  status        String         @default("open")
+  doctor        Doctor         @relation("DoctorChats", fields: [doctorId], references: [id])
+  lastMessage   ChatMessage?   @relation("LastMessageRelation", fields: [lastMessageId], references: [id])
+  payment       Payment?       @relation(fields: [paymentId], references: [id])
+  user          User           @relation("UserChats", fields: [userId], references: [id])
   dates         ChatDate[]
-  unreads       ChatUnread[] @relation("ChatToUnread")
-  status    String   @default("open")
-  prescriptions  Prescription[]
+  unreads       ChatUnread[]   @relation("ChatToUnread")
+  prescriptions Prescription[]
 
   @@unique([userId, doctorId])
   @@index([userId])
@@ -113,19 +120,19 @@ model ChatDate {
 }
 
 model ChatMessage {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   chatDateId      String
   sender          String
-  content         String   @db.Text
-  fileUrl         String?  @db.Text
-  sentAt          DateTime @default(now())
-  type            String   @default("text")
-  isRead          Boolean  @default(false)
- replyToId       String?
+  content         String
+  sentAt          DateTime      @default(now())
+  type            String        @default("text")
+  isRead          Boolean       @default(false)
+  replyToId       String?
+  fileUrl         String?
+  chatLastMessage Chat?         @relation("LastMessageRelation")
+  chatDate        ChatDate      @relation(fields: [chatDateId], references: [id])
   replyTo         ChatMessage?  @relation("ReplyRelation", fields: [replyToId], references: [id])
   replies         ChatMessage[] @relation("ReplyRelation")
-  chatLastMessage Chat?    @relation("LastMessageRelation")
-  chatDate        ChatDate @relation(fields: [chatDateId], references: [id])
 
   @@index([chatDateId])
   @@index([sentAt])
@@ -209,29 +216,42 @@ model ChatTemplate {
 
 model Prescription {
   id               String    @id @default(cuid())
-  prescriptionCode String    @unique // Kode unik untuk QR Code (Misal: RX-2026-ABCD)
-  
-  // Relasi ID
+  prescriptionCode String    @unique
   doctorId         String
   userId           String
-  chatId           String?   // Opsional: Jika resep dibuat dari dalam ruang chat
-  
-  // Data File & Status Keamanan
-  fileUrl          String    // Link file PDF yang tersimpan di MinIO S3
-  status           String    @default("AVAILABLE") // Status: AVAILABLE, REDEEMED, REVOKED
-  redeemedAt       DateTime? // Mencatat kapan apotek menebus/memberikan obat ini
-  medicines        Json?     // Opsional: Simpan detail obat format JSON untuk ditampilkan di web apotek
-  
+  chatId           String?
+  fileUrl          String
+  status           String    @default("AVAILABLE")
+  redeemedAt       DateTime?
+  medicines        Json?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
-
-  // Definisi Relasi
+  chat             Chat?     @relation(fields: [chatId], references: [id])
   doctor           Doctor    @relation("DoctorPrescriptions", fields: [doctorId], references: [id])
   user             User      @relation("UserPrescriptions", fields: [userId], references: [id])
-  chat             Chat?     @relation(fields: [chatId], references: [id])
 
-  // Indexing agar pencarian QR Code oleh apotek sangat cepat
   @@index([prescriptionCode])
   @@index([doctorId])
   @@index([userId])
+}
+
+model Appointment {
+  id          String   @id @default(cuid())
+  userId      String
+  doctorId    String
+  scheduleId  String?  // Opsional: Jika terikat dengan jadwal spesifik
+  date        DateTime // Tanggal janji temu (misal: 2026-05-15)
+  time        String   // Jam janji temu (misal: "10:00 - 11:00")
+  status      String   @default("PENDING") // PENDING, CONFIRMED, COMPLETED, CANCELLED
+  notes       String?  @db.Text // Keluhan pasien saat membuat janji
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User            @relation("UserAppointments", fields: [userId], references: [id])
+  doctor      Doctor          @relation("DoctorAppointments", fields: [doctorId], references: [id])
+  schedule    DoctorSchedule? @relation(fields: [scheduleId], references: [id])
+
+  @@index([userId])
+  @@index([doctorId])
+  @@index([date])
 }

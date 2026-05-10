@@ -75,7 +75,7 @@ class RatingController {
 
       res.json({
         success: true,
-        average: avg._avg.rating ?? 0,
+        average: avg._avg.rating ? parseFloat(avg._avg.rating.toFixed(1)) : 0,
         totalRatings: avg._count.rating,
         ratings,
       });
