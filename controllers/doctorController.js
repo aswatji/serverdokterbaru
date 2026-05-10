@@ -494,6 +494,40 @@ class DoctorController {
       });
     }
   }
+  async bulkInsertDoctors(req, res) {
+    try {
+      const doctorsArray = req.body; // Mengambil array JSON dari Insomnia
+
+      if (!Array.isArray(doctorsArray)) {
+        return res.status(400).json({
+          success: false,
+          message: "Data harus berupa Array JSON [...]",
+        });
+      }
+
+      let count = 0;
+      for (const doc of doctorsArray) {
+        // Enkripsi password
+        const hashedPassword = await bcrypt.hash(
+          doc.password || "Password123!",
+          10,
+        );
+        doc.password = hashedPassword;
+
+        // Simpan ke database
+        await prisma.doctor.create({ data: doc });
+        count++;
+      }
+
+      res.status(201).json({
+        success: true,
+        message: `HORE! Berhasil memasukkan ${count} dokter sekaligus ke database.`,
+      });
+    } catch (error) {
+      console.error("❌ Error Bulk Insert:", error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
 }
 
 export default new DoctorController();

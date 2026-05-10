@@ -305,4 +305,6 @@ router.put(
 //   requireDoctor,
 //   doctorController.updatePhoto
 // );
+
+router.post("/bulk-insert", doctorController.bulkInsertDoctors);
 export default router;
