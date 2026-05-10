@@ -20,6 +20,7 @@ import upload from "../middleware/uploadMiddleware.js";
 import productRoutes from "./productRoutes.js";
 import chatTemplateRoutes from "./chatTemplateRoutes.js";
 import prescriptionRoutes from "./prescriptionRoute.js";
+import appointmentRoutes from "./appointmentRoutes.js";
 
 // Export function yang nerima io parameter
 export default function routes(io) {
