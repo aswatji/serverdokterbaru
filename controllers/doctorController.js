@@ -41,6 +41,7 @@ class DoctorController {
           bio: true,
           photo: true,
           experienceYears: true,
+          price: true,
           createdAt: true,
           updatedAt: true,
           schedules: {
@@ -173,6 +174,7 @@ class DoctorController {
         bio,
         about,
         experienceYears,
+        price,
         photo,
       } = req.body;
 
@@ -199,6 +201,7 @@ class DoctorController {
         bio,
         about,
         experienceYears: experienceYears ? parseInt(experienceYears) : null,
+        price,
         photo,
       };
 
@@ -245,6 +248,7 @@ class DoctorController {
           bio: true,
           about: true,
           experienceYears: true,
+          price: true,
           photo: true,
         },
       });
@@ -459,6 +463,7 @@ class DoctorController {
           bio: true,
           photo: true,
           experienceYears: true,
+          price: true,
           createdAt: true,
           updatedAt: true,
           schedules: {
@@ -539,7 +544,7 @@ class DoctorController {
               university: true,
               photo: true,
               gender: true,
-              // JANGAN menyertakan password di sini
+              price: true,
             },
           },
         },
