@@ -289,7 +289,7 @@ router.get(
    ⚠️ DYNAMIC ROUTES (TARUH PALING BAWAH)
 ------------------------------------------- */
 
-// ✅ Get by ID (Hati-hati, ini menangkap semua GET yang tidak match di atas)
+
 router.get("/schedules/all", doctorController.getAllDoctorSchedules);
 router.get("/:doctorId", doctorController.getDoctorById);
 router.put(

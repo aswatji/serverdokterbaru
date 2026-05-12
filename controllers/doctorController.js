@@ -7,6 +7,27 @@ class DoctorController {
   // ✅ Ambil semua dokter
   async getAllDoctors(req, res) {
     try {
+      const serverTime = new Date().toLocaleString("en-US", {
+        timeZone: "Asia/Jakarta",
+      });
+      const now = new Date(serverTime);
+
+      const days = [
+        "Minggu",
+        "Senin",
+        "Selasa",
+        "Rabu",
+        "Kamis",
+        "Jumat",
+        "Sabtu",
+      ];
+      const currentDay = days[now.getDay()];
+
+      const currentTime =
+        now.getHours().toString().padStart(2, "0") +
+        ":" +
+        now.getMinutes().toString().padStart(2, "0");
+
       const doctors = await prisma.doctor.findMany({
         select: {
           id: true,
@@ -22,6 +43,10 @@ class DoctorController {
           experienceYears: true,
           createdAt: true,
           updatedAt: true,
+          schedules: {
+            where: { day: currentDay, isActive: true },
+            select: { startTime: true, endTime: true },
+          },
         },
         orderBy: { createdAt: "desc" },
       });
@@ -43,8 +68,19 @@ class DoctorController {
             ? parseFloat(reviewStats._avg.rating.toFixed(1))
             : 0;
 
+          const isAvailableNow = doctor.schedules.some((schedule) => {
+            return (
+              schedule.startTime <= currentTime &&
+              schedule.endTime >= currentTime
+            );
+          });
+
+          // Hapus array schedules agar JSON response tidak bengkak
+          const { schedules, ...cleanDoctorData } = doctor;
+
           return {
-            ...doctor,
+            ...cleanDoctorData,
+            available: isAvailableNow,
             consultationCount: chatCount,
             rating: avgRating,
             totalReviews: reviewStats._count.id,
@@ -384,6 +420,25 @@ class DoctorController {
   async getDoctorsByCategory(req, res) {
     try {
       const { category } = req.params;
+      const serverTime = new Date().toLocaleString("en-US", {
+        timeZone: "Asia/Jakarta",
+      });
+      const now = new Date(serverTime);
+      const days = [
+        "Minggu",
+        "Senin",
+        "Selasa",
+        "Rabu",
+        "Kamis",
+        "Jumat",
+        "Sabtu",
+      ];
+      const currentDay = days[now.getDay()];
+
+      const currentTime =
+        now.getHours().toString().padStart(2, "0") +
+        ":" +
+        now.getMinutes().toString().padStart(2, "0");
 
       const doctors = await prisma.doctor.findMany({
         where: {
@@ -406,6 +461,10 @@ class DoctorController {
           experienceYears: true,
           createdAt: true,
           updatedAt: true,
+          schedules: {
+            where: { day: currentDay, isActive: true },
+            select: { startTime: true, endTime: true },
+          },
         },
         orderBy: { fullname: "asc" },
       });
@@ -430,8 +489,18 @@ class DoctorController {
             : 0;
           const totalReviewers = reviewStats._count.id;
 
+          const isAvailableNow = doctor.schedules.some((schedule) => {
+            return (
+              schedule.startTime <= currentTime &&
+              schedule.endTime >= currentTime
+            );
+          });
+
+          const { schedules, ...cleanDoctorData } = doctor;
+
           return {
-            ...doctor,
+            ...cleanDoctorData,
+            available: isAvailableNow,
             consultationCount: chatCount,
             rating: avgRating,
             totalReviews: totalReviewers,
