@@ -44,6 +44,7 @@ class DoctorController {
           price: true,
           createdAt: true,
           updatedAt: true,
+          about: true,
           schedules: {
             where: { day: currentDay, isActive: true },
             select: { startTime: true, endTime: true },
@@ -464,6 +465,7 @@ class DoctorController {
           photo: true,
           experienceYears: true,
           price: true,
+          about: true,
           createdAt: true,
           updatedAt: true,
           schedules: {
