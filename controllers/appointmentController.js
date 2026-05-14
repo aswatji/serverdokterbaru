@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { sendPushNotification } from "../utils/notification";
+import { sendPushNotification } from "../utils/notification.js";
 const prisma = new PrismaClient();
 
 class AppointmentController {
