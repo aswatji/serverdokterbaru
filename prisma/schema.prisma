@@ -243,9 +243,10 @@ model Appointment {
   scheduleId  String?  
   date        DateTime 
   time        String   
+  appointmentId String?
   type        String   @default("CHAT") // "VIDEO", "CHAT", "OFFLINE"
   price       Int      @default(0)       // Menyimpan harga saat booking
-  status      String   @default("UPCOMING") // UPCOMING, COMPLETED, CANCELLED
+  status      String   @default("PENDING") // PENDING, UPCOMING, COMPLETED, CANCELLED
   notes       String?  @db.Text 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -253,6 +254,7 @@ model Appointment {
   user        User            @relation("UserAppointments", fields: [userId], references: [id])
   doctor      Doctor          @relation("DoctorAppointments", fields: [doctorId], references: [id])
   schedule    DoctorSchedule? @relation(fields: [scheduleId], references: [id])
+  payments    Payment[]
 
   @@index([userId])
   @@index([doctorId])

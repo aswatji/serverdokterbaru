@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { sendPushNotification } from "../utils/notification";
 const prisma = new PrismaClient();
 
 class AppointmentController {
@@ -177,10 +178,11 @@ class AppointmentController {
       });
     }
   }
+  // ✅ 4. FUNGSI BARU: Update Status Appointment & Kirim Notifikasi
   async updateAppointmentStatus(req, res) {
     try {
-      const { id } = req.params; // Menangkap ID dari URL (contoh: /appointments/123/status)
-      const { status } = req.body; // Menangkap status baru dari body (contoh: "UPCOMING")
+      const { id } = req.params;
+      const { status } = req.body;
 
       if (!id || !status) {
         return res
@@ -188,11 +190,38 @@ class AppointmentController {
           .json({ success: false, message: "ID dan status wajib diisi" });
       }
 
-      // Update data di database Prisma
+      // 1. Update data di database Prisma sekaligus MENGAMBIL data User & Doctor
       const updatedAppointment = await prisma.appointment.update({
         where: { id: id },
         data: { status: status },
+        // 🔥 include ini penting agar kita dapat pushToken pasien dan nama dokter
+        include: {
+          user: true,
+          doctor: true,
+        },
       });
+
+      // 2. KIRIM NOTIFIKASI JIKA STATUS BERUBAH JADI "UPCOMING" (Pembayaran Sukses)
+      if (status === "UPCOMING") {
+        const pushToken = updatedAppointment.user.pushToken;
+
+        if (pushToken) {
+          const doctorName = updatedAppointment.doctor.fullname;
+          const time = updatedAppointment.time;
+
+          // Memanggil fungsi dari notification.js Anda
+          await sendPushNotification(
+            pushToken,
+            "Pembayaran Berhasil! 🎉",
+            `Konsultasi Anda dengan ${doctorName} jam ${time} telah dikonfirmasi.`,
+            { screen: "AppointmentDetail", appointmentId: id }, // Data sisipan
+          );
+        } else {
+          console.log(
+            `⚠️ Pasien ${updatedAppointment.user.fullname} tidak memiliki pushToken.`,
+          );
+        }
+      }
 
       res.json({
         success: true,

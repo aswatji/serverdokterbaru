@@ -20,6 +20,7 @@ import {
 import prisma, { dbConnection } from "./config/database.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import { ensureDbConnection, healthCheck } from "./middleware/dbMiddleware.js";
+import startCronJobs from "./utils/appointmentCron.js";
 
 dotenv.config();
 
@@ -55,14 +56,14 @@ async function startServer() {
     const dbConnected = await dbConnection.testConnection().catch((err) => {
       console.error(
         "⚠️  Database connection failed (will retry):",
-        err.message
+        err.message,
       );
       return false;
     });
 
     if (!dbConnected) {
       console.log(
-        "⚠️  Starting server without database (will reconnect automatically)"
+        "⚠️  Starting server without database (will reconnect automatically)",
       );
     } else {
       console.log("✅ Database connected successfully!");
@@ -79,7 +80,7 @@ async function startServer() {
       helmet({
         contentSecurityPolicy: false, // Disable CSP to allow WebSocket
         crossOriginEmbedderPolicy: false,
-      })
+      }),
     );
     app.use(compression());
     app.use(
@@ -93,7 +94,7 @@ async function startServer() {
                 "http://localhost:5173",
               ],
         credentials: true,
-      })
+      }),
     );
 
     // ✅ Body parser
@@ -112,7 +113,7 @@ async function startServer() {
           res.setHeader("Access-Control-Allow-Methods", "GET");
           res.setHeader("Cache-Control", "public, max-age=31536000"); // Cache 1 year
         },
-      })
+      }),
     );
 
     // ✅ Database health check middleware - ONLY for /api routes (not for socket.io)
@@ -187,6 +188,10 @@ async function startServer() {
       console.log(`Chat Socket.IO server initialized for real-time messaging`);
     });
 
+    startCronJobs();
+    console.log(
+      "⏰ Sistem penjadwalan (Cron Job) berhasil dihidupkan di latar belakang",
+    );
     // ✅ Monitoring memori (opsional)
     if (process.env.NODE_ENV === "production") {
       console.log("📊 Memory monitoring started");
@@ -194,8 +199,8 @@ async function startServer() {
         const memUsage = process.memoryUsage();
         console.log(
           `Memory usage: RSS: ${Math.round(
-            memUsage.rss / 1024 / 1024
-          )}MB, Heap Used: ${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`
+            memUsage.rss / 1024 / 1024,
+          )}MB, Heap Used: ${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`,
         );
       }, 60000);
     }
