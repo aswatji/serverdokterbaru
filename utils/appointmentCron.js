@@ -12,7 +12,7 @@ const startCronJobs = () => {
 
     try {
       // Hitung waktu 30 menit yang lalu dari sekarang
-      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+      const thirtyMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
 
       // Cari dan update semua appointment yang PENDING dan usianya sudah lebih dari 30 menit
       const expiredAppointments = await prisma.appointment.updateMany({
