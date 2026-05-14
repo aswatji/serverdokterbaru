@@ -74,6 +74,8 @@ model Payment {
   createdAt DateTime  @default(now())
   userId    String
   doctorId  String
+  appointmentId String?   
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
   expiresAt DateTime?
   paidAt    DateTime?
   chat      Chat?
@@ -243,8 +245,6 @@ model Appointment {
   scheduleId  String?  
   date        DateTime 
   time        String   
-  appointmentId String?
-  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
   type        String   @default("CHAT") // "VIDEO", "CHAT", "OFFLINE"
   price       Int      @default(0)       // Menyimpan harga saat booking
   status      String   @default("PENDING") // PENDING, UPCOMING, COMPLETED, CANCELLED
