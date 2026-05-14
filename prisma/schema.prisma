@@ -240,11 +240,13 @@ model Appointment {
   id          String   @id @default(cuid())
   userId      String
   doctorId    String
-  scheduleId  String?  // Opsional: Jika terikat dengan jadwal spesifik
-  date        DateTime // Tanggal janji temu (misal: 2026-05-15)
-  time        String   // Jam janji temu (misal: "10:00 - 11:00")
-  status      String   @default("PENDING") // PENDING, CONFIRMED, COMPLETED, CANCELLED
-  notes       String?  @db.Text // Keluhan pasien saat membuat janji
+  scheduleId  String?  
+  date        DateTime 
+  time        String   
+  type        String   @default("CHAT") // "VIDEO", "CHAT", "OFFLINE"
+  price       Int      @default(0)       // Menyimpan harga saat booking
+  status      String   @default("UPCOMING") // UPCOMING, COMPLETED, CANCELLED
+  notes       String?  @db.Text 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
