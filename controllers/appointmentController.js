@@ -59,7 +59,21 @@ class AppointmentController {
           price: doctor?.price || 0,
           status: "PENDING",
         },
+        include: {
+          user: true,
+          doctor: true,
+        },
       });
+      if (newAppointment.user && newAppointment.user.pushToken) {
+        const doctorName = newAppointment.doctor.fullname;
+
+        await sendPushNotification(
+          newAppointment.user.pushToken,
+          "Menunggu Pembayaran ⏳",
+          `Jadwal berhasil dibuat! Silakan selesaikan pembayaran untuk dokter kesayangan Anda (dr. ${doctorName}) agar jadwal tidak otomatis dibatalkan.`,
+          { screen: "Payment", appointmentId: newAppointment.id },
+        );
+      }
 
       res.status(201).json({
         success: true,
