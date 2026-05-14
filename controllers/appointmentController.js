@@ -6,6 +6,7 @@ class AppointmentController {
     this.createAppointment = this.createAppointment.bind(this);
     this.getAvailableSlots = this.getAvailableSlots.bind(this);
     this.getUserAppointments = this.getUserAppointments.bind(this);
+    this.updateAppointmentStatus = this.updateAppointmentStatus.bind(this);
   }
 
   // ✅ 1. Buat Janji Temu Baru
@@ -55,26 +56,22 @@ class AppointmentController {
           notes,
           type: type || "CHAT", // Default ke CHAT
           price: doctor?.price || 0,
-          status: "UPCOMING", // Default status baru menyesuaikan frontend
+          status: "PENDING",
         },
       });
 
-      res
-        .status(201)
-        .json({
-          success: true,
-          message: "Janji temu berhasil dibuat",
-          data: newAppointment,
-        });
+      res.status(201).json({
+        success: true,
+        message: "Janji temu berhasil dibuat",
+        data: newAppointment,
+      });
     } catch (error) {
       console.error("❌ createAppointment error:", error);
-      res
-        .status(500)
-        .json({
-          success: false,
-          message: "Gagal membuat janji temu",
-          error: error.message,
-        });
+      res.status(500).json({
+        success: false,
+        message: "Gagal membuat janji temu",
+        error: error.message,
+      });
     }
   }
 
@@ -112,13 +109,11 @@ class AppointmentController {
       res.json({ success: true, data: availableSlots });
     } catch (error) {
       console.error("❌ getAvailableSlots error:", error);
-      res
-        .status(500)
-        .json({
-          success: false,
-          message: "Gagal mengambil slot jadwal",
-          error: error.message,
-        });
+      res.status(500).json({
+        success: false,
+        message: "Gagal mengambil slot jadwal",
+        error: error.message,
+      });
     }
   }
 
@@ -175,13 +170,42 @@ class AppointmentController {
       res.json({ success: true, data: formattedData });
     } catch (error) {
       console.error("❌ getUserAppointments error:", error);
-      res
-        .status(500)
-        .json({
-          success: false,
-          message: "Gagal mengambil daftar janji temu",
-          error: error.message,
-        });
+      res.status(500).json({
+        success: false,
+        message: "Gagal mengambil daftar janji temu",
+        error: error.message,
+      });
+    }
+  }
+  async updateAppointmentStatus(req, res) {
+    try {
+      const { id } = req.params; // Menangkap ID dari URL (contoh: /appointments/123/status)
+      const { status } = req.body; // Menangkap status baru dari body (contoh: "UPCOMING")
+
+      if (!id || !status) {
+        return res
+          .status(400)
+          .json({ success: false, message: "ID dan status wajib diisi" });
+      }
+
+      // Update data di database Prisma
+      const updatedAppointment = await prisma.appointment.update({
+        where: { id: id },
+        data: { status: status },
+      });
+
+      res.json({
+        success: true,
+        message: "Status janji temu berhasil diperbarui",
+        data: updatedAppointment,
+      });
+    } catch (error) {
+      console.error("❌ updateAppointmentStatus error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Gagal memperbarui status janji temu",
+        error: error.message,
+      });
     }
   }
 }

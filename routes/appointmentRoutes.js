@@ -9,4 +9,5 @@ router.get("/slots", AppointmentController.getAvailableSlots);
 
 router.get("/user", AppointmentController.getUserAppointments);
 
+router.patch("/:id/status", AppointmentController.updateAppointmentStatus);
 export default router;
