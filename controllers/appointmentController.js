@@ -155,6 +155,7 @@ class AppointmentController {
 
       // 🔹 FORMAT DATA AGAR 100% SAMA DENGAN UI MOCKUP DI REACT NATIVE
       const formattedData = appointments.map((apt) => {
+        const now = new Date();
         // Format tanggal ke Bahasa Indonesia (contoh: "Jumat, 16 Mei 2026")
         const dateString = new Date(apt.date).toLocaleDateString("id-ID", {
           weekday: "long",
