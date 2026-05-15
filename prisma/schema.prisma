@@ -78,6 +78,8 @@ model Payment {
   appointment   Appointment? @relation(fields: [appointmentId], references: [id])
   expiresAt DateTime?
   paidAt    DateTime?
+  snapToken     String?
+  redirectUrl   String?
   chat      Chat?
   doctor    Doctor    @relation(fields: [doctorId], references: [id])
   user      User      @relation(fields: [userId], references: [id])

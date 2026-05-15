@@ -50,7 +50,7 @@ export default function paymentRoutes(io) {
     authMiddleware,
     createPaymentValidation,
     validateRequest,
-    paymentController.createPayment
+    paymentController.createPayment,
   );
 
   // ✅ 2. Callback dari Midtrans (tidak perlu token JWT)
@@ -62,7 +62,7 @@ export default function paymentRoutes(io) {
     authMiddleware,
     param("orderId").notEmpty().withMessage("Order ID is required"),
     validateRequest,
-    paymentController.checkPaymentStatus
+    paymentController.checkPaymentStatus,
   );
 
   // ✅ 4. Ambil semua pembayaran milik user/doctor login
@@ -74,7 +74,7 @@ export default function paymentRoutes(io) {
     authMiddleware,
     param("id").notEmpty().withMessage("Payment ID is required"),
     validateRequest,
-    paymentController.getPaymentById
+    paymentController.getPaymentById,
   );
 
   // ✅ 6. Update status pembayaran (admin atau internal)
@@ -83,7 +83,7 @@ export default function paymentRoutes(io) {
     authMiddleware,
     updateStatusValidation,
     validateRequest,
-    paymentController.updatePaymentStatus
+    paymentController.updatePaymentStatus,
   );
 
   // ✅ 7. Hapus pembayaran (opsional / admin)
@@ -92,12 +92,18 @@ export default function paymentRoutes(io) {
     authMiddleware,
     param("id").notEmpty().withMessage("Payment ID is required"),
     validateRequest,
-    paymentController.deletePayment
+    paymentController.deletePayment,
   );
   router.get(
     "/active/doctor",
     authMiddleware,
-    paymentController.getActiveConsultations
+    paymentController.getActiveConsultations,
+  );
+
+  router.get(
+    "/retry/:id",
+    verifyToken,
+    PaymentController.retryAppointmentPayment,
   );
 
   return router;
