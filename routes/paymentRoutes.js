@@ -6,7 +6,6 @@ import { body, param } from "express-validator";
 import paymentController from "../controllers/paymentController.js";
 import validateRequest from "../middleware/validation.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
-import { verifyToken } from "../middleware/auth.js";
 
 export default function paymentRoutes(io) {
   paymentController.io = io;
@@ -103,7 +102,7 @@ export default function paymentRoutes(io) {
 
   router.get(
     "/retry/:id",
-    verifyToken,
+    authMiddleware,
     paymentController.retryAppointmentPayment,
   );
 
