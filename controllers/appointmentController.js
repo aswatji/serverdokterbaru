@@ -13,7 +13,7 @@ class AppointmentController {
   // ✅ 1. Buat Janji Temu Baru
   async createAppointment(req, res) {
     try {
-      const { userId, doctorId, scheduleId, date, time, notes, type } =
+      const { userId, doctorId, scheduleId, date, time, notes, type, price } =
         req.body;
 
       if (!userId || !doctorId || !date || !time) {
