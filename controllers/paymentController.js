@@ -969,10 +969,15 @@ class PaymentController {
       const { id } = req.params;
 
       // 1. Cari data appointment beserta data payment-nya
-      // ✅ Perhatikan: include menggunakan 'payments' (sesuai schema)
+      // ✅ TAMBAHAN: include 'doctor' agar kita tau detail dokter yang dipanggil
       const appointment = await prisma.appointment.findUnique({
         where: { id: String(id) },
-        include: { payments: true },
+        include: {
+          payments: true,
+          doctor: {
+            select: { id: true, fullname: true, photo: true, category: true },
+          },
+        },
       });
 
       if (!appointment) {
@@ -983,8 +988,6 @@ class PaymentController {
       }
 
       // 2. Validasi apakah ada data pembayaran yang terkait
-      // Karena schema mendefinisikan 'payments Payment[]', datanya pasti berupa array.
-      // Ambil elemen terakhir (transaksi terbaru) jika user sempat mencoba beberapa kali.
       const relatedPayment =
         appointment.payments.length > 0
           ? appointment.payments[appointment.payments.length - 1]
@@ -1019,13 +1022,15 @@ class PaymentController {
         });
       }
 
-      // 5. Kembalikan respons ke frontend
+      // 5. Kembalikan respons ke frontend dengan tambahan doctorId dan data dokter
       return res.status(200).json({
         success: true,
         data: {
           token: snapToken,
           redirect_url: redirectUrl,
           order_id: orderId,
+          doctorId: appointment.doctorId,
+          doctor: appointment.doctor,
         },
       });
     } catch (error) {

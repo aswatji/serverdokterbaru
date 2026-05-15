@@ -168,6 +168,7 @@ class AppointmentController {
 
         return {
           id: apt.id,
+          doctorId: apt.doctor.id,
           doctorName: apt.doctor.fullname,
           doctorSpecialty: apt.doctor.category,
           // Gunakan foto dokter jika ada, jika tidak fallback ke ui-avatars
