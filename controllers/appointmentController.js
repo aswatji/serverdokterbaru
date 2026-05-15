@@ -175,6 +175,7 @@ class AppointmentController {
             apt.doctor.photo ||
             `https://ui-avatars.com/api/?name=${encodeURIComponent(apt.doctor.fullname)}&background=0D9488&color=fff`,
           date: dateString,
+          rawDate: apt.date,
           time: startTime,
           status: apt.status.toLowerCase(), // UPCOMING -> upcoming, COMPLETED -> completed
           type: apt.type.toLowerCase(), // CHAT -> chat
