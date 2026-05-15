@@ -12,9 +12,5 @@ router.get("/user", AppointmentController.getUserAppointments);
 
 router.patch("/:id/status", AppointmentController.updateAppointmentStatus);
 
-router.post(
-  "/start-chat",
-  authMiddleware,
-  AppointmentController.startChatSession,
-);
+router.post("/start-chat", AppointmentController.startChatSession);
 export default router;
