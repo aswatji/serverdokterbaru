@@ -104,7 +104,7 @@ export default function paymentRoutes(io) {
   router.get(
     "/retry/:id",
     verifyToken,
-    PaymentController.retryAppointmentPayment,
+    paymentController.retryAppointmentPayment,
   );
 
   return router;
