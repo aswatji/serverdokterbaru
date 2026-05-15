@@ -47,7 +47,7 @@ class PaymentController {
           order_id: payment.id, // wajib sama dengan DB ID
           gross_amount: payment.amount,
         },
-        enabled_payments: ["qris"],
+        // enabled_payments: ["qris"],
         customer_details: {
           first_name: fullname || "User",
           email: email || "user@example.com",
