@@ -56,7 +56,7 @@ class AppointmentController {
           time,
           notes,
           type: type || "CHAT", // Default ke CHAT
-          price: doctor?.price || 0,
+          price: price || doctor?.price || 0,
           status: "PENDING",
         },
         include: {
