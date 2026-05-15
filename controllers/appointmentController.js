@@ -287,6 +287,99 @@ class AppointmentController {
       });
     }
   }
+  // =================================================================
+  // ✅ FITUR BARU: Mulai Sesi Chat & Mulai Timer 30 Menit
+  // =================================================================
+  async startChatSession(req, res) {
+    try {
+      const { appointmentId } = req.body;
+
+      // 1. Cari data appointment beserta data payment yang sukses
+      const appointment = await prisma.appointment.findUnique({
+        where: { id: appointmentId },
+        include: {
+          payments: { where: { status: "success" } },
+        },
+      });
+
+      if (!appointment) {
+        return res.status(404).json({
+          success: false,
+          message: "Jadwal konsultasi tidak ditemukan",
+        });
+      }
+
+      if (appointment.payments.length === 0) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Jadwal ini belum dibayar lunas" });
+      }
+
+      const payment = appointment.payments[appointment.payments.length - 1]; // Ambil pembayaran terakhir yang sukses
+      const now = new Date();
+
+      // 2. CEK STATUS: Hanya update waktu JIKA ini adalah pertama kalinya ditekan
+      if (
+        appointment.status === "UPCOMING" ||
+        appointment.status === "upcoming"
+      ) {
+        // Buat waktu expired 30 menit dari waktu tombol ditekan SEKARANG
+        const newExpiry = new Date(now.getTime() + 30 * 60 * 1000);
+
+        // A. Update expiredAt di Payment
+        await prisma.payment.update({
+          where: { id: payment.id },
+          data: { expiresAt: newExpiry },
+        });
+
+        // B. Update expiredAt dan aktifkan Chat
+        const existingChat = await prisma.chat.findFirst({
+          where: { doctorId: appointment.doctorId, userId: appointment.userId },
+        });
+
+        if (existingChat) {
+          await prisma.chat.update({
+            where: { id: existingChat.id },
+            data: { expiredAt: newExpiry, isActive: true },
+          });
+        }
+
+        // C. Ubah status Appointment menjadi ONGOING agar waktu tidak ter-reset jika ditekan lagi
+        await prisma.appointment.update({
+          where: { id: appointmentId },
+          data: { status: "ONGOING" },
+        });
+
+        return res.status(200).json({
+          success: true,
+          message: "Sesi chat dimulai! Waktu 30 menit berjalan.",
+          expiresAt: newExpiry,
+        });
+      } else if (
+        appointment.status === "ONGOING" ||
+        appointment.status === "ongoing"
+      ) {
+        // Jika sudah pernah ditekan (misal user keluar layar lalu masuk lagi), kembalikan sisa waktu yang ada
+        return res.status(200).json({
+          success: true,
+          message: "Melanjutkan sesi chat.",
+          expiresAt: payment.expiresAt,
+        });
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: `Sesi chat tidak bisa dimulai karena status: ${appointment.status}`,
+        });
+      }
+    } catch (error) {
+      console.error("❌ startChatSession error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Gagal memulai sesi chat",
+        error: error.message,
+      });
+    }
+  }
 }
 
 export default new AppointmentController();
