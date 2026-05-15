@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import redisClient from "../utils/redisClient.js";
 
 const prisma = new PrismaClient();
 
@@ -7,6 +8,13 @@ class DoctorController {
   // ✅ Ambil semua dokter
   async getAllDoctors(req, res) {
     try {
+      const cacheKey = "doctors:all_with_stats";
+
+      const cachedData = await redisClient.get(cacheKey);
+      if (cachedData) {
+        console.log("⚡ Mengambil list Dokter dari REDIS");
+        return res.json(JSON.parse(cachedData)); // Langsung return jika ada
+      }
       const serverTime = new Date().toLocaleString("en-US", {
         timeZone: "Asia/Jakarta",
       });
@@ -90,7 +98,12 @@ class DoctorController {
         }),
       );
 
-      res.json({ success: true, data: doctorsWithStats });
+      const responseData = { success: true, data: doctorsWithStats };
+
+      // 📦 SIMPAN KE REDIS: Set hanya 300 detik (5 Menit) agar status "available" terus terupdate
+      await redisClient.setEx(cacheKey, 300, JSON.stringify(responseData));
+
+      res.json(responseData);
     } catch (error) {
       console.error("❌ Error getAllDoctors:", error);
       res.status(500).json({ success: false, message: error.message });
@@ -215,6 +228,10 @@ class DoctorController {
         where: { id: doctorId },
         data: updatedData,
       });
+      await redisClient.del("doctors:all_with_stats");
+      await redisClient.del(
+        `doctors:category:${updatedDoctor.category.toLowerCase()}`,
+      );
 
       res.json({
         success: true,
@@ -308,10 +325,9 @@ class DoctorController {
         }),
       ]);
 
-      res.json({
-        success: true,
-        message: "Jadwal berhasil diperbarui",
-      });
+      await redisClient.del("doctors:all_with_stats");
+
+      res.json({ success: true, message: "Jadwal berhasil diperbarui" });
     } catch (error) {
       console.error("❌ Error updateScheduleSettings:", error);
       res.status(500).json({
@@ -425,6 +441,12 @@ class DoctorController {
   async getDoctorsByCategory(req, res) {
     try {
       const { category } = req.params;
+
+      const cacheKey = `doctors:category:${category.toLowerCase()}`; // Key spesifik per kategori
+      const cachedData = await redisClient.get(cacheKey);
+      if (cachedData) {
+        return res.json(JSON.parse(cachedData));
+      }
       const serverTime = new Date().toLocaleString("en-US", {
         timeZone: "Asia/Jakarta",
       });
@@ -515,11 +537,16 @@ class DoctorController {
         }),
       );
 
-      res.json({
+      const responseData = {
         success: true,
-        message: `Found ${doctorsWithStats.length} doctors`,
+        message: `Found doctors`,
         data: doctorsWithStats,
-      });
+      };
+
+      // 📦 SIMPAN KE REDIS: 300 detik (5 menit)
+      await redisClient.setEx(cacheKey, 300, JSON.stringify(responseData));
+
+      res.json(responseData);
     } catch (error) {
       console.error("❌ Error getDoctorsByCategory:", error);
       res.status(500).json({
