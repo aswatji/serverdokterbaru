@@ -47,6 +47,7 @@ class PaymentController {
           order_id: payment.id, // wajib sama dengan DB ID
           gross_amount: payment.amount,
         },
+        enabled_payments: ["qris"],
         customer_details: {
           first_name: fullname || "User",
           email: email || "user@example.com",
@@ -208,12 +209,6 @@ class PaymentController {
       return res
         .status(200)
         .json({ success: true, message: "Callback processed successfully" });
-      // this.io.to(`chat:${chat.id}`).emit("payment_success", {
-      //   chatId: chat.id,
-      //   paymentId: updatedPayment.id,
-      //   paidAt: updatedPayment.paidAt,
-      //   expiresAt: finalExpires,
-      // });
     } catch (error) {
       console.error("❌ midtransCallback error:", error);
       res.status(500).json({
