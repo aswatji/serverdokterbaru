@@ -164,26 +164,59 @@ class AppointmentController {
         });
 
         // Potong jam jika formatnya range (misal "10:00 - 11:00" -> "10:00")
-        const startTime = apt.time.split("-")[0].trim();
+        const fullTime = apt.time;
+
+        // 2. Logika Pengecekan Waktu Otomatis (Ide Anda!)
+        let currentStatus = apt.status.toLowerCase();
+
+        if (currentStatus === "upcoming") {
+          try {
+            // Pecah "10:00 - 11:00" untuk mengambil "11:00"
+            const timeParts = fullTime.split("-");
+            if (timeParts.length === 2) {
+              const endTimeStr = timeParts[1].trim(); // Dapat "11:00"
+              const [endHour, endMinute] = endTimeStr.split(":").map(Number);
+
+              // Buat objek waktu kadaluarsa gabungan dari tanggal dan jam akhir
+              const appointmentEndDate = new Date(apt.date);
+              appointmentEndDate.setHours(endHour, endMinute, 0, 0);
+
+              // Jika waktu saat ini sudah melewati batas akhir jadwal
+              if (now > appointmentEndDate) {
+                currentStatus = "completed"; // Otomatis ubah ke selesai!
+
+                // (Opsional) Update status di database secara background agar tersinkronisasi
+                prisma.appointment
+                  .update({
+                    where: { id: apt.id },
+                    data: { status: "COMPLETED" },
+                  })
+                  .catch((err) =>
+                    console.error("Gagal update auto-completed:", err),
+                  );
+              }
+            }
+          } catch (e) {
+            console.error("Error parsing time for auto-complete", e);
+          }
+        }
 
         return {
           id: apt.id,
           doctorId: apt.doctor.id,
           doctorName: apt.doctor.fullname,
           doctorSpecialty: apt.doctor.category,
-          // Gunakan foto dokter jika ada, jika tidak fallback ke ui-avatars
           doctorImage:
             apt.doctor.photo ||
             `https://ui-avatars.com/api/?name=${encodeURIComponent(apt.doctor.fullname)}&background=0D9488&color=fff`,
           date: dateString,
           rawDate: apt.date,
-          time: startTime,
-          status: apt.status.toLowerCase(), // UPCOMING -> upcoming, COMPLETED -> completed
-          type: apt.type.toLowerCase(), // CHAT -> chat
-          price: apt.price,
+          time: fullTime, // ✅ Mengembalikan "10:00 - 11:00" secara utuh
+          status: currentStatus, // ✅ Status sudah melewati pengecekan waktu otomatis
+          type: apt.type?.toLowerCase() || "chat",
+          price: apt.price || 0,
         };
       });
-
       res.json({ success: true, data: formattedData });
     } catch (error) {
       console.error("❌ getUserAppointments error:", error);
