@@ -133,6 +133,103 @@ class AppointmentController {
   }
 
   // ✅ 3. Ambil Daftar Janji Temu (Diformat Khusus untuk React Native UI)
+  // async getUserAppointments(req, res) {
+  //   try {
+  //     const { userId } = req.query;
+
+  //     if (!userId) {
+  //       return res
+  //         .status(400)
+  //         .json({ success: false, message: "userId wajib diisi" });
+  //     }
+
+  //     const appointments = await prisma.appointment.findMany({
+  //       where: { userId: userId },
+  //       include: {
+  //         doctor: {
+  //           select: { id: true, fullname: true, photo: true, category: true },
+  //         },
+  //       },
+  //       orderBy: { date: "desc" },
+  //     });
+
+  //     // 🔹 FORMAT DATA AGAR 100% SAMA DENGAN UI MOCKUP DI REACT NATIVE
+  //     const formattedData = appointments.map((apt) => {
+  //       const now = new Date();
+  //       // Format tanggal ke Bahasa Indonesia (contoh: "Jumat, 16 Mei 2026")
+  //       const dateString = new Date(apt.date).toLocaleDateString("id-ID", {
+  //         weekday: "long",
+  //         day: "numeric",
+  //         month: "long",
+  //         year: "numeric",
+  //       });
+
+  //       // Potong jam jika formatnya range (misal "10:00 - 11:00" -> "10:00")
+  //       const fullTime = apt.time;
+
+  //       // 2. Logika Pengecekan Waktu Otomatis (Ide Anda!)
+  //       let currentStatus = apt.status.toLowerCase();
+
+  //       if (currentStatus === "upcoming") {
+  //         try {
+  //           // Pecah "10:00 - 11:00" untuk mengambil "11:00"
+  //           const timeParts = fullTime.split("-");
+  //           if (timeParts.length === 2) {
+  //             const endTimeStr = timeParts[1].trim(); // Dapat "11:00"
+  //             const [endHour, endMinute] = endTimeStr.split(":").map(Number);
+
+  //             // Buat objek waktu kadaluarsa gabungan dari tanggal dan jam akhir
+  //             const appointmentEndDate = new Date(apt.date);
+  //             appointmentEndDate.setHours(endHour, endMinute, 0, 0);
+
+  //             // Jika waktu saat ini sudah melewati batas akhir jadwal
+  //             if (now > appointmentEndDate) {
+  //               currentStatus = "completed"; // Otomatis ubah ke selesai!
+
+  //               // (Opsional) Update status di database secara background agar tersinkronisasi
+  //               prisma.appointment
+  //                 .update({
+  //                   where: { id: apt.id },
+  //                   data: { status: "COMPLETED" },
+  //                 })
+  //                 .catch((err) =>
+  //                   console.error("Gagal update auto-completed:", err),
+  //                 );
+  //             }
+  //           }
+  //         } catch (e) {
+  //           console.error("Error parsing time for auto-complete", e);
+  //         }
+  //       }
+
+  //       return {
+  //         id: apt.id,
+  //         doctorId: apt.doctor.id,
+  //         doctorName: apt.doctor.fullname,
+  //         doctorSpecialty: apt.doctor.category,
+  //         doctorImage:
+  //           apt.doctor.photo ||
+  //           `https://ui-avatars.com/api/?name=${encodeURIComponent(apt.doctor.fullname)}&background=0D9488&color=fff`,
+  //         date: dateString,
+  //         rawDate: apt.date,
+  //         time: fullTime, // ✅ Mengembalikan "10:00 - 11:00" secara utuh
+  //         status: currentStatus, // ✅ Status sudah melewati pengecekan waktu otomatis
+  //         type: apt.type?.toLowerCase() || "chat",
+  //         price: apt.price || 0,
+  //       };
+  //     });
+  //     res.json({ success: true, data: formattedData });
+  //   } catch (error) {
+  //     console.error("❌ getUserAppointments error:", error);
+  //     res.status(500).json({
+  //       success: false,
+  //       message: "Gagal mengambil daftar janji temu",
+  //       error: error.message,
+  //     });
+  //   }
+  // }
+
+  // ✅ 3. Ambil Daftar Janji Temu (Diformat Khusus untuk React Native UI)
   async getUserAppointments(req, res) {
     try {
       const { userId } = req.query;
@@ -149,6 +246,12 @@ class AppointmentController {
           doctor: {
             select: { id: true, fullname: true, photo: true, category: true },
           },
+          // 🔥 TAMBAHAN 1: Ambil data pembayaran untuk mengecek timer 30 menit chat
+          payments: {
+            where: { status: "success" },
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
         },
         orderBy: { date: "desc" },
       });
@@ -156,7 +259,7 @@ class AppointmentController {
       // 🔹 FORMAT DATA AGAR 100% SAMA DENGAN UI MOCKUP DI REACT NATIVE
       const formattedData = appointments.map((apt) => {
         const now = new Date();
-        // Format tanggal ke Bahasa Indonesia (contoh: "Jumat, 16 Mei 2026")
+        // Format tanggal ke Bahasa Indonesia
         const dateString = new Date(apt.date).toLocaleDateString("id-ID", {
           weekday: "long",
           day: "numeric",
@@ -164,38 +267,55 @@ class AppointmentController {
           year: "numeric",
         });
 
-        // Potong jam jika formatnya range (misal "10:00 - 11:00" -> "10:00")
         const fullTime = apt.time;
 
-        // 2. Logika Pengecekan Waktu Otomatis (Ide Anda!)
+        // 2. Logika Pengecekan Waktu Otomatis
         let currentStatus = apt.status.toLowerCase();
 
-        if (currentStatus === "upcoming") {
+        // 🔥 TAMBAHAN 2: Masukkan "ongoing" ke dalam kondisi pengecekan expired
+        if (currentStatus === "upcoming" || currentStatus === "ongoing") {
           try {
-            // Pecah "10:00 - 11:00" untuk mengambil "11:00"
+            let isExpired = false;
+
+            // -- Skenario A: Jam jadwal sudah lewat (Misal: lewat dari jam 11:00) --
             const timeParts = fullTime.split("-");
             if (timeParts.length === 2) {
               const endTimeStr = timeParts[1].trim(); // Dapat "11:00"
               const [endHour, endMinute] = endTimeStr.split(":").map(Number);
 
-              // Buat objek waktu kadaluarsa gabungan dari tanggal dan jam akhir
               const appointmentEndDate = new Date(apt.date);
               appointmentEndDate.setHours(endHour, endMinute, 0, 0);
 
-              // Jika waktu saat ini sudah melewati batas akhir jadwal
               if (now > appointmentEndDate) {
-                currentStatus = "completed"; // Otomatis ubah ke selesai!
-
-                // (Opsional) Update status di database secara background agar tersinkronisasi
-                prisma.appointment
-                  .update({
-                    where: { id: apt.id },
-                    data: { status: "COMPLETED" },
-                  })
-                  .catch((err) =>
-                    console.error("Gagal update auto-completed:", err),
-                  );
+                isExpired = true;
               }
+            }
+
+            // -- Skenario B: Timer 30 menit chat habis (Khusus Ongoing) --
+            if (
+              currentStatus === "ongoing" &&
+              apt.payments &&
+              apt.payments.length > 0
+            ) {
+              const paymentExpiry = new Date(apt.payments[0].expiresAt);
+              if (now > paymentExpiry) {
+                isExpired = true; // Timer 30 menit sudah lewat
+              }
+            }
+
+            // -- Jika salah satu skenario terpenuhi, ubah jadi COMPLETED --
+            if (isExpired) {
+              currentStatus = "completed"; // Otomatis ubah ke selesai!
+
+              // Update status di database secara background agar tersinkronisasi
+              prisma.appointment
+                .update({
+                  where: { id: apt.id },
+                  data: { status: "COMPLETED" },
+                })
+                .catch((err) =>
+                  console.error("Gagal update auto-completed:", err),
+                );
             }
           } catch (e) {
             console.error("Error parsing time for auto-complete", e);
@@ -212,8 +332,8 @@ class AppointmentController {
             `https://ui-avatars.com/api/?name=${encodeURIComponent(apt.doctor.fullname)}&background=0D9488&color=fff`,
           date: dateString,
           rawDate: apt.date,
-          time: fullTime, // ✅ Mengembalikan "10:00 - 11:00" secara utuh
-          status: currentStatus, // ✅ Status sudah melewati pengecekan waktu otomatis
+          time: fullTime,
+          status: currentStatus, // ✅ Status sudah bersih dan rapi
           type: apt.type?.toLowerCase() || "chat",
           price: apt.price || 0,
         };
