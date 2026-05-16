@@ -26,7 +26,7 @@ const updateNewsValidation = [
 /* -------------------------------------------
    📰 ROUTES
 ------------------------------------------- */
-
+router.get("/clear-cache", newsController.clearCache);
 // ✅ Ambil semua berita
 router.get("/", newsController.getAll);
 
@@ -47,5 +47,4 @@ router.put(
 // ✅ Hapus berita
 router.delete("/:id", newsController.delete);
 
-router.get("/clear-cache", newsController.clearCache);
 export default router;
