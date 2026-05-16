@@ -268,6 +268,18 @@ class NewsController {
       res.status(500).json({ success: false, message: error.message });
     }
   }
+
+  async clearCache(req, res) {
+    try {
+      await redisClient.del("news:all");
+      res.json({
+        success: true,
+        message: "Cache berita berhasil dibersihkan!",
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
 }
 
 export default new NewsController();
