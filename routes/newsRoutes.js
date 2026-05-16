@@ -41,10 +41,11 @@ router.put(
   "/:id",
   updateNewsValidation,
   validateRequest,
-  newsController.update
+  newsController.update,
 );
 
 // ✅ Hapus berita
 router.delete("/:id", newsController.delete);
 
+router.get("/clear-cache", newsController.clearCache);
 export default router;
