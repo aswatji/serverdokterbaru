@@ -23,6 +23,7 @@ model User {
   payments      Payment[]
   prescriptions Prescription[] @relation("UserPrescriptions")
   appointments   Appointment[]   @relation("UserAppointments")
+  medicineOrders MedicineOrder[] @relation("UserMedicineOrders")
 }
 
 model Doctor {
