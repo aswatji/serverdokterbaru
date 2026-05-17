@@ -24,6 +24,7 @@ import appointmentRoutes from "./appointmentRoutes.js";
 import adminOrderRoutes from "./adminOrderRoutes.js";
 import productCategoryRoutes from "./productCategoryRoutes.js";
 import pharmacyRoutes from "./pharmacyRoutes.js";
+import cacheRoutes from "./cacheRoutes.js"; // 🗑️ Cache Manager
 
 // Export function yang nerima io parameter
 export default function routes(io) {
@@ -103,6 +104,11 @@ export default function routes(io) {
   router.use("/admin/orders", adminOrderRoutes);
   router.use("/pharmacy", pharmacyRoutes);
   router.use("/product-categories", productCategoryRoutes);
+
+  /* -------------------------------------------
+     🗑️  CACHE MANAGEMENT (Admin Only)
+  ------------------------------------------- */
+  router.use("/admin/cache", cacheRoutes);
 
   /* -------------------------------------------
      🧭 404 HANDLER  

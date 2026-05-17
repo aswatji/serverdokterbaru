@@ -48,9 +48,20 @@ const safeRedisClient = {
   del: async (key) => {
     try {
       if (!redisClient.isReady) return;
-      return await redisClient.del(key);
+      // Mendukung single key (string) atau multiple keys (array)
+      return await redisClient.del(Array.isArray(key) ? key : [key]);
     } catch (err) {
       console.error("❌ Redis DEL error:", err.message);
+    }
+  },
+  // ✅ Cari semua key yang cocok dengan pattern (misal: "products:all*")
+  keys: async (pattern) => {
+    try {
+      if (!redisClient.isReady) return [];
+      return await redisClient.keys(pattern);
+    } catch (err) {
+      console.error("❌ Redis KEYS error:", err.message);
+      return [];
     }
   },
   isReady: () => redisClient.isReady,

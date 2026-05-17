@@ -1,7 +1,12 @@
 import { PrismaClient } from "@prisma/client";
 import midtransClient from "midtrans-client";
+import redis from "../utils/redisClient.js";
 
 const prisma = new PrismaClient();
+
+// TTL cache order user — 2 menit cukup, order status cepat berubah
+const USER_ORDERS_TTL  = 120;
+const ORDER_DETAIL_TTL = 120;
 
 class PharmacyController {
   constructor() {
@@ -81,6 +86,9 @@ class PharmacyController {
         },
       });
 
+      // 🗑️ Invalidate cache list order user agar langsung terupdate
+      await redis.del(`pharmacy:user_orders:${userId}`);
+
       return res.status(201).json({
         success: true,
         message: "Medicine order created successfully",
@@ -102,24 +110,36 @@ class PharmacyController {
     }
   }
 
-  // ✅ 2. Ambil semua pesanan obat milik user login
+  // ✅ 2. Ambil semua pesanan obat milik user login → Cache 2 menit per userId
   async getUserOrders(req, res) {
     try {
       const { id: userId } = req.user;
+      const key = `pharmacy:user_orders:${userId}`;
 
+      // ── Cache HIT ──
+      const cached = await redis.get(key);
+      if (cached) {
+        console.log(`✅ Cache HIT: ${key}`);
+        return res.status(200).json({ success: true, source: "cache", data: JSON.parse(cached) });
+      }
+
+      // ── Cache MISS → Query database ──
+      console.log(`🔄 Cache MISS: ${key}`);
       const orders = await prisma.medicineOrder.findMany({
         where: { userId },
         include: {
           items: {
             include: {
-              medicine: { select: { name: true, image: true } }, // Bawa sekalian nama obatnya
+              medicine: { select: { name: true, image: true } },
             },
           },
         },
         orderBy: { createdAt: "desc" },
       });
 
-      res.status(200).json({ success: true, data: orders });
+      await redis.setEx(key, USER_ORDERS_TTL, JSON.stringify(orders));
+
+      res.status(200).json({ success: true, source: "db", data: orders });
     } catch (error) {
       console.error("❌ getUserOrders error:", error);
       res.status(500).json({
@@ -130,16 +150,27 @@ class PharmacyController {
     }
   }
 
-  // ✅ 3. Ambil detail pesanan obat spesifik
+  // ✅ 3. Ambil detail pesanan obat spesifik → Cache 2 menit per orderId
   async getOrderById(req, res) {
     try {
       const { id } = req.params;
+      const key = `pharmacy:order_detail:${id}`;
+
+      // ── Cache HIT ──
+      const cached = await redis.get(key);
+      if (cached) {
+        console.log(`✅ Cache HIT: ${key}`);
+        return res.status(200).json({ success: true, source: "cache", data: JSON.parse(cached) });
+      }
+
+      // ── Cache MISS → Query database ──
+      console.log(`🔄 Cache MISS: ${key}`);
       const order = await prisma.medicineOrder.findUnique({
         where: { id },
         include: {
           items: {
             include: {
-              medicine: true, // Ambil semua detail produk obat terkait
+              medicine: true,
             },
           },
           user: {
@@ -154,7 +185,9 @@ class PharmacyController {
           .json({ success: false, message: "Order not found" });
       }
 
-      res.status(200).json({ success: true, data: order });
+      await redis.setEx(key, ORDER_DETAIL_TTL, JSON.stringify(order));
+
+      res.status(200).json({ success: true, source: "db", data: order });
     } catch (error) {
       console.error("❌ getOrderById error:", error);
       res.status(500).json({

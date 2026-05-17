@@ -110,10 +110,21 @@ class DoctorController {
     }
   }
   // ✅ Ambil dokter berdasarkan ID
+  // → Cache 5 menit (rating & jadwal cukup sering berubah)
   async getDoctorById(req, res) {
     try {
       const { doctorId } = req.params;
+      const key = `doctors:detail:${doctorId}`;
 
+      // ── Cache HIT ──
+      const cached = await redisClient.get(key);
+      if (cached) {
+        console.log(`✅ Cache HIT: ${key}`);
+        return res.status(200).json({ ...JSON.parse(cached), source: "cache" });
+      }
+
+      // ── Cache MISS → Query database ──
+      console.log(`🔄 Cache MISS: ${key}`);
       const doctor = await prisma.doctor.findUnique({
         where: { id: doctorId },
         include: {
@@ -134,7 +145,7 @@ class DoctorController {
           .json({ success: false, message: "Doctor not found" });
       }
 
-      // Menghitung Rata-rata Bintang dan Total Ulasan
+      // Hitung rata-rata rating
       const reviewStats = await prisma.doctorRating.aggregate({
         where: { doctorId: doctorId },
         _avg: { rating: true },
@@ -145,12 +156,12 @@ class DoctorController {
         ? reviewStats._avg.rating.toFixed(1)
         : 0;
 
-      // 🛑 HAPUS PASSWORD & TOKEN RAHASIA SEBELUM DIKIRIM KE FRONTEND
+      // 🛑 Hapus field sensitif sebelum dikirim
       const { password, pushToken, ...safeDoctorData } = doctor;
 
-      // Gabungkan data dokter yang sudah AMAN dengan statistik rating
-      res.json({
+      const responseData = {
         success: true,
+        source: "db",
         data: {
           ...safeDoctorData,
           ratingStats: {
@@ -158,7 +169,12 @@ class DoctorController {
             total: reviewStats._count.id,
           },
         },
-      });
+      };
+
+      // ── Simpan ke Redis 5 menit ──
+      await redisClient.setEx(key, 300, JSON.stringify(responseData));
+
+      res.json(responseData);
     } catch (error) {
       console.error("❌ Error getDoctorById:", error);
       res.status(500).json({ success: false, message: error.message });
@@ -228,10 +244,11 @@ class DoctorController {
         where: { id: doctorId },
         data: updatedData,
       });
+      // 🗑️ Invalidate semua cache terkait dokter ini
       await redisClient.del("doctors:all_with_stats");
-      await redisClient.del(
-        `doctors:category:${updatedDoctor.category.toLowerCase()}`,
-      );
+      await redisClient.del(`doctors:category:${updatedDoctor.category.toLowerCase()}`);
+      await redisClient.del(`doctors:detail:${doctorId}`);
+      await redisClient.del(`doctors:profile:${doctorId}`);
 
       res.json({
         success: true,
@@ -249,9 +266,21 @@ class DoctorController {
   }
 
   // ✅ Ambil profil dokter login
+  // → Cache 10 menit per doctorId (data profil jarang berubah)
   async getProfile(req, res) {
     try {
       const doctorId = req.user.id;
+      const key = `doctors:profile:${doctorId}`;
+
+      // ── Cache HIT ──
+      const cached = await redisClient.get(key);
+      if (cached) {
+        console.log(`✅ Cache HIT: ${key}`);
+        return res.json({ ...JSON.parse(cached), source: "cache" });
+      }
+
+      // ── Cache MISS → Query database ──
+      console.log(`🔄 Cache MISS: ${key}`);
       const doctor = await prisma.doctor.findUnique({
         where: { id: doctorId },
         select: {
@@ -278,7 +307,12 @@ class DoctorController {
         });
       }
 
-      res.json({ success: true, data: doctor });
+      const responseData = { success: true, source: "db", data: doctor };
+
+      // ── Simpan ke Redis 10 menit ──
+      await redisClient.setEx(key, 600, JSON.stringify(responseData));
+
+      res.json(responseData);
     } catch (error) {
       console.error("❌ Error getProfile:", error);
       res.status(500).json({
@@ -325,7 +359,9 @@ class DoctorController {
         }),
       ]);
 
+      // 🗑️ Invalidate cache list dan jadwal
       await redisClient.del("doctors:all_with_stats");
+      await redisClient.del("doctors:all_schedules");
 
       res.json({ success: true, message: "Jadwal berhasil diperbarui" });
     } catch (error) {
@@ -417,8 +453,20 @@ class DoctorController {
     }
   }
 
+  // → Cache 10 menit (kategori sangat jarang berubah)
   async getCategories(req, res) {
     try {
+      const key = "doctors:categories";
+
+      // ── Cache HIT ──
+      const cached = await redisClient.get(key);
+      if (cached) {
+        console.log(`✅ Cache HIT: ${key}`);
+        return res.json({ ...JSON.parse(cached), source: "cache" });
+      }
+
+      // ── Cache MISS → Query database ──
+      console.log(`🔄 Cache MISS: ${key}`);
       const categories = await prisma.doctor.findMany({
         select: { category: true },
         distinct: ["category"],
@@ -426,8 +474,12 @@ class DoctorController {
       });
 
       const categoryList = categories.map((item) => item.category);
+      const responseData = { success: true, source: "db", data: categoryList };
 
-      res.json({ success: true, data: categoryList });
+      // ── Simpan ke Redis 10 menit ──
+      await redisClient.setEx(key, 600, JSON.stringify(responseData));
+
+      res.json(responseData);
     } catch (error) {
       console.error("❌ Error getCategories:", error);
       res.status(500).json({
@@ -557,12 +609,22 @@ class DoctorController {
     }
   }
 
+  // → Cache 5 menit (jadwal bisa berubah saat dokter update)
   async getAllDoctorSchedules(req, res) {
     try {
+      const key = "doctors:all_schedules";
+
+      // ── Cache HIT ──
+      const cached = await redisClient.get(key);
+      if (cached) {
+        console.log(`✅ Cache HIT: ${key}`);
+        return res.json({ ...JSON.parse(cached), source: "cache" });
+      }
+
+      // ── Cache MISS → Query database ──
+      console.log(`🔄 Cache MISS: ${key}`);
       const schedules = await prisma.doctorSchedule.findMany({
-        where: {
-          isActive: true, // Opsional: Hanya tampilkan jadwal yang aktif
-        },
+        where: { isActive: true },
         include: {
           doctor: {
             select: {
@@ -577,17 +639,20 @@ class DoctorController {
             },
           },
         },
-        // Opsional: Urutkan berdasarkan jadwal terbaru atau hari
-        orderBy: {
-          day: "asc",
-        },
+        orderBy: { day: "asc" },
       });
 
-      res.json({
+      const responseData = {
         success: true,
+        source: "db",
         message: "Berhasil mengambil jadwal beserta data dokter",
         data: schedules,
-      });
+      };
+
+      // ── Simpan ke Redis 5 menit ──
+      await redisClient.setEx(key, 300, JSON.stringify(responseData));
+
+      res.json(responseData);
     } catch (error) {
       console.error("❌ Error getAllDoctorSchedules:", error);
       res.status(500).json({
