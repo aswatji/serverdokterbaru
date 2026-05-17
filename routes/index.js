@@ -102,7 +102,7 @@ export default function routes(io) {
   router.use("/appointments", appointmentRoutes);
   router.use("admin/orders", adminOrderRoutes);
   router.use("/pharmacy", pharmacyRoutes);
-  app.use("/product-categories", productCategoryRoutes);
+  router.use("/product-categories", productCategoryRoutes);
 
   /* -------------------------------------------
      🧭 404 HANDLER  
