@@ -5,7 +5,7 @@ import redis from "../utils/redisClient.js";
 const prisma = new PrismaClient();
 
 // TTL cache order user — 2 menit cukup, order status cepat berubah
-const USER_ORDERS_TTL  = 120;
+const USER_ORDERS_TTL = 120;
 const ORDER_DETAIL_TTL = 120;
 
 class PharmacyController {
@@ -52,7 +52,30 @@ class PharmacyController {
           },
         },
       });
+      const itemSubtotal = items.reduce(
+        (sum, item) => sum + item.price * item.quantity,
+        0,
+      );
 
+      // 2. Hitung selisihnya (ini adalah ongkir atau biaya tambahan lainnya)
+      const deliveryFee = order.amount - itemSubtotal;
+
+      const midtransItems = items.map((item) => ({
+        id: String(item.medicineId),
+        price: item.price,
+        quantity: item.quantity,
+        name: item.name ? item.name.substring(0, 50) : "Obat/Produk Apotek",
+      }));
+
+      // 4. Jika ada biaya ongkir, masukkan ongkir tersebut sebagai "item" tambahan agar hitungannya pas!
+      if (deliveryFee > 0) {
+        midtransItems.push({
+          id: "DELIVERY-FEE",
+          price: deliveryFee,
+          quantity: 1,
+          name: "Biaya Pengiriman",
+        });
+      }
       // 🔹 B. Siapkan parameter Midtrans
       // ⚠️ PENTING: Gunakan prefix "MED-" agar midtransCallback bisa membedakan transaksi ini dengan chat dokter
       const parameter = {
@@ -120,7 +143,9 @@ class PharmacyController {
       const cached = await redis.get(key);
       if (cached) {
         console.log(`✅ Cache HIT: ${key}`);
-        return res.status(200).json({ success: true, source: "cache", data: JSON.parse(cached) });
+        return res
+          .status(200)
+          .json({ success: true, source: "cache", data: JSON.parse(cached) });
       }
 
       // ── Cache MISS → Query database ──
@@ -160,7 +185,9 @@ class PharmacyController {
       const cached = await redis.get(key);
       if (cached) {
         console.log(`✅ Cache HIT: ${key}`);
-        return res.status(200).json({ success: true, source: "cache", data: JSON.parse(cached) });
+        return res
+          .status(200)
+          .json({ success: true, source: "cache", data: JSON.parse(cached) });
       }
 
       // ── Cache MISS → Query database ──
