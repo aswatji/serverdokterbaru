@@ -21,8 +21,8 @@ import productRoutes from "./productRoutes.js";
 import chatTemplateRoutes from "./chatTemplateRoutes.js";
 import prescriptionRoutes from "./prescriptionRoute.js";
 import appointmentRoutes from "./appointmentRoutes.js";
-import adminOrderRoutes from "./routes/adminOrder.routes.js";
-import productCategoryRoutes from "./routes/productCategoryRoutes.js";
+import adminOrderRoutes from "./adminOrder.routes.js";
+import productCategoryRoutes from "./productCategoryRoutes.js";
 import pharmacyRoutes from "./pharmacyRoutes.js";
 
 // Export function yang nerima io parameter
