@@ -14,7 +14,7 @@ class AdminOrderController {
         where: whereCondition,
         include: {
           user: {
-            select: { id: true, fullname: true, email: true, phone: true },
+            select: { id: true, fullname: true, email: true },
           },
           items: {
             include: {
@@ -41,7 +41,7 @@ class AdminOrderController {
         where: { id },
         include: {
           user: {
-            select: { id: true, fullname: true, email: true, phone: true },
+            select: { id: true, fullname: true, email: true },
           },
           items: {
             include: {

@@ -100,7 +100,7 @@ export default function routes(io) {
 
   // ✅ Appointment routes
   router.use("/appointments", appointmentRoutes);
-  router.use("admin/orders", adminOrderRoutes);
+  router.use("/admin/orders", adminOrderRoutes);
   router.use("/pharmacy", pharmacyRoutes);
   router.use("/product-categories", productCategoryRoutes);
 
