@@ -1,7 +1,7 @@
 import express from "express";
 import PharmacyController from "../controllers/PharmacyController.js";
 // Import middleware autentikasi yang Anda gunakan
-import { verifyToken } from "../middlewares/authMiddleware.js";
+import { verifyToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
