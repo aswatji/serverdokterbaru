@@ -1,12 +1,12 @@
 import express from "express";
 import PharmacyController from "../controllers/PharmacyController.js";
 // Import middleware autentikasi yang Anda gunakan
-import { verifyToken } from "../middleware/authMiddleware.js";
+// import { verifyToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
 // Semua rute di bawah ini wajib login
-router.use(verifyToken);
+// router.use(verifyToken);
 
 // 1. Membuat pesanan obat baru & mendapatkan token Midtrans
 router.post("/orders", PharmacyController.createMedicineOrder);
