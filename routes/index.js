@@ -21,6 +21,9 @@ import productRoutes from "./productRoutes.js";
 import chatTemplateRoutes from "./chatTemplateRoutes.js";
 import prescriptionRoutes from "./prescriptionRoute.js";
 import appointmentRoutes from "./appointmentRoutes.js";
+import adminOrderRoutes from "./routes/adminOrder.routes.js";
+import productCategoryRoutes from "./routes/productCategoryRoutes.js";
+import pharmacyRoutes from "./pharmacyRoutes.js";
 
 // Export function yang nerima io parameter
 export default function routes(io) {
@@ -97,6 +100,9 @@ export default function routes(io) {
 
   // ✅ Appointment routes
   router.use("/appointments", appointmentRoutes);
+  router.use("admin/orders", adminOrderRoutes);
+  router.use("/pharmacy", pharmacyRoutes);
+  app.use("/product-categories", productCategoryRoutes);
 
   /* -------------------------------------------
      🧭 404 HANDLER  

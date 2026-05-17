@@ -1,32 +1,30 @@
+// routes/product.routes.js
 import express from "express";
 import multer from "multer";
-import ProductController from "../controllers/productController.js";
+import productController from "../controllers/productController.js";
+// import { verifyAdmin } from "../middlewares/authMiddleware.js"; // Opsional jika butuh auth admin
 
 const router = express.Router();
 
-// Setup Multer (Simpan di RAM/Buffer)
-const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+// Konfigurasi Multer Memory Storage (Karena file diupload langsung ke MinIO via buffer)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // Limit ukuran file 5MB
+  },
+});
 
-// --- ROUTES ---
-// PERBAIKAN: Hapus "/products" di sini karena sudah didefinisikan di routes/index.js
-// URL Akhir: /api/products/ (karena /api + /products + /)
+// ✅ Routes untuk Public / User (Bisa diakses tanpa login)
+router.get("/home", productController.getHomeData);
+router.get("/", productController.getAllProducts); // Mendukung query ?categoryId=xxx
+router.get("/:id", productController.getProductById);
 
-router.get("/home", ProductController.getHomeData);
+// ✅ Routes untuk Admin (Upload, Update, Delete)
+// Anda bisa menambahkan middleware autentikasi admin di sini
+// Contoh: router.post("/", verifyAdmin, upload.single("image"), productController.createProduct);
 
-// CREATE: POST /api/products
-router.post("/", upload.single("image"), ProductController.createProduct);
-
-// READ ALL: GET /api/products
-router.get("/", ProductController.getAllProducts);
-
-// READ ONE: GET /api/products/:id
-router.get("/:id", ProductController.getProductById);
-
-// UPDATE: PUT /api/products/:id
-router.put("/:id", upload.single("image"), ProductController.updateProduct);
-
-// DELETE: DELETE /api/products/:id
-router.delete("/:id", ProductController.deleteProduct);
+router.post("/", upload.single("image"), productController.createProduct);
+router.put("/:id", upload.single("image"), productController.updateProduct);
+router.delete("/:id", productController.deleteProduct);
 
 export default router;

@@ -202,6 +202,50 @@ model Product {
   image         String?
   isRecommended Boolean  @default(false)
   viewCount     Int      @default(0)
+  orderItems    MedicineOrderItem[]
+  categoryId    String?            // Dibuat opsional (?) agar tidak error pada data produk lama
+  category      ProductCategory?   @relation(fields: [categoryId], references: [id])
+  @@index([categoryId])
+}
+
+model ProductCategory {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String?
+  
+  // Relasi: Satu kategori bisa memiliki banyak produk (obat)
+  products    Product[]
+}
+
+model MedicineOrder {
+  id          String              @id @default(cuid())
+  userId      String
+  amount      Float
+  status      String              @default("pending") // pending, success, failed, dll
+  address     String?             @db.Text
+  snapToken   String?
+  redirectUrl String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  user        User                @relation("UserMedicineOrders", fields: [userId], references: [id])
+  items       MedicineOrderItem[]
+
+  @@index([userId])
+}
+
+model MedicineOrderItem {
+  id          String        @id @default(cuid())
+  orderId     String
+  medicineId  String        
+  quantity    Int
+  price       Float
+
+  order       MedicineOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  medicine    Product       @relation(fields: [medicineId], references: [id])
+
+  @@index([orderId])
+  @@index([medicineId])
 }
 
 model ChatTemplate {
