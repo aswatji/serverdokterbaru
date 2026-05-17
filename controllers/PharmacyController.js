@@ -89,12 +89,7 @@ class PharmacyController {
           phone: phone || "08123456789",
         },
         // Opsional: Kirim detail item ke Midtrans (Maksimal nama produk 50 karakter)
-        item_details: items.map((item) => ({
-          id: item.medicineId,
-          price: item.price,
-          quantity: item.quantity,
-          name: item.name ? item.name.substring(0, 50) : "Obat/Produk Apotek",
-        })),
+        item_details: midtransItems,
       };
 
       // 🔹 C. Buat transaksi ke Midtrans
