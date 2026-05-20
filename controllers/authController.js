@@ -79,7 +79,7 @@ class AuthController {
       const token = jwt.sign(
         { id: user.id, email: user.email, type: "user" },
         JWT_SECRET,
-        { expiresIn: "2m" },
+        { expiresIn: "7d" },
       );
 
       res.status(200).json({
@@ -219,7 +219,7 @@ class AuthController {
       const token = jwt.sign(
         { id: doctor.id, email: doctor.email, type: "doctor" },
         JWT_SECRET,
-        { expiresIn: "1d" },
+        { expiresIn: "7d" },
       );
 
       res.status(200).json({
